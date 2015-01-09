@@ -11,7 +11,7 @@ A thin layer of dough for baking fast, memory-efficient, zero-serialization, bin
 * Random or linear access
 * Support for missing / Not Available values, even for primitive vectors
 * Trade off between read speed and compactness -- Dictionary encoding, delta encoding, other techniques
-* Designed for long term persistence - based on Google FlatBuffers which has ProtoBuf-like wire schema compatibility
+* Designed for long term persistence - based on Google [FlatBuffers](https://github.com/google/flatbuffers) which has ProtoBuf-like wire schema compatibility
 * Potentially cross-platform - once FlatBuffers and codecs are written
 
 Perfect for efficiently representing your data for storing in files, mmap, NoSQL or key-value stores, etc. etc.
@@ -22,7 +22,43 @@ Just started.  Consider the wire format not stable.  First priority is to stabil
 
 I considered Cap'n Proto, but that has some issues in the Java client that needs to be worked out first.
 
-## Components
+## Filo-Scala
+
+Using a `ColumnBuilder` to progressively build a column:
+
+```scala
+scala> import org.velvia.filo._
+import org.velvia.filo._
+
+scala> val cb = new IntColumnBuilder
+cb: org.velvia.filo.IntColumnBuilder = org.velvia.filo.IntColumnBuilder@48cbb760
+
+scala> cb.addNA
+
+scala> cb.addData(101)
+
+scala> cb.addData(102)
+
+scala> cb.addData(103)
+
+scala> cb.addNA
+```
+
+Encoding it to a `ByteBuffer`:
+
+```scala
+scala> BuilderEncoder.encodeToBuffer(cb)
+res6: java.nio.ByteBuffer = java.nio.HeapByteBuffer[pos=65408 lim=65536 cap=65536]
+```
+
+Parsing and iterating through the ByteBuffer as a collection:
+
+```scala
+scala> ColumnParser.parseAsSimpleColumn(res6).foreach(println)
+101
+102
+103
+```
 
 ## Future directions
 
