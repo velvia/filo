@@ -17,7 +17,8 @@ lazy val filoScala = (project in file("filo-scala")).dependsOn(schema, flatbuffe
 
 resolvers += "Pellucid Bintray" at "http://dl.bintray.com/pellucid/maven"
 
-lazy val deps = Seq("com.pellucid" %% "framian" % "0.3.3")
+lazy val deps = Seq("com.pellucid" %% "framian" % "0.3.3",
+                    "org.scalatest" %% "scalatest" % "2.1.0" % "test")
 
 lazy val compileJavaSchema = taskKey[Unit]("Run flatc compiler to generate Java classes for schema")
 lazy val compileJavaSchemaTask = compileJavaSchema := {

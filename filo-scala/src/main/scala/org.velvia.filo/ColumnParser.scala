@@ -2,6 +2,7 @@ package org.velvia.filo
 
 import java.nio.ByteBuffer
 import org.velvia.filo.column._
+import scala.collection.Traversable
 import scala.util.Try
 
 object ColumnParser {
@@ -20,12 +21,15 @@ object ColumnParser {
 }
 
 // TODO: implement Framian's Column API instead
-trait ColumnWrapper[A] {
+/**
+ * A ColumnWrapper gives collection API semantics around the binary Filo format vector.
+ */
+trait ColumnWrapper[A] extends Traversable[A] {
   // Returns true if the element at position index is available, false if NA
   def isAvailable(index: Int): Boolean
 
   // Calls fn for each available element in the column.  Will call 0 times if column is empty.
-  def foreach[B](fn: A => B)
+  def foreach[B](fn: A => B): Unit
 }
 
 class EmptyColumnWrapper[A] extends ColumnWrapper[A] {
@@ -46,7 +50,7 @@ class SimpleColumnWrapper[A](sc: SimpleColumn)(implicit veb: VectorExtractor[A])
       true
     } else {
       // NOTE: length of bitMask may be less than (length / 64) longwords.
-      (Try(sc.naMask.bitMask(index >> 64)).getOrElse(0L) & (1 << (index & 63))) == 0
+      (Try(sc.naMask.bitMask(index >> 5)).getOrElse(0L) & (1 << (index & 63))) == 0
     }
   }
 
