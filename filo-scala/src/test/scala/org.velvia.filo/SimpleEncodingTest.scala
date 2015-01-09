@@ -9,7 +9,7 @@ class SimpleEncodingTest extends FunSpec with ShouldMatchers {
   describe("Int encoding") {
     it("should encode an empty list and decode back to empty") {
       val cb = new IntColumnBuilder
-      val buf = BuilderEncoder.encodeToBuffer(cb, SimpleEncoding)
+      val buf = BuilderEncoder.builderToBuffer(cb, SimpleEncoding)
       val sc = ColumnParser.parseAsSimpleColumn(buf)
 
       sc.length should equal (0)
@@ -26,7 +26,7 @@ class SimpleEncodingTest extends FunSpec with ShouldMatchers {
       cb.addData(102)
       cb.addData(103)
       cb.addNA
-      val buf = BuilderEncoder.encodeToBuffer(cb, SimpleEncoding)
+      val buf = BuilderEncoder.builderToBuffer(cb, SimpleEncoding)
       val sc = ColumnParser.parseAsSimpleColumn(buf)
 
       sc.length should equal (5)
@@ -38,6 +38,15 @@ class SimpleEncodingTest extends FunSpec with ShouldMatchers {
       sc.get(-1) should equal (None)
       sc.get(2) should equal (Some(102))
       sc.toList should equal (List(101, 102, 103))
+    }
+
+    it("should encode and decode back a Seq[Int]") {
+      val orig = Seq(1, 2, -5, 101)
+      val buf = BuilderEncoder.seqToBuffer(orig)
+      val binarySeq = ColumnParser.parseAsSimpleColumn(buf)
+
+      binarySeq.length should equal (orig.length)
+      binarySeq.sum should equal (orig.sum)
     }
   }
 }

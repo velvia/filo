@@ -6,6 +6,8 @@ import java.nio.ByteBuffer
  * Type class for encoding a ColumnBuilder to queryable binary Filo format
  */
 trait BuilderEncoder[A] {
+  // Used for automatic conversion of Seq[A] and Seq[Option[A]]
+  def getBuilder(): ColumnBuilder[A]
   def encode(builder: ColumnBuilder[A], hint: BuilderEncoder.EncodingHint): ByteBuffer
 }
 
@@ -13,6 +15,8 @@ trait BuilderEncoder[A] {
  * Classes to encode a Builder to a queryable binary Filo format.
  * Methods automatically detect the best encoding method to use, but hints are available
  * to pass to the methods.
+ *
+ * To extend the encoder for additional base types A, implement a type class BuilderEncoder[A].
  */
 object BuilderEncoder {
   sealed trait EncodingHint
@@ -21,6 +25,7 @@ object BuilderEncoder {
   case object DictionaryEncoding extends EncodingHint
 
   implicit object IntEncoder extends BuilderEncoder[Int] {
+    def getBuilder(): ColumnBuilder[Int] = new IntColumnBuilder
     def encode(builder: ColumnBuilder[Int], hint: EncodingHint) = {
       SimpleEncoders.toSimpleColumn(builder.data, builder.naMask.result,
                                       Utils.intVectorBuilder)
@@ -28,6 +33,7 @@ object BuilderEncoder {
   }
 
   implicit object LongEncoder extends BuilderEncoder[Long] {
+    def getBuilder(): ColumnBuilder[Long] = new LongColumnBuilder
     def encode(builder: ColumnBuilder[Long], hint: EncodingHint) = {
       SimpleEncoders.toSimpleColumn(builder.data, builder.naMask.result,
                                       Utils.longVectorBuilder)
@@ -35,6 +41,7 @@ object BuilderEncoder {
   }
 
   implicit object DoubleEncoder extends BuilderEncoder[Double] {
+    def getBuilder(): ColumnBuilder[Double] = new DoubleColumnBuilder
     def encode(builder: ColumnBuilder[Double], hint: EncodingHint) = {
       SimpleEncoders.toSimpleColumn(builder.data, builder.naMask.result,
                                       Utils.doubleVectorBuilder)
@@ -42,6 +49,7 @@ object BuilderEncoder {
   }
 
   implicit object StringEncoder extends BuilderEncoder[String] {
+    def getBuilder(): ColumnBuilder[String] = new StringColumnBuilder
     def encode(builder: ColumnBuilder[String], hint: EncodingHint) = {
       val useDictEncoding = hint match {
         case DictionaryEncoding => true
@@ -67,9 +75,25 @@ object BuilderEncoder {
     }
   }
 
-  def encodeToBuffer[A: BuilderEncoder](builder: ColumnBuilder[A],
-                                          hint: EncodingHint = AutoDetect): ByteBuffer = {
+  /**
+   * Encodes a [[ColumnBuilder[A]]] to a Filo format ByteBuffer
+   */
+  def builderToBuffer[A: BuilderEncoder](builder: ColumnBuilder[A],
+                                         hint: EncodingHint = AutoDetect): ByteBuffer = {
     implicitly[BuilderEncoder[A]].encode(builder, hint)
+  }
+
+  /**
+   * Encodes a sequence of type A to a Filo format ByteBuffer
+   * All values will be marked available.
+   * I know this may not be the most efficient way to encode, but the benefits is that
+   * all of the auto-encoding-detection is available.
+   */
+  def seqToBuffer[A: BuilderEncoder](vector: collection.Seq[A],
+                                     hint: EncodingHint = AutoDetect): ByteBuffer = {
+    val builder = implicitly[BuilderEncoder[A]].getBuilder
+    vector.foreach(builder.addData)
+    builderToBuffer(builder, hint)
   }
 }
 

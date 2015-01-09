@@ -47,7 +47,7 @@ scala> cb.addNA
 Encoding it to a `ByteBuffer`:
 
 ```scala
-scala> BuilderEncoder.encodeToBuffer(cb)
+scala> BuilderEncoder.builderToBuffer(cb)
 res6: java.nio.ByteBuffer = java.nio.HeapByteBuffer[pos=65408 lim=65536 cap=65536]
 ```
 
@@ -63,6 +63,27 @@ scala> ColumnParser.parseAsSimpleColumn(res6).foreach(println)
 All `ColumnWrappers` implement `scala.collection.Traversable` for transforming
 and iterating over the non-missing elements of a Filo binary vector.  There are
 also methods for accessing and iterating over all elements.
+
+### Support for Seq[A] and Seq[Option[A]]
+
+You can also encode a `Seq[A]` to a buffer easily:
+
+```scala
+scala> import org.velvia.filo._
+import org.velvia.filo._
+
+scala> val orig = Seq(1, 2, -5, 101)
+orig: Seq[Int] = List(1, 2, -5, 101)
+
+scala> val buf = BuilderEncoder.seqToBuffer(orig)
+buf: java.nio.ByteBuffer = java.nio.HeapByteBuffer[pos=65432 lim=65536 cap=65536]
+
+scala> val binarySeq = ColumnParser.parseAsSimpleColumn(buf)
+binarySeq: org.velvia.filo.ColumnWrapper[Int] = SimpleColumnWrapper(1, 2, -5, 101)
+
+scala> binarySeq.sum == orig.sum
+res2: Boolean = true
+```
 
 ## Future directions
 
