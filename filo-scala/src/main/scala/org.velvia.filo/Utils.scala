@@ -87,11 +87,11 @@ object Utils {
 }
 
 object VectorUtils {
-  def getLength(t: Table, vectorType: Byte): Int = vectorType match {
+  final def getLength(t: Table, vectorType: Byte): Int = vectorType match {
     case AnyVector.IntVector => t.asInstanceOf[IntVector].dataLength
   }
 
-  def getVectorFromType(vectorType: Byte): Table = vectorType match {
+  final def getVectorFromType(vectorType: Byte): Table = vectorType match {
     case AnyVector.IntVector  => new IntVector
     case AnyVector.LongVector => new LongVector
   }

@@ -60,6 +60,10 @@ scala> ColumnParser.parseAsSimpleColumn(res6).foreach(println)
 103
 ```
 
+All `ColumnWrappers` implement `scala.collection.Traversable` for transforming
+and iterating over the non-missing elements of a Filo binary vector.  There are
+also methods for accessing and iterating over all elements.
+
 ## Future directions
 
 ### Additional Encodings

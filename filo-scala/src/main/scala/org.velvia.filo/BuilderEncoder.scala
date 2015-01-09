@@ -17,7 +17,7 @@ trait BuilderEncoder[A] {
 object BuilderEncoder {
   sealed trait EncodingHint
   case object AutoDetect extends EncodingHint
-  case object SimpleConversion extends EncodingHint
+  case object SimpleEncoding extends EncodingHint
   case object DictionaryEncoding extends EncodingHint
 
   implicit object IntEncoder extends BuilderEncoder[Int] {
@@ -45,7 +45,7 @@ object BuilderEncoder {
     def encode(builder: ColumnBuilder[String], hint: EncodingHint) = {
       val useDictEncoding = hint match {
         case DictionaryEncoding => true
-        case SimpleConversion   => false
+        case SimpleEncoding   => false
         case x => builder match {
           case sb: StringColumnBuilder =>
             // If the string cardinality is below say half of # of elements

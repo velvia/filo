@@ -30,11 +30,34 @@ trait ColumnWrapper[A] extends Traversable[A] {
 
   // Calls fn for each available element in the column.  Will call 0 times if column is empty.
   def foreach[B](fn: A => B): Unit
+
+  /**
+   * Returns the element at a given index.  If the element is not available, the value returned
+   * is undefined.  This is a very low level function intended for speed, not safety.
+   * @param index the index in the column to pull from.  No bounds checking is done.
+   */
+  def apply(index: Int): A
+
+  /**
+   * Returns the number of elements in the column.
+   */
+  def length: Int
+
+  /**
+   * A "safe" but slower get-element-at-position method.
+   * @param index the index in the column to get
+   * @return Some(a) if index is within bounds and element is not missing
+   */
+  def get(index: Int): Option[A] =
+    if (index >= 0 && index < length && isAvailable(index)) Some(apply(index))
+    else                                                    None
 }
 
 class EmptyColumnWrapper[A] extends ColumnWrapper[A] {
-  def isAvailable(index: Int): Boolean = false
-  def foreach[B](fn: A => B) {}
+  final def isAvailable(index: Int): Boolean = false
+  final def foreach[B](fn: A => B) {}
+  final def apply(index: Int): A = throw new ArrayIndexOutOfBoundsException
+  final def length: Int = 0
 }
 
 class SimpleColumnWrapper[A](sc: SimpleColumn)(implicit veb: VectorExtractor[A])
@@ -42,7 +65,10 @@ class SimpleColumnWrapper[A](sc: SimpleColumn)(implicit veb: VectorExtractor[A])
   val atIndex = veb.getExtractor(sc.vectorType)
   val vector = VectorUtils.getVectorFromType(sc.vectorType)
   sc.vector(vector)
-  val length = VectorUtils.getLength(vector, sc.vectorType)
+
+  final def length = VectorUtils.getLength(vector, sc.vectorType)
+
+  final def apply(index: Int): A = atIndex(vector, index)
 
   // could be much more optimized, obviously
   final def isAvailable(index: Int): Boolean = {
