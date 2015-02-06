@@ -77,7 +77,7 @@ object BuilderEncoder {
   }
 
   /**
-   * Encodes a [[ColumnBuilder[A]]] to a Filo format ByteBuffer
+   * Encodes a [[org.velvia.filo.ColumnBuilder]] to a Filo format ByteBuffer
    */
   def builderToBuffer[A: BuilderEncoder](builder: ColumnBuilder[A],
                                          hint: EncodingHint = AutoDetect): ByteBuffer = {

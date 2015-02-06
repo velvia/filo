@@ -35,7 +35,8 @@ lazy val coreSettings = Seq(
   scalacOptions ++= Seq("-Xlint", "-deprecation", "-Xfatal-warnings", "-feature")
 )
 
-lazy val universalSettings = coreSettings ++ styleSettings
+lazy val universalSettings = coreSettings ++ styleSettings ++ releaseSettings ++
+                             publishSettings
 
 lazy val compileScalastyle = taskKey[Unit]("compileScalastyle")
 
@@ -44,4 +45,8 @@ lazy val styleSettings = Seq(
   compileScalastyle := org.scalastyle.sbt.ScalastylePlugin.scalastyle.in(Compile).toTask("").value,
   // Is running this on compile too much?
   (compile in Compile) <<= (compile in Compile) dependsOn compileScalastyle
+)
+
+lazy val publishSettings = bintray.Plugin.bintrayPublishSettings ++ Seq(
+  licenses += ("Apache-2.0", url("http://choosealicense.com/licenses/apache/"))
 )

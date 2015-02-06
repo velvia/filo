@@ -24,6 +24,12 @@ I considered Cap'n Proto, but that has some issues in the Java client that needs
 
 ## Filo-Scala
 
+Get it here:
+
+    resolvers += "Velvia Bintray" at "https://dl.bintray.com/velvia/maven"
+
+    libraryDependencies += "org.velvia.filo" % "filo-scala" % "0.0.1"
+
 Using a `ColumnBuilder` to progressively build a column:
 
 ```scala
