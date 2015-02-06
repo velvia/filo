@@ -16,9 +16,9 @@ object DictEncodingEncoders {
   // Uses the smallest vector possible to fit in integer values
   def smallIntVectorBuilder(fbb: FlatBufferBuilder, data: Seq[Int], maxNum: Int): (Int, Byte) = {
     // Add support for stuff below byte level
-    if (maxNum < 256)        byteVectorBuilder(fbb, data.map(_.toByte))
-    else if (maxNum < 65536) shortVectorBuilder(fbb, data.map(_.toShort))
-    else                     intVectorBuilder(fbb, data)
+    if (maxNum < 256)        { byteVectorBuilder(fbb, data.map(_.toByte)) }
+    else if (maxNum < 65536) { shortVectorBuilder(fbb, data.map(_.toShort)) }
+    else                     { intVectorBuilder(fbb, data) }
   }
 
   def toDictStringColumn(data: Seq[String], naMask: Mask, stringSet: collection.Set[String]): ByteBuffer = {

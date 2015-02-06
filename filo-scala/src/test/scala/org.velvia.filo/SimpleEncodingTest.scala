@@ -1,9 +1,9 @@
 package org.velvia.filo
 
 import org.scalatest.FunSpec
-import org.scalatest.matchers.ShouldMatchers
+import org.scalatest.Matchers
 
-class SimpleEncodingTest extends FunSpec with ShouldMatchers {
+class SimpleEncodingTest extends FunSpec with Matchers {
   import BuilderEncoder.SimpleEncoding
 
   describe("Int encoding") {

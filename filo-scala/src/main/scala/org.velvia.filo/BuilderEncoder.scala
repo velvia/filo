@@ -26,7 +26,7 @@ object BuilderEncoder {
 
   implicit object IntEncoder extends BuilderEncoder[Int] {
     def getBuilder(): ColumnBuilder[Int] = new IntColumnBuilder
-    def encode(builder: ColumnBuilder[Int], hint: EncodingHint) = {
+    def encode(builder: ColumnBuilder[Int], hint: EncodingHint): ByteBuffer = {
       SimpleEncoders.toSimpleColumn(builder.data, builder.naMask.result,
                                       Utils.intVectorBuilder)
     }
@@ -34,7 +34,7 @@ object BuilderEncoder {
 
   implicit object LongEncoder extends BuilderEncoder[Long] {
     def getBuilder(): ColumnBuilder[Long] = new LongColumnBuilder
-    def encode(builder: ColumnBuilder[Long], hint: EncodingHint) = {
+    def encode(builder: ColumnBuilder[Long], hint: EncodingHint): ByteBuffer = {
       SimpleEncoders.toSimpleColumn(builder.data, builder.naMask.result,
                                       Utils.longVectorBuilder)
     }
@@ -42,7 +42,7 @@ object BuilderEncoder {
 
   implicit object DoubleEncoder extends BuilderEncoder[Double] {
     def getBuilder(): ColumnBuilder[Double] = new DoubleColumnBuilder
-    def encode(builder: ColumnBuilder[Double], hint: EncodingHint) = {
+    def encode(builder: ColumnBuilder[Double], hint: EncodingHint): ByteBuffer = {
       SimpleEncoders.toSimpleColumn(builder.data, builder.naMask.result,
                                       Utils.doubleVectorBuilder)
     }
@@ -50,25 +50,26 @@ object BuilderEncoder {
 
   implicit object StringEncoder extends BuilderEncoder[String] {
     def getBuilder(): ColumnBuilder[String] = new StringColumnBuilder
-    def encode(builder: ColumnBuilder[String], hint: EncodingHint) = {
+    def encode(builder: ColumnBuilder[String], hint: EncodingHint): ByteBuffer = {
       val useDictEncoding = hint match {
         case DictionaryEncoding => true
-        case SimpleEncoding   => false
-        case x => builder match {
+        case SimpleEncoding     => false
+        case x: Any             => builder match {
           case sb: StringColumnBuilder =>
             // If the string cardinality is below say half of # of elements
             // then definitely worth it to do dictionary encoding.
             // Empty/missing elements do not count towards cardinality, so columns with
             // many NA values will get dict encoded, which saves space
             sb.stringSet.size <= (sb.data.size / 2)
-          case x =>  // Someone used something other than our own builder. Oh well. TODO: log
-            false
+          // case x: Any =>  // Someone used something other than our own builder. Oh well. TODO: log
+          //   false
+          // NOTE: above is commented out for now because ColumnBuilder is sealed. May change in future.
         }
       }
       (useDictEncoding, builder) match {
         case (true, sb: StringColumnBuilder) =>
           DictEncodingEncoders.toDictStringColumn(sb.data, sb.naMask.result, sb.stringSet)
-        case x =>
+        case x: Any =>
           SimpleEncoders.toSimpleColumn(builder.data, builder.naMask.result,
                                           Utils.stringVectorBuilder)
       }

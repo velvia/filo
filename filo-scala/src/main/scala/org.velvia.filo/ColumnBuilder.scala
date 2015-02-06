@@ -18,19 +18,19 @@ sealed abstract class ColumnBuilder[A](empty: A)(implicit val classTagA: ClassTa
   val naMask = new MaskBuilder
   val data = new collection.mutable.ArrayBuffer[A]
 
-  def addNA() {
+  def addNA(): Unit = {
     naMask += data.length
     data += empty
   }
 
-  def addData(value: A) { data += value }
+  def addData(value: A): Unit = { data += value }
 
-  def addOption(value: Option[A]) {
+  def addOption(value: Option[A]): Unit = {
     value.foreach { v => addData(v) }
     value.orElse  { addNA(); None }
   }
 
-  def reset() {
+  def reset(): Unit = {
     naMask.clear
     data.clear
   }
@@ -43,12 +43,12 @@ class StringColumnBuilder extends ColumnBuilder("") {
   // For dictionary encoding. NOTE: this set does NOT include empty value
   val stringSet = new collection.mutable.HashSet[String]
 
-  override def addData(value: String) {
+  override def addData(value: String): Unit = {
     stringSet += value
     super.addData(value)
   }
 
-  override def reset() {
+  override def reset(): Unit = {
     stringSet.clear
     super.reset()
   }

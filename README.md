@@ -95,8 +95,19 @@ Still random:
 * Combo delta + pack into float for double vector compression
 * Use [JavaEWAH](https://github.com/lemire/javaewah) `ImmutableBitSet` for efficient compressed bit vectors / NA masks
 * Encode a set or a hash, perhaps using Murmur3 hash for keys with an open hash design
+* Encode other data structures in [Open Data Structures](http://opendatastructures.org/)... a BTree would be fun
 
 No longer zero serialization:
 * Use the super fast byte packing algorithm from Cap'n Proto for much smaller wire representation
 * [Jsmaz](https://github.com/RyanAD/jsmaz) and [Shoco](http://ed-von-schleck.github.io/shoco/) for small string compression
 * [JavaFastPFor](https://github.com/lemire/JavaFastPFOR) for integer array compression
+
+### General Compression
+
+My feeling is that we don't need general compression algorithms like LZ4,
+Snappy, etc.  (An interesting new one is
+[Z-STD](http://fastcompression.blogspot.fr/2015/01/zstd-stronger-compression-
+algorithm.html?m=1)).  The whole goal of this project is to be able to read from
+disk or database with minimal or no deserialization / decompression step.  Many
+databases, such as Cassandra, already default to some kind of on-disk
+compression as well.

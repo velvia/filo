@@ -49,13 +49,13 @@ trait ColumnWrapper[A] extends Traversable[A] {
    * @return Some(a) if index is within bounds and element is not missing
    */
   def get(index: Int): Option[A] =
-    if (index >= 0 && index < length && isAvailable(index)) Some(apply(index))
-    else                                                    None
+    if (index >= 0 && index < length && isAvailable(index)) { Some(apply(index)) }
+    else                                                    { None }
 }
 
 class EmptyColumnWrapper[A] extends ColumnWrapper[A] {
   final def isAvailable(index: Int): Boolean = false
-  final def foreach[B](fn: A => B) {}
+  final def foreach[B](fn: A => B): Unit = {}
   final def apply(index: Int): A = throw new ArrayIndexOutOfBoundsException
   final def length: Int = 0
 }
@@ -66,7 +66,7 @@ class SimpleColumnWrapper[A](sc: SimpleColumn)(implicit veb: VectorExtractor[A])
   val vector = VectorUtils.getVectorFromType(sc.vectorType)
   sc.vector(vector)
 
-  final def length = VectorUtils.getLength(vector, sc.vectorType)
+  final def length: Int = VectorUtils.getLength(vector, sc.vectorType)
 
   final def apply(index: Int): A = atIndex(vector, index)
 
@@ -80,7 +80,7 @@ class SimpleColumnWrapper[A](sc: SimpleColumn)(implicit veb: VectorExtractor[A])
     }
   }
 
-  final def foreach[B](fn: A => B) {
-    for (i <- 0 until length) { if (isAvailable(i)) fn(atIndex(vector, i)) }
+  final def foreach[B](fn: A => B): Unit = {
+    for { i <- 0 until length } { if (isAvailable(i)) fn(atIndex(vector, i)) }
   }
 }

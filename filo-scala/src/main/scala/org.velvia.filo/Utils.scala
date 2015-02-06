@@ -13,6 +13,7 @@ object Utils {
   // don't make this too big, because one buffer needs to be allocated per column, and writing many columns
   // at once will use up a ton of memory otherwise.
   val BufferSize = 64 * 1024
+  val SizeOfInt = 4
 
   // (offset of mask table, true if all NAs / bitmask full / empty data
   def populateNaMask(fbb: FlatBufferBuilder, mask: Mask): (Int, Boolean) = {
@@ -22,7 +23,7 @@ object Utils {
 
     // Simple bit mask, 1 bit per row
     // One option is to use JavaEWAH compressed bitmaps, requires no deserialization now
-    // RoaringBitmap is really cool, but very space inefficient when you have less than 4096 integers;
+    // RoaringBitmap is really cool, but very space inefficient when you have less than 4096 integers
     //    it's much better when you have 100000 or more rows
     // NOTE: we cannot nest structure creation, so have to create bitmask vector first :(
     if (!empty && !full) bitMaskOffset = NaMask.createBitMaskVector(fbb, mask.toBitSet.toBitMask)
@@ -69,7 +70,7 @@ object Utils {
   }
 
   def makeStringVect(fbb: FlatBufferBuilder, data: Seq[String]): Int = {
-    fbb.startVector(4, data.length, 4)
+    fbb.startVector(SizeOfInt, data.length, SizeOfInt)
     data.reverseIterator.foreach { str => fbb.addOffset(fbb.createString(str)) }
     fbb.endVector()
   }
@@ -110,7 +111,7 @@ object VectorExtractor {
     def getExtractor(vectorType: Byte): ((Table, Int) => Int) = vectorType match {
       case AnyVector.IntVector =>
         (t: Table, i: Int) => t.asInstanceOf[IntVector].data(i)
-      case x => throw new RuntimeException("Unsupported vector type " + x)
+      case x: Any => throw new RuntimeException("Unsupported vector type " + x)
     }
   }
 }
