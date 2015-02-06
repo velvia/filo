@@ -18,6 +18,8 @@ lazy val filoScala = (project in file("filo-scala")).dependsOn(schema, flatbuffe
 
 resolvers += "Pellucid Bintray" at "http://dl.bintray.com/pellucid/maven"
 
+publish := {}   // should only affect the root project.  Don't want publish to error out.
+
 lazy val deps = Seq("com.pellucid" %% "framian" % "0.3.3",
                     "org.scalatest" %% "scalatest" % "2.1.0" % "test",
                     "org.scalacheck" %% "scalacheck" % "1.11.0" % "test")
