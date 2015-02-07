@@ -18,7 +18,7 @@ object Utils {
   // (offset of mask table, true if all NAs / bitmask full / empty data
   def populateNaMask(fbb: FlatBufferBuilder, mask: Mask): (Int, Boolean) = {
     val empty = mask.size == 0
-    val full = mask.size > 0 && mask.size == mask.max.get
+    val full = mask.size > 0 && mask.size == (mask.max.get + 1)
     var bitMaskOffset = 0
 
     // Simple bit mask, 1 bit per row

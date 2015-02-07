@@ -46,7 +46,8 @@ lazy val styleSettings = Seq(
   scalastyleFailOnError := true,
   compileScalastyle := org.scalastyle.sbt.ScalastylePlugin.scalastyle.in(Compile).toTask("").value,
   // Is running this on compile too much?
-  (compile in Compile) <<= (compile in Compile) dependsOn compileScalastyle
+  // (compile in Compile) <<= (compile in Compile) dependsOn compileScalastyle
+  (Keys.`package` in Compile) <<= (Keys.`package` in Compile) dependsOn compileScalastyle
 )
 
 lazy val publishSettings = bintray.Plugin.bintrayPublishSettings ++ Seq(
