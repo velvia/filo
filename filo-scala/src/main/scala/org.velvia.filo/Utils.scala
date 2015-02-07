@@ -89,20 +89,27 @@ object Utils {
 // Yuck.  I think we really need to generate native Scala FlatBuffers code, because the Java
 // code it generates is pretty pretty yucky.
 object VectorUtils {
-  final def getLength(t: Table, vectorType: Byte): Int = vectorType match {
-    case AnyVector.IntVector => t.asInstanceOf[IntVector].dataLength
-    case AnyVector.StringVector => t.asInstanceOf[StringVector].dataLength
+  final def getLength(t: Table): Int = t match {
+    case i: IntVector    => i.dataLength
+    case s: StringVector => s.dataLength
+    case l: LongVector   => l.dataLength
+    case d: DoubleVector => d.dataLength
+    case s: ShortVector  => s.dataLength
+    case f: FloatVector  => f.dataLength
   }
 
   final def getVectorFromType(vectorType: Byte): Table = vectorType match {
-    case AnyVector.IntVector  => new IntVector
+    case AnyVector.IntVector    => new IntVector
     case AnyVector.StringVector => new StringVector
-    case AnyVector.LongVector => new LongVector
+    case AnyVector.LongVector   => new LongVector
+    case AnyVector.DoubleVector => new DoubleVector
+    case AnyVector.ShortVector  => new ShortVector
+    case AnyVector.FloatVector  => new FloatVector
   }
 }
 
 trait VectorExtractor[A] {
-  def getExtractor(vectorType: Byte): ((Table, Int) => A)
+  def getExtractor(t: Table): (Int => A)
 }
 
 /**
@@ -110,26 +117,37 @@ trait VectorExtractor[A] {
  * For instance, a ByteVector, ShortVector, or IntVector may extract to Int.
  */
 object VectorExtractor {
-  private def unsupportedVector[T](x: Byte): ((Table, Int) => T) =
-    throw new RuntimeException("Unsupported vector type " + x)
+  private def unsupportedVector[T](t: Table): (Int => T) =
+    throw new RuntimeException("Unsupported vector table type " + t)
 
   implicit object IntVectorExtractor extends VectorExtractor[Int] {
-    def getExtractor(vectorType: Byte): ((Table, Int) => Int) = vectorType match {
-      case AnyVector.IntVector =>
-        (t: Table, i: Int) => t.asInstanceOf[IntVector].data(i)
-      case AnyVector.ShortVector =>
-        (t: Table, i: Int) => t.asInstanceOf[ShortVector].data(i).toInt
-      case AnyVector.ByteVector =>
-        (t: Table, i: Int) => t.asInstanceOf[ByteVector].data(i).toInt
-      case x: Byte => unsupportedVector(x)
+    def getExtractor(t: Table): (Int => Int) = t match {
+      case v: IntVector    => (i: Int) => v.data(i)
+      case v: ShortVector  => (i: Int) => v.data(i).toInt
+      case v: ByteVector if v.dataType == ByteDataType.TByte =>
+                              (i: Int) => v.data(i).toInt
+      case x: Any          => unsupportedVector(x)
     }
   }
 
   implicit object StringVectorExtractor extends VectorExtractor[String] {
-    def getExtractor(vectorType: Byte): ((Table, Int) => String) = vectorType match {
-      case AnyVector.StringVector =>
-        (t: Table, i: Int) => t.asInstanceOf[StringVector].data(i)
-      case x: Byte => unsupportedVector(x)
+    def getExtractor(t: Table): (Int => String) = t match {
+      case v: StringVector => (i: Int) => v.data(i)
+      case x: Any          => unsupportedVector(x)
+    }
+  }
+
+  implicit object LongVectorExtractor extends VectorExtractor[Long] {
+    def getExtractor(t: Table): (Int => Long) = t match {
+      case v: LongVector   => (i: Int) => v.data(i)
+      case x: Any          => unsupportedVector(x)
+    }
+  }
+
+  implicit object DoubleVectorExtractor extends VectorExtractor[Double] {
+    def getExtractor(t: Table): (Int => Double) = t match {
+      case v: DoubleVector => (i: Int) => v.data(i)
+      case x: Any          => unsupportedVector(x)
     }
   }
 }

@@ -62,13 +62,13 @@ class EmptyColumnWrapper[A] extends ColumnWrapper[A] {
 
 class SimpleColumnWrapper[A](sc: SimpleColumn)(implicit veb: VectorExtractor[A])
     extends ColumnWrapper[A] {
-  val atIndex = veb.getExtractor(sc.vectorType)
   val vector = VectorUtils.getVectorFromType(sc.vectorType)
   sc.vector(vector)
+  val atIndex = veb.getExtractor(vector)
 
-  final def length: Int = VectorUtils.getLength(vector, sc.vectorType)
+  final def length: Int = VectorUtils.getLength(vector)
 
-  final def apply(index: Int): A = atIndex(vector, index)
+  final def apply(index: Int): A = atIndex(index)
 
   // could be much more optimized, obviously
   final def isAvailable(index: Int): Boolean = {
@@ -81,6 +81,6 @@ class SimpleColumnWrapper[A](sc: SimpleColumn)(implicit veb: VectorExtractor[A])
   }
 
   final def foreach[B](fn: A => B): Unit = {
-    for { i <- 0 until length } { if (isAvailable(i)) fn(atIndex(vector, i)) }
+    for { i <- 0 until length } { if (isAvailable(i)) fn(atIndex(i)) }
   }
 }

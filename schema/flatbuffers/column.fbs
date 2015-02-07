@@ -58,6 +58,7 @@ table SimpleColumn {
 }
 
 // Dictionary encoded string column, with NA/missing value support
+// TODO: consider using the 0-value as NA, instead of separate NA mask.  Makes NA detection faster potentially.
 table DictStringColumn {
   naMask: NaMask;
   dictionary: [string];
