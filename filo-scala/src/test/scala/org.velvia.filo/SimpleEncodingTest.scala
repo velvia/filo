@@ -10,7 +10,7 @@ class SimpleEncodingTest extends FunSpec with Matchers {
     it("should encode an empty list and decode back to empty") {
       val cb = new IntColumnBuilder
       val buf = BuilderEncoder.builderToBuffer(cb, SimpleEncoding)
-      val sc = ColumnParser.parseAsSimpleColumn(buf)
+      val sc = ColumnParser.parseAsSimpleColumn[Int](buf)
 
       sc.length should equal (0)
       sc.get(0) should equal (None)
@@ -27,7 +27,7 @@ class SimpleEncodingTest extends FunSpec with Matchers {
       cb.addData(103)
       cb.addNA
       val buf = BuilderEncoder.builderToBuffer(cb, SimpleEncoding)
-      val sc = ColumnParser.parseAsSimpleColumn(buf)
+      val sc = ColumnParser.parseAsSimpleColumn[Int](buf)
 
       sc.length should equal (5)
       sc.isAvailable(0) should equal (false)
@@ -43,10 +43,19 @@ class SimpleEncodingTest extends FunSpec with Matchers {
     it("should encode and decode back a Seq[Int]") {
       val orig = Seq(1, 2, -5, 101)
       val buf = BuilderEncoder.seqToBuffer(orig)
-      val binarySeq = ColumnParser.parseAsSimpleColumn(buf)
+      val binarySeq = ColumnParser.parseAsSimpleColumn[Int](buf)
 
       binarySeq.length should equal (orig.length)
       binarySeq.sum should equal (orig.sum)
+    }
+
+    it("should encode and decode back a Seq[String]") {
+      val orig = Seq("apple", "banana")
+      val buf = BuilderEncoder.seqToBuffer(orig)
+      val binarySeq = ColumnParser.parseAsSimpleColumn[String](buf)
+
+      binarySeq.length should equal (orig.length)
+      binarySeq.toSeq should equal (orig)
     }
   }
 }

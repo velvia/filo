@@ -8,7 +8,7 @@ class EncodingPropertiesTest extends FunSpec with Matchers with PropertyChecks {
   it("Filo format int vectors should match length and sum") {
     forAll { (s: List[Int]) =>
       val buf = BuilderEncoder.seqToBuffer(s)
-      val binarySeq = ColumnParser.parseAsSimpleColumn(buf)
+      val binarySeq = ColumnParser.parseAsSimpleColumn[Int](buf)
 
       binarySeq.length should equal (s.length)
       binarySeq.sum should equal (s.sum)

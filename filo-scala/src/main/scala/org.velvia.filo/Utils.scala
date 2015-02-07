@@ -70,9 +70,8 @@ object Utils {
   }
 
   def makeStringVect(fbb: FlatBufferBuilder, data: Seq[String]): Int = {
-    fbb.startVector(SizeOfInt, data.length, SizeOfInt)
-    data.reverseIterator.foreach { str => fbb.addOffset(fbb.createString(str)) }
-    fbb.endVector()
+    val offsets = data.map { str => fbb.createString(str) }.toArray
+    StringVector.createDataVector(fbb, offsets)
   }
 
   // Just finishes the Column and returns the ByteBuffer.
@@ -87,13 +86,17 @@ object Utils {
   }
 }
 
+// Yuck.  I think we really need to generate native Scala FlatBuffers code, because the Java
+// code it generates is pretty pretty yucky.
 object VectorUtils {
   final def getLength(t: Table, vectorType: Byte): Int = vectorType match {
     case AnyVector.IntVector => t.asInstanceOf[IntVector].dataLength
+    case AnyVector.StringVector => t.asInstanceOf[StringVector].dataLength
   }
 
   final def getVectorFromType(vectorType: Byte): Table = vectorType match {
     case AnyVector.IntVector  => new IntVector
+    case AnyVector.StringVector => new StringVector
     case AnyVector.LongVector => new LongVector
   }
 }
@@ -107,11 +110,26 @@ trait VectorExtractor[A] {
  * For instance, a ByteVector, ShortVector, or IntVector may extract to Int.
  */
 object VectorExtractor {
+  private def unsupportedVector[T](x: Byte): ((Table, Int) => T) =
+    throw new RuntimeException("Unsupported vector type " + x)
+
   implicit object IntVectorExtractor extends VectorExtractor[Int] {
     def getExtractor(vectorType: Byte): ((Table, Int) => Int) = vectorType match {
       case AnyVector.IntVector =>
         (t: Table, i: Int) => t.asInstanceOf[IntVector].data(i)
-      case x: Any => throw new RuntimeException("Unsupported vector type " + x)
+      case AnyVector.ShortVector =>
+        (t: Table, i: Int) => t.asInstanceOf[ShortVector].data(i).toInt
+      case AnyVector.ByteVector =>
+        (t: Table, i: Int) => t.asInstanceOf[ByteVector].data(i).toInt
+      case x: Byte => unsupportedVector(x)
+    }
+  }
+
+  implicit object StringVectorExtractor extends VectorExtractor[String] {
+    def getExtractor(vectorType: Byte): ((Table, Int) => String) = vectorType match {
+      case AnyVector.StringVector =>
+        (t: Table, i: Int) => t.asInstanceOf[StringVector].data(i)
+      case x: Byte => unsupportedVector(x)
     }
   }
 }
