@@ -91,6 +91,12 @@ scala> binarySeq.sum == orig.sum
 res2: Boolean = true
 ```
 
+Note that even though a `ColumnWrapper` implements `Traversable`, it only
+traverses over defined elements that are not NA.  To work with collections of
+potentially missing elements, start with a `Seq[Option[A]]`, then use
+`BuilderEncoder.seqOptionToBuffer`.  You can extract out an
+`Iterator[Option[A]]` with the `optionIterator` method.
+ 
 ## Future directions
 
 ### Additional Encodings
