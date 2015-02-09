@@ -96,5 +96,16 @@ object BuilderEncoder {
     vector.foreach(builder.addData)
     builderToBuffer(builder, hint)
   }
+
+  /**
+   * Encodes a sequence of type Option[A] to a Filo format ByteBuffer.
+   * Elements which are None will get encoded as NA bits.
+   */
+  def seqOptionToBuffer[A: BuilderEncoder](vector: collection.Seq[Option[A]],
+                                           hint: EncodingHint = AutoDetect): ByteBuffer = {
+    val builder = implicitly[BuilderEncoder[A]].getBuilder
+    vector.foreach(builder.addOption)
+    builderToBuffer(builder, hint)
+  }
 }
 

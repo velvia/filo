@@ -51,6 +51,14 @@ trait ColumnWrapper[A] extends Traversable[A] {
   def get(index: Int): Option[A] =
     if (index >= 0 && index < length && isAvailable(index)) { Some(apply(index)) }
     else                                                    { None }
+
+  /**
+   * Returns an Iterator[Option[A]] over the Filo bytebuffer.  This basically calls
+   * get() at each index, so it returns Some(A) when the value is defined and None
+   * if it is NA.
+   */
+  def optionIterator(): Iterator[Option[A]] =
+    for { index <- (0 until length).toIterator } yield { get(index) }
 }
 
 class EmptyColumnWrapper[A] extends ColumnWrapper[A] {
