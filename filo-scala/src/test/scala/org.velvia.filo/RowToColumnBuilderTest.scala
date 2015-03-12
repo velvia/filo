@@ -20,6 +20,7 @@ class RowToColumnBuilderTest extends FunSpec with Matchers {
     it("should add rows and convert them to Filo binary Seqs") {
       val rtcb = new RowToColumnBuilder(schema, TupleRowIngestSupport)
       rows.foreach(rtcb.addRow)
+      rtcb.addEmptyRow()
       val columnData = rtcb.convertToBytes()
 
       columnData.keys should equal (Set("name", "age"))
@@ -27,7 +28,7 @@ class RowToColumnBuilderTest extends FunSpec with Matchers {
       nameBinSeq.toList should equal (List("Matthew Perry", "Michelle Pfeiffer",
                                                  "George C", "Rich Sherman"))
       val ageBinSeq = ColumnParser.parseAsSimpleColumn[Int](columnData("age"))
-      ageBinSeq should have length (4)
+      ageBinSeq should have length (5)
       ageBinSeq(0) should equal (18)
       ageBinSeq.toList should equal (List(18, 59, 26))
     }

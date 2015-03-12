@@ -58,6 +58,13 @@ class RowToColumnBuilder[R](schema: Seq[IngestColumn], ingestSupport: RowIngestS
   }
 
   /**
+   * Adds a single blank NA value to all builders
+   */
+  def addEmptyRow(): Unit = {
+    schema.foreach { case IngestColumn(_, builder) => builder.addNA() }
+  }
+
+  /**
    * Converts the contents of the [[ColumnBuilder]]s to ByteBuffers for writing or transmission.
    */
   def convertToBytes(): Map[String, ByteBuffer] = {
