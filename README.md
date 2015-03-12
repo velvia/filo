@@ -11,7 +11,7 @@ A thin layer of dough for baking fast, memory-efficient, zero-serialization, bin
 * Random or linear access
 * Support for missing / Not Available values, even for primitive vectors
 * Trade off between read speed and compactness -- Dictionary encoding, delta encoding, other techniques
-* Designed for long term persistence - based on Google [FlatBuffers](https://github.com/google/flatbuffers) which has ProtoBuf-like wire schema compatibility
+* Designed for long term persistence - based on Google [FlatBuffers](https://github.com/google/flatbuffers) which has schema evolution
 * Potentially cross-platform - once FlatBuffers and codecs are written
 
 Perfect for efficiently representing your data for storing in files, mmap, NoSQL or key-value stores, etc. etc.
@@ -28,7 +28,7 @@ Get it here:
 
     resolvers += "Velvia Bintray" at "https://dl.bintray.com/velvia/maven"
 
-    libraryDependencies += "org.velvia.filo" % "filo-scala" % "0.0.1"
+    libraryDependencies += "org.velvia.filo" % "filo-scala" % "0.0.4"
 
 Using a `ColumnBuilder` to progressively build a column:
 
