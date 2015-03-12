@@ -20,9 +20,9 @@ lazy val filo = (project in file(".")).aggregate(schema, flatbuffers, filoScala)
 
 resolvers += "Pellucid Bintray" at "http://dl.bintray.com/pellucid/maven"
 
-publish := {}   // should only affect the root project.  Don't want publish to error out.
+releaseSettings ++ publishSettings
 
-releaseSettings
+publish := {}   // should only affect the root project.  Don't want publish to error out.
 
 lazy val deps = Seq("com.pellucid" %% "framian" % "0.3.3",
                     "org.scalatest" %% "scalatest" % "2.1.0" % "test",
