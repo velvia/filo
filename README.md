@@ -96,6 +96,16 @@ traverses over defined elements that are not NA.  To work with collections of
 potentially missing elements, start with a `Seq[Option[A]]`, then use
 `BuilderEncoder.seqOptionToBuffer`.  You can extract out an
 `Iterator[Option[A]]` with the `optionIterator` method.
+
+### Performance Benchmarking
+
+To just get overall run times:
+
+    sbt filoScalaJmh/run
+
+To also get profiling of top methods:
+
+    sbt filoScalaJmh/run -prof stack -jvmArgsAppend -Djmh.stack.lines=3
  
 ## Future directions
 

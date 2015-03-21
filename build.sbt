@@ -16,6 +16,12 @@ lazy val filoScala = (project in file("filo-scala")).dependsOn(schema, flatbuffe
                         .settings(name := "filo-scala")
                         .settings(libraryDependencies ++= deps)
 
+lazy val filoScalaJmh = (project in file("filo-scala-jmh")).dependsOn(filoScala)
+                        .settings(mySettings:_*)
+                        .settings(name := "filo-scala-jmh")
+                        .settings(jmhSettings:_*)
+
+
 lazy val filo = (project in file(".")).aggregate(schema, flatbuffers, filoScala)
 
 resolvers += "Pellucid Bintray" at "http://dl.bintray.com/pellucid/maven"
