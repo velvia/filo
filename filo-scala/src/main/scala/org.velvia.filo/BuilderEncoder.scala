@@ -24,6 +24,8 @@ object BuilderEncoder {
   case object SimpleEncoding extends EncodingHint
   case object DictionaryEncoding extends EncodingHint
 
+  def apply[T: BuilderEncoder]: BuilderEncoder[T] = implicitly[BuilderEncoder[T]]
+
   implicit object IntEncoder extends BuilderEncoder[Int] {
     def getBuilder(): ColumnBuilder[Int] = new IntColumnBuilder
     def encode(builder: ColumnBuilder[Int], hint: EncodingHint): ByteBuffer = {
@@ -81,7 +83,7 @@ object BuilderEncoder {
    */
   def builderToBuffer[A: BuilderEncoder](builder: ColumnBuilder[A],
                                          hint: EncodingHint = AutoDetect): ByteBuffer = {
-    implicitly[BuilderEncoder[A]].encode(builder, hint)
+    BuilderEncoder[A].encode(builder, hint)
   }
 
   /**
@@ -92,7 +94,7 @@ object BuilderEncoder {
    */
   def seqToBuffer[A: BuilderEncoder](vector: collection.Seq[A],
                                      hint: EncodingHint = AutoDetect): ByteBuffer = {
-    val builder = implicitly[BuilderEncoder[A]].getBuilder
+    val builder = BuilderEncoder[A].getBuilder
     vector.foreach(builder.addData)
     builderToBuffer(builder, hint)
   }
@@ -103,7 +105,7 @@ object BuilderEncoder {
    */
   def seqOptionToBuffer[A: BuilderEncoder](vector: collection.Seq[Option[A]],
                                            hint: EncodingHint = AutoDetect): ByteBuffer = {
-    val builder = implicitly[BuilderEncoder[A]].getBuilder
+    val builder = BuilderEncoder[A].getBuilder
     vector.foreach(builder.addOption)
     builderToBuffer(builder, hint)
   }
