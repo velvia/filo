@@ -17,19 +17,19 @@ object FastBufferReader {
 import FastBufferReader._
 
 class FastByteBufferReader(buf: ByteBuffer) {
-  val offset = buf.arrayOffset
+  val offset = arayOffset + buf.arrayOffset
   val byteArray = buf.array()
-  final def read(i: Int): Byte = unsafe.getByte(byteArray, arayOffset + (offset + i).toLong)
+  final def read(i: Int): Byte = unsafe.getByte(byteArray, (offset + i).toLong)
 }
 
 class FastShortBufferReader(buf: ByteBuffer) {
-  val offset = buf.arrayOffset
+  val offset = arayOffset + buf.arrayOffset
   val byteArray = buf.array()
-  final def read(i: Int): Short = unsafe.getShort(byteArray, arayOffset + (offset + i * 2).toLong)
+  final def read(i: Int): Short = unsafe.getShort(byteArray, (offset + i * 2).toLong)
 }
 
 class FastIntBufferReader(buf: ByteBuffer) {
-  val offset = buf.arrayOffset
+  val offset = arayOffset + buf.arrayOffset
   val byteArray = buf.array()
-  final def read(i: Int): Int = unsafe.getInt(byteArray, arayOffset + (offset + i * 4).toLong)
+  final def read(i: Int): Int = unsafe.getInt(byteArray, (offset + i * 4).toLong)
 }
