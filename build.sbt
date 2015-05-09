@@ -44,7 +44,9 @@ lazy val compileJavaSchemaTask = compileJavaSchema := {
 ///
 
 lazy val coreSettings = Seq(
-  scalacOptions ++= Seq("-Xlint", "-deprecation", "-Xfatal-warnings", "-feature")
+  scalacOptions ++= Seq("-Xlint", "-deprecation", "-Xfatal-warnings", "-feature"),
+  // needed to disable Unsafe warning
+  javacOptions ++= Seq("-XDignore.symbol.file")
 )
 
 lazy val universalSettings = coreSettings ++ styleSettings ++ releaseSettings ++

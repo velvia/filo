@@ -122,10 +122,15 @@ object VectorExtractor {
 
   implicit object IntVectorExtractor extends VectorExtractor[Int] {
     def getExtractor(t: Table): (Int => Int) = t match {
-      case v: IntVector    => (i: Int) => v.data(i)
-      case v: ShortVector  => (i: Int) => v.data(i).toInt
+      case v: IntVector    =>
+        val intReader = new FastIntBufferReader(v.dataAsByteBuffer())
+        (i: Int) => intReader.read(i)
+      case v: ShortVector  =>
+        val shortReader = new FastShortBufferReader(v.dataAsByteBuffer())
+        (i: Int) => shortReader.read(i).toInt
       case v: ByteVector if v.dataType == ByteDataType.TByte =>
-                              (i: Int) => v.data(i).toInt
+        val byteReader = new FastByteBufferReader(v.dataAsByteBuffer())
+        (i: Int) => byteReader.read(i).toInt
       case x: Any          => unsupportedVector(x)
     }
   }
