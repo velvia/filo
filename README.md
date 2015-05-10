@@ -1,11 +1,13 @@
 # filo
 ![filo](Filo.jpg)
 
-A thin layer of dough for baking fast, memory-efficient, zero-serialization, binary data vectors into your app.
+A thin layer of dough for baking fast, memory-efficient, minimal-deserialization, binary data vectors into your app.
+
+Think of it as the good parts of Parquet without the HDFS and file format cruft -- just the serdes and fast columnar storage.
 
 ## Properties
 
-* A wire format for efficient data vectors for reading with zero or minimal/lazy serialization
+* A wire format for efficient data vectors for reading with zero or minimal/lazy deserialization
     - Native JVM strings require deserialization from UTF8 to JVM UTF16 native format.  This can be avoided if you read the raw bytes.
     - JVM Objects still get allocated for non-primitive types, but their memory cost can be reduced by pointing back at the raw bytes
 * Random or linear access
