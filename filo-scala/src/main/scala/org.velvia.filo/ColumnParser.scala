@@ -37,17 +37,17 @@ object ColumnParser {
     def makeSimpleCol(sc: SimpleColumn, vector: Table): ColumnWrapper[Int] = vector match {
       case v: IntVector =>
         new SimpleColumnWrapper[Int](sc, vector) {
-          val reader = new FastBufferReader(v.dataAsByteBuffer())
+          val reader = FastBufferReader(v.dataAsByteBuffer())
           final def apply(i: Int): Int = reader.readInt(i)
         }
       case v: ShortVector =>
         new SimpleColumnWrapper[Int](sc, vector) {
-          val reader = new FastBufferReader(v.dataAsByteBuffer())
+          val reader = FastBufferReader(v.dataAsByteBuffer())
           final def apply(i: Int): Int = reader.readShort(i).toInt
         }
       case v: ByteVector if v.dataType == ByteDataType.TByte =>
         new SimpleColumnWrapper[Int](sc, vector) {
-          val reader = new FastBufferReader(v.dataAsByteBuffer())
+          val reader = FastBufferReader(v.dataAsByteBuffer())
           final def apply(i: Int): Int = reader.readByte(i).toInt
         }
     }
@@ -57,7 +57,7 @@ object ColumnParser {
     def makeSimpleCol(sc: SimpleColumn, vector: Table): ColumnWrapper[Long] = vector match {
       case v: LongVector =>
         new SimpleColumnWrapper[Long](sc, vector) {
-          val reader = new FastBufferReader(v.dataAsByteBuffer())
+          val reader = FastBufferReader(v.dataAsByteBuffer())
           final def apply(i: Int): Long = reader.readLong(i)
         }
     }
@@ -67,7 +67,7 @@ object ColumnParser {
     def makeSimpleCol(sc: SimpleColumn, vector: Table): ColumnWrapper[Double] = vector match {
       case v: DoubleVector =>
         new SimpleColumnWrapper[Double](sc, vector) {
-          val reader = new FastBufferReader(v.dataAsByteBuffer())
+          val reader = FastBufferReader(v.dataAsByteBuffer())
           final def apply(i: Int): Double = reader.readDouble(i)
         }
     }

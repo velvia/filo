@@ -14,11 +14,34 @@ object FastBufferReader {
   val unsafe = field.get(null).asInstanceOf[Unsafe]
 
   val arayOffset = unsafe.arrayBaseOffset(classOf[Array[Byte]])
+
+  /**
+   * Instantiates the correct BufferReader implementation:
+   * - FastUnsafeArrayBufferReader is used if the ByteBuffer is backed by an array
+   * - SlowBufferReader just uses ByteBuffer
+   *
+   * This allows future-proof implementations: for example for JDK9 / better Unsafe changes, and
+   * for extending to DirectMemory allocated ByteBuffers, for example.
+   *
+   * @param buf the ByteBuffer containing an array of fixed values to wrap for fast access
+   */
+  def apply(buf: ByteBuffer): FastBufferReader = {
+    if (buf.hasArray) { new FastUnsafeArrayBufferReader(buf) }
+    else              { throw new RuntimeException("Cannot support this ByteBuffer") }
+  }
+}
+
+trait FastBufferReader {
+  def readByte(i: Int): Byte
+  def readShort(i: Int): Short
+  def readInt(i: Int): Int
+  def readLong(i: Int): Long
+  def readDouble(i: Int): Double
 }
 
 import FastBufferReader._
 
-class FastBufferReader(buf: ByteBuffer) {
+class FastUnsafeArrayBufferReader(buf: ByteBuffer) extends FastBufferReader {
   val offset = arayOffset + buf.arrayOffset
   val byteArray = buf.array()
   final def readByte(i: Int): Byte = unsafe.getByte(byteArray, (offset + i).toLong)
