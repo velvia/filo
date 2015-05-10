@@ -36,6 +36,16 @@ sealed abstract class ColumnBuilder[A](empty: A)(implicit val classTagA: ClassTa
   }
 }
 
+// Please add your builder here when you add a type
+object ColumnBuilder {
+  def apply(dataType: Class[_]): ColumnBuilder[_] = dataType match {
+    case Classes.Int => new IntColumnBuilder
+    case Classes.Long => new LongColumnBuilder
+    case Classes.Double => new DoubleColumnBuilder
+    case Classes.String => new StringColumnBuilder
+  }
+}
+
 class IntColumnBuilder extends ColumnBuilder(0)
 class LongColumnBuilder extends ColumnBuilder(0L)
 class DoubleColumnBuilder extends ColumnBuilder(0.0)

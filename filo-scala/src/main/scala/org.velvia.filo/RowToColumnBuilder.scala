@@ -1,10 +1,11 @@
 package org.velvia.filo
 
 import java.nio.ByteBuffer
-
 import scala.language.existentials
 
-case class IngestColumn(name: String, builder: ColumnBuilder[_])
+import BuilderEncoder.{EncodingHint, AutoDetect}
+
+case class IngestColumn(name: String, dataType: Class[_])
 
 // To help matching against the ClassTag in the ColumnBuilder
 private object Classes {
@@ -17,26 +18,40 @@ private object Classes {
   val String = classOf[String]
 }
 
+object RowToColumnBuilder {
+  /**
+   * A convenience method to turn a bunch of rows R to Filo serialized columnar chunks.
+   * @param rows the rows to convert to columnar chunks
+   * @param schema a Seq of IngestColumn describing the [[ColumnBuilder]] used for each column
+   * @param ingestSupport something to convert from a row R to specific types
+   * @param hint an EncodingHint for the encoder
+   * @return a Map of column name to the byte chunks
+   */
+  def buildFromRows[R](rows: Seq[R],
+                       schema: Seq[IngestColumn],
+                       ingestSupport: RowIngestSupport[R],
+                       hint: EncodingHint = AutoDetect): Map[String, ByteBuffer] = {
+    val builder = new RowToColumnBuilder(schema, ingestSupport)
+    rows.foreach(builder.addRow)
+    builder.convertToBytes(hint)
+  }
+}
+
 /**
  * Class to help transpose a set of rows of type R to ByteBuffer-backed columns.
- * @param schema a Seq of IngestColumn describing the [[ColumnBuilder]] used for each column
+ * @param schema a Seq of IngestColumn describing the data type used for each column
  * @param ingestSupport something to convert from a row R to specific types
  *
  * TODO: Add stats about # of rows, chunks/buffers encoded, bytes encoded, # NA's etc.
  */
 class RowToColumnBuilder[R](schema: Seq[IngestColumn], ingestSupport: RowIngestSupport[R]) {
-  val ingestFuncs: Seq[(R, Int) => Unit] = schema.map { case IngestColumn(_, builder) =>
-    builder.classTagA.runtimeClass match {
-      case Classes.Int    =>
-        (r: R, c: Int) => builder.asInstanceOf[IntColumnBuilder].addOption(ingestSupport.getInt(r, c))
-      case Classes.Long   =>
-        (r: R, c: Int) => builder.asInstanceOf[LongColumnBuilder].addOption(ingestSupport.getLong(r, c))
-      case Classes.Double =>
-        (r: R, c: Int) => builder.asInstanceOf[DoubleColumnBuilder].addOption(ingestSupport.getDouble(r, c))
-      case Classes.String =>
-        (r: R, c: Int) => builder.asInstanceOf[StringColumnBuilder].addOption(ingestSupport.getString(r, c))
-      case x: Any         => unsupportedInput(x)
-    }
+  val builders = schema.map { case IngestColumn(_, dataType) => ColumnBuilder(dataType) }
+
+  val ingestFuncs: Seq[(R, Int) => Unit] = builders.map {
+    case b: IntColumnBuilder    => (r: R, c: Int) => b.addOption(ingestSupport.getInt(r, c))
+    case b: LongColumnBuilder   => (r: R, c: Int) => b.addOption(ingestSupport.getLong(r, c))
+    case b: DoubleColumnBuilder => (r: R, c: Int) => b.addOption(ingestSupport.getDouble(r, c))
+    case b: StringColumnBuilder => (r: R, c: Int) => b.addOption(ingestSupport.getString(r, c))
   }
 
   /**
@@ -44,7 +59,7 @@ class RowToColumnBuilder[R](schema: Seq[IngestColumn], ingestSupport: RowIngestS
    * @return {[type]} [description]
    */
   def reset(): Unit = {
-    schema foreach { _.builder.reset() }
+    builders.foreach(_.reset())
   }
 
   /**
@@ -61,27 +76,21 @@ class RowToColumnBuilder[R](schema: Seq[IngestColumn], ingestSupport: RowIngestS
    * Adds a single blank NA value to all builders
    */
   def addEmptyRow(): Unit = {
-    schema.foreach { case IngestColumn(_, builder) => builder.addNA() }
+    builders.foreach(_.addNA())
   }
 
   /**
    * Converts the contents of the [[ColumnBuilder]]s to ByteBuffers for writing or transmission.
+   * @param hint an EncodingHint for the encoder
    */
-  def convertToBytes(): Map[String, ByteBuffer] = {
-    schema.map { case IngestColumn(columnName, builder) =>
-      val bytes = builder.classTagA.runtimeClass match {
-        case Classes.Int    =>
-          BuilderEncoder.builderToBuffer(builder.asInstanceOf[IntColumnBuilder])
-        case Classes.Long   =>
-          BuilderEncoder.builderToBuffer(builder.asInstanceOf[LongColumnBuilder])
-        case Classes.Double =>
-          BuilderEncoder.builderToBuffer(builder.asInstanceOf[DoubleColumnBuilder])
-        case Classes.String =>
-          BuilderEncoder.builderToBuffer(builder.asInstanceOf[StringColumnBuilder])
-        case x: Any         => unsupportedInput(x)
-      }
-      (columnName, bytes)
-    }.toMap
+  def convertToBytes(hint: EncodingHint = AutoDetect): Map[String, ByteBuffer] = {
+    val chunks = builders.map {
+      case b: IntColumnBuilder    => BuilderEncoder.builderToBuffer(b, hint)
+      case b: LongColumnBuilder   => BuilderEncoder.builderToBuffer(b, hint)
+      case b: DoubleColumnBuilder => BuilderEncoder.builderToBuffer(b, hint)
+      case b: StringColumnBuilder => BuilderEncoder.builderToBuffer(b, hint)
+    }
+    schema.zip(chunks).map { case (IngestColumn(colName, _), bytes) => (colName, bytes) }.toMap
   }
 
   private def unsupportedInput(typ: Any) =

@@ -21,7 +21,7 @@ class SimpleEncodingTest extends FunSpec with Matchers {
     it("should encode a list of all NAs and decode back to all NAs") (pending)
 
     it("should encode a mix of NAs and Ints and decode iterate and skip NAs") {
-      val cb = new IntColumnBuilder
+      val cb = ColumnBuilder(classOf[Int]).asInstanceOf[ColumnBuilder[Int]]
       cb.addNA
       cb.addData(101)
       cb.addData(102)
