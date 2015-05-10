@@ -106,6 +106,8 @@ To just get overall run times:
 To also get profiling of top methods:
 
     sbt filoScalaJmh/run -prof stack -jvmArgsAppend -Djmh.stack.lines=3
+
+See this [gist](https://gist.github.com/velvia/213b837c6e02c4982a9a) for how I improved the `ColumnWrapper.apply()` method performance by 50x.
  
 ## Future directions
 
