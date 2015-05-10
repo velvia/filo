@@ -5,6 +5,8 @@ import java.nio.ByteBuffer
 
 /**
  * TODO: use something like Agrona so the classes below will work with non-array-based ByteBuffers
+ * Fast (machine-speed/intrinsic) readers for ByteBuffer values, assuming bytebuffers are vectors
+ * of fixed size.
  */
 object FastBufferReader {
   val field = classOf[Unsafe].getDeclaredField("theUnsafe")
@@ -16,20 +18,12 @@ object FastBufferReader {
 
 import FastBufferReader._
 
-class FastByteBufferReader(buf: ByteBuffer) {
+class FastBufferReader(buf: ByteBuffer) {
   val offset = arayOffset + buf.arrayOffset
   val byteArray = buf.array()
-  final def read(i: Int): Byte = unsafe.getByte(byteArray, (offset + i).toLong)
-}
-
-class FastShortBufferReader(buf: ByteBuffer) {
-  val offset = arayOffset + buf.arrayOffset
-  val byteArray = buf.array()
-  final def read(i: Int): Short = unsafe.getShort(byteArray, (offset + i * 2).toLong)
-}
-
-class FastIntBufferReader(buf: ByteBuffer) {
-  val offset = arayOffset + buf.arrayOffset
-  val byteArray = buf.array()
-  final def read(i: Int): Int = unsafe.getInt(byteArray, (offset + i * 4).toLong)
+  final def readByte(i: Int): Byte = unsafe.getByte(byteArray, (offset + i).toLong)
+  final def readShort(i: Int): Short = unsafe.getShort(byteArray, (offset + i * 2).toLong)
+  final def readInt(i: Int): Int = unsafe.getInt(byteArray, (offset + i * 4).toLong)
+  final def readLong(i: Int): Long = unsafe.getLong(byteArray, (offset + i * 8).toLong)
+  final def readDouble(i: Int): Double = unsafe.getDouble(byteArray, (offset + i * 8).toLong)
 }

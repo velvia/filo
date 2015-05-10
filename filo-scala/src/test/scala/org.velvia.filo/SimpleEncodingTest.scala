@@ -5,6 +5,7 @@ import org.scalatest.Matchers
 
 class SimpleEncodingTest extends FunSpec with Matchers {
   import BuilderEncoder.SimpleEncoding
+  import ColumnParser._
 
   describe("Int encoding") {
     it("should encode an empty list and decode back to empty") {

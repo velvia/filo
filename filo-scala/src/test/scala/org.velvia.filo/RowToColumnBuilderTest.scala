@@ -17,6 +17,8 @@ class RowToColumnBuilderTest extends FunSpec with Matchers {
              )
 
   describe("RowToColumnBuilder") {
+    import ColumnParser._
+
     it("should add rows and convert them to Filo binary Seqs") {
       val rtcb = new RowToColumnBuilder(schema, TupleRowIngestSupport)
       rows.foreach(rtcb.addRow)

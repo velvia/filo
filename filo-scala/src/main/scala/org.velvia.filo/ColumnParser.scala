@@ -1,12 +1,18 @@
 package org.velvia.filo
 
+import com.google.flatbuffers.Table
 import java.nio.ByteBuffer
 import org.velvia.filo.column._
 import scala.collection.Traversable
 import scala.util.Try
 
-object ColumnParser {
-  def parseAsSimpleColumn[A](buf: ByteBuffer)(implicit veb: VectorExtractor[A]): ColumnWrapper[A] = {
+trait ColumnMaker[A] {
+  def makeColumn(buf: ByteBuffer): ColumnWrapper[A]
+}
+
+trait SimpleColumnMaker[A] extends ColumnMaker[A] {
+  def makeSimpleCol(sc: SimpleColumn, vector: Table): ColumnWrapper[A]
+  def makeColumn(buf: ByteBuffer): ColumnWrapper[A] = {
     val column = Column.getRootAsColumn(buf)
     require(column.colType == AnyColumn.SimpleColumn,
             "Not a SimpleColumn, but a " + AnyColumn.name(column.colType))
@@ -15,12 +21,68 @@ object ColumnParser {
     if (sc.naMask.maskType == MaskType.AllOnes) {
       new EmptyColumnWrapper[A]
     } else {
-      new SimpleColumnWrapper[A](sc)
+      val vector = VectorUtils.getVectorFromType(sc.vectorType)
+      sc.vector(vector)
+      makeSimpleCol(sc, vector)
     }
   }
 }
 
-// TODO: implement Framian's Column API instead
+object ColumnParser {
+  def parseAsSimpleColumn[A](buf: ByteBuffer)(implicit cm: ColumnMaker[A]): ColumnWrapper[A] = {
+    cm.makeColumn(buf)
+  }
+
+  implicit object IntSimpleColumnMaker extends SimpleColumnMaker[Int] {
+    def makeSimpleCol(sc: SimpleColumn, vector: Table): ColumnWrapper[Int] = vector match {
+      case v: IntVector =>
+        new SimpleColumnWrapper[Int](sc, vector) {
+          val reader = new FastBufferReader(v.dataAsByteBuffer())
+          final def apply(i: Int): Int = reader.readInt(i)
+        }
+      case v: ShortVector =>
+        new SimpleColumnWrapper[Int](sc, vector) {
+          val reader = new FastBufferReader(v.dataAsByteBuffer())
+          final def apply(i: Int): Int = reader.readShort(i).toInt
+        }
+      case v: ByteVector if v.dataType == ByteDataType.TByte =>
+        new SimpleColumnWrapper[Int](sc, vector) {
+          val reader = new FastBufferReader(v.dataAsByteBuffer())
+          final def apply(i: Int): Int = reader.readByte(i).toInt
+        }
+    }
+  }
+
+  implicit object LongSimpleColumnMaker extends SimpleColumnMaker[Long] {
+    def makeSimpleCol(sc: SimpleColumn, vector: Table): ColumnWrapper[Long] = vector match {
+      case v: LongVector =>
+        new SimpleColumnWrapper[Long](sc, vector) {
+          val reader = new FastBufferReader(v.dataAsByteBuffer())
+          final def apply(i: Int): Long = reader.readLong(i)
+        }
+    }
+  }
+
+  implicit object DoubleSimpleColumnMaker extends SimpleColumnMaker[Double] {
+    def makeSimpleCol(sc: SimpleColumn, vector: Table): ColumnWrapper[Double] = vector match {
+      case v: DoubleVector =>
+        new SimpleColumnWrapper[Double](sc, vector) {
+          val reader = new FastBufferReader(v.dataAsByteBuffer())
+          final def apply(i: Int): Double = reader.readDouble(i)
+        }
+    }
+  }
+
+  implicit object StringSimpleColumnMaker extends SimpleColumnMaker[String] {
+    def makeSimpleCol(sc: SimpleColumn, vector: Table): ColumnWrapper[String] = vector match {
+      case v: StringVector =>
+        new SimpleColumnWrapper[String](sc, vector) {
+          final def apply(i: Int): String = v.data(i)
+        }
+    }
+  }
+}
+
 /**
  * A ColumnWrapper gives collection API semantics around the binary Filo format vector.
  */
@@ -68,15 +130,10 @@ class EmptyColumnWrapper[A] extends ColumnWrapper[A] {
   final def length: Int = 0
 }
 
-class SimpleColumnWrapper[A](sc: SimpleColumn)(implicit veb: VectorExtractor[A])
+abstract class SimpleColumnWrapper[A](sc: SimpleColumn, vector: Table)
     extends ColumnWrapper[A] {
-  val vector = VectorUtils.getVectorFromType(sc.vectorType)
-  sc.vector(vector)
-  val atIndex = veb.getExtractor(vector)
 
   final def length: Int = VectorUtils.getLength(vector)
-
-  final def apply(index: Int): A = atIndex(index)
 
   // could be much more optimized, obviously
   final def isAvailable(index: Int): Boolean = {
@@ -89,6 +146,6 @@ class SimpleColumnWrapper[A](sc: SimpleColumn)(implicit veb: VectorExtractor[A])
   }
 
   final def foreach[B](fn: A => B): Unit = {
-    for { i <- 0 until length } { if (isAvailable(i)) fn(atIndex(i)) }
+    for { i <- 0 until length } { if (isAvailable(i)) fn(apply(i)) }
   }
 }

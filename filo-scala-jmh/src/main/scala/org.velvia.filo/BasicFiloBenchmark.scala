@@ -16,6 +16,8 @@ import java.util.concurrent.TimeUnit
  */
 @State(Scope.Thread)
 class BasicFiloBenchmark {
+  import ColumnParser._
+
   // Ok, create an IntColumn and benchmark it.
   val numValues = 10000
 

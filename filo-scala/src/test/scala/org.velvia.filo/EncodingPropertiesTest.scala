@@ -6,6 +6,7 @@ import org.scalatest.prop.PropertyChecks
 
 class EncodingPropertiesTest extends FunSpec with Matchers with PropertyChecks {
   import BuilderEncoder._
+  import ColumnParser._
 
   it("Filo format int vectors should match length and sum") {
     forAll { (s: List[Int]) =>
