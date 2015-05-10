@@ -28,7 +28,7 @@ Get it here:
 
     resolvers += "Velvia Bintray" at "https://dl.bintray.com/velvia/maven"
 
-    libraryDependencies += "org.velvia.filo" % "filo-scala" % "0.0.4"
+    libraryDependencies += "org.velvia.filo" % "filo-scala" % "0.0.5"
 
 Using a `ColumnBuilder` to progressively build a column:
 
@@ -69,6 +69,10 @@ scala> ColumnParser.parseAsSimpleColumn(res6).foreach(println)
 All `ColumnWrappers` implement `scala.collection.Traversable` for transforming
 and iterating over the non-missing elements of a Filo binary vector.  There are
 also methods for accessing and iterating over all elements.
+
+### Converting rows to Filo columnar chunks
+
+Please see `RowToColumnBuilder` and the `RowToColumnBuilderTest` for an example.
 
 ### Support for Seq[A] and Seq[Option[A]]
 
