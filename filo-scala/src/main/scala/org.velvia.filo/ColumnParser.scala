@@ -24,7 +24,7 @@ object ColumnParser {
 /**
  * A ColumnWrapper gives collection API semantics around the binary Filo format vector.
  */
-trait ColumnWrapper[A] extends Traversable[A] {
+trait ColumnWrapper[@specialized(Int, Double, Long, Short) A] extends Traversable[A] {
   // Returns true if the element at position index is available, false if NA
   def isAvailable(index: Int): Boolean
 
