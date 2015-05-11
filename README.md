@@ -62,7 +62,7 @@ res6: java.nio.ByteBuffer = java.nio.HeapByteBuffer[pos=65408 lim=65536 cap=6553
 Parsing and iterating through the ByteBuffer as a collection:
 
 ```scala
-scala> ColumnParser.parseAsSimpleColumn(res6).foreach(println)
+scala> ColumnParser.parse[Int](res6).foreach(println)
 101
 102
 103
@@ -90,7 +90,7 @@ orig: Seq[Int] = List(1, 2, -5, 101)
 scala> val buf = BuilderEncoder.seqToBuffer(orig)
 buf: java.nio.ByteBuffer = java.nio.HeapByteBuffer[pos=65432 lim=65536 cap=65536]
 
-scala> val binarySeq = ColumnParser.parseAsSimpleColumn(buf)
+scala> val binarySeq = ColumnParser.parse[Int](buf)
 binarySeq: org.velvia.filo.ColumnWrapper[Int] = SimpleColumnWrapper(1, 2, -5, 101)
 
 scala> binarySeq.sum == orig.sum
