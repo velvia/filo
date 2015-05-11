@@ -23,7 +23,7 @@ class BasicFiloBenchmark {
 
   val randomInts = (0 until numValues).map(i => util.Random.nextInt)
   val filoBuffer = BuilderEncoder.seqToBuffer(randomInts)
-  val sc = ColumnParser.parseAsSimpleColumn[Int](filoBuffer)
+  val sc = ColumnParser.parse[Int](filoBuffer)
 
   // According to @ktosopl, be sure to return some value if possible so that JVM won't
   // optimize out the method body.  However JMH is apparently very good at avoiding this.

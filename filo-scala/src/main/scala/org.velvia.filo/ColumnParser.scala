@@ -9,7 +9,11 @@ import org.velvia.filo.column._
  * to iterate over and read the data vector.
  */
 object ColumnParser {
-  def parseAsSimpleColumn[A](buf: ByteBuffer)(implicit cm: ColumnMaker[A]): ColumnWrapper[A] = {
+  /**
+   * Parses a Filo-format ByteBuffer into a ColumnWrapper.  Automatically detects what type of encoding
+   * is used underneath.
+   */
+  def parse[A](buf: ByteBuffer)(implicit cm: ColumnMaker[A]): ColumnWrapper[A] = {
     cm.makeColumn(buf)
   }
 

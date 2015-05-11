@@ -10,7 +10,7 @@ class DictEncodingTest extends FunSpec with Matchers {
   it("should encode and decode back a Seq[String]") {
     val orig = Seq("apple", "banana")
     val buf = BuilderEncoder.seqToBuffer(orig, DictionaryEncoding)
-    val binarySeq = ColumnParser.parseAsSimpleColumn[String](buf)
+    val binarySeq = ColumnParser.parse[String](buf)
 
     binarySeq.length should equal (orig.length)
     binarySeq.toSeq should equal (orig)
@@ -19,7 +19,7 @@ class DictEncodingTest extends FunSpec with Matchers {
   it("should encode and decode back a Seq[Option[String]]") {
     val orig = Seq(Some("apple"), None, Some("banana"))
     val buf = BuilderEncoder.seqOptionToBuffer(orig, DictionaryEncoding)
-    val binarySeq = ColumnParser.parseAsSimpleColumn[String](buf)
+    val binarySeq = ColumnParser.parse[String](buf)
 
     binarySeq.length should equal (orig.length)
     binarySeq.toSeq should equal (Seq("apple", "banana"))

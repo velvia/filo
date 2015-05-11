@@ -26,10 +26,10 @@ class RowToColumnBuilderTest extends FunSpec with Matchers {
       val columnData = rtcb.convertToBytes()
 
       columnData.keys should equal (Set("name", "age"))
-      val nameBinSeq = ColumnParser.parseAsSimpleColumn[String](columnData("name"))
+      val nameBinSeq = ColumnParser.parse[String](columnData("name"))
       nameBinSeq.toList should equal (List("Matthew Perry", "Michelle Pfeiffer",
                                                  "George C", "Rich Sherman"))
-      val ageBinSeq = ColumnParser.parseAsSimpleColumn[Int](columnData("age"))
+      val ageBinSeq = ColumnParser.parse[Int](columnData("age"))
       ageBinSeq should have length (5)
       ageBinSeq(0) should equal (18)
       ageBinSeq.toList should equal (List(18, 59, 26))
@@ -39,7 +39,7 @@ class RowToColumnBuilderTest extends FunSpec with Matchers {
       val columnData = RowToColumnBuilder.buildFromRows(rows, schema, TupleRowIngestSupport,
                                                         BuilderEncoder.SimpleEncoding)
       columnData.keys should equal (Set("name", "age"))
-      val nameBinSeq = ColumnParser.parseAsSimpleColumn[String](columnData("name"))
+      val nameBinSeq = ColumnParser.parse[String](columnData("name"))
       nameBinSeq.toList should equal (List("Matthew Perry", "Michelle Pfeiffer",
                                                  "George C", "Rich Sherman"))
     }

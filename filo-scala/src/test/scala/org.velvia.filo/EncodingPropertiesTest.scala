@@ -11,7 +11,7 @@ class EncodingPropertiesTest extends FunSpec with Matchers with PropertyChecks {
   it("Filo format int vectors should match length and sum") {
     forAll { (s: List[Int]) =>
       val buf = seqToBuffer(s, SimpleEncoding)
-      val binarySeq = ColumnParser.parseAsSimpleColumn[Int](buf)
+      val binarySeq = ColumnParser.parse[Int](buf)
 
       binarySeq.length should equal (s.length)
       binarySeq.sum should equal (s.sum)
@@ -21,7 +21,7 @@ class EncodingPropertiesTest extends FunSpec with Matchers with PropertyChecks {
   it("Filo format long vectors should match length and sum") {
     forAll { (s: List[Long]) =>
       val buf = seqToBuffer(s, SimpleEncoding)
-      val binarySeq = ColumnParser.parseAsSimpleColumn[Long](buf)
+      val binarySeq = ColumnParser.parse[Long](buf)
 
       binarySeq.length should equal (s.length)
       binarySeq.sum should equal (s.sum)
@@ -31,7 +31,7 @@ class EncodingPropertiesTest extends FunSpec with Matchers with PropertyChecks {
   it("Filo format double vectors should match length and sum") {
     forAll { (s: List[Double]) =>
       val buf = seqToBuffer(s, SimpleEncoding)
-      val binarySeq = ColumnParser.parseAsSimpleColumn[Double](buf)
+      val binarySeq = ColumnParser.parse[Double](buf)
 
       binarySeq.length should equal (s.length)
       binarySeq.sum should equal (s.sum)
@@ -41,7 +41,7 @@ class EncodingPropertiesTest extends FunSpec with Matchers with PropertyChecks {
   it("should match elements and length for Int vectors with missing/NA elements") {
     forAll { (s: List[Option[Int]]) =>
       val buf = seqOptionToBuffer(s, SimpleEncoding)
-      val binarySeq = ColumnParser.parseAsSimpleColumn[Int](buf)
+      val binarySeq = ColumnParser.parse[Int](buf)
 
       binarySeq.length should equal (s.length)
       val elements = binarySeq.optionIterator.toSeq
@@ -52,7 +52,7 @@ class EncodingPropertiesTest extends FunSpec with Matchers with PropertyChecks {
   it("should match elements and length for simple string vectors with missing/NA elements") {
     forAll { (s: List[Option[String]]) =>
       val buf = seqOptionToBuffer(s, SimpleEncoding)
-      val binarySeq = ColumnParser.parseAsSimpleColumn[String](buf)
+      val binarySeq = ColumnParser.parse[String](buf)
 
       binarySeq.length should equal (s.length)
       val elements = binarySeq.optionIterator.toSeq
@@ -63,7 +63,7 @@ class EncodingPropertiesTest extends FunSpec with Matchers with PropertyChecks {
   it("should match elements and length for dictionary string vectors with missing/NA elements") {
     forAll { (s: List[Option[String]]) =>
       val buf = seqOptionToBuffer(s, DictionaryEncoding)
-      val binarySeq = ColumnParser.parseAsSimpleColumn[String](buf)
+      val binarySeq = ColumnParser.parse[String](buf)
 
       binarySeq.length should equal (s.length)
       val elements = binarySeq.optionIterator.toSeq
