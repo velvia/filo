@@ -95,6 +95,7 @@ object VectorUtils {
     case l: LongVector   => l.dataLength
     case d: DoubleVector => d.dataLength
     case s: ShortVector  => s.dataLength
+    case b: ByteVector   => b.dataLength
     case f: FloatVector  => f.dataLength
   }
 
@@ -104,6 +105,7 @@ object VectorUtils {
     case AnyVector.LongVector   => new LongVector
     case AnyVector.DoubleVector => new DoubleVector
     case AnyVector.ShortVector  => new ShortVector
+    case AnyVector.ByteVector   => new ByteVector
     case AnyVector.FloatVector  => new FloatVector
   }
 }

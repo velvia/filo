@@ -49,10 +49,12 @@ class SimpleEncodingTest extends FunSpec with Matchers {
       binarySeq.length should equal (orig.length)
       binarySeq.sum should equal (orig.sum)
     }
+  }
 
+  describe("String Encoding") {
     it("should encode and decode back a Seq[String]") {
       val orig = Seq("apple", "banana")
-      val buf = BuilderEncoder.seqToBuffer(orig)
+      val buf = BuilderEncoder.seqToBuffer(orig, SimpleEncoding)
       val binarySeq = ColumnParser.parseAsSimpleColumn[String](buf)
 
       binarySeq.length should equal (orig.length)
