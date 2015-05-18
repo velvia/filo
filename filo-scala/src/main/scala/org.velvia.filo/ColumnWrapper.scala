@@ -58,13 +58,16 @@ class EmptyColumnWrapper[A] extends ColumnWrapper[A] {
 // TODO: wrap bitMask with FastBufferReader for speed
 trait NaMaskAvailable {
   val naMask: NaMask
+  lazy val maskLen = naMask.bitMaskLength()
   // could be much more optimized, obviously
   final def isAvailable(index: Int): Boolean = {
     if (naMask.maskType == MaskType.AllZeroes) {
       true
     } else {
       // NOTE: length of bitMask may be less than (length / 64) longwords.
-      (Try(naMask.bitMask(index >> 5)).getOrElse(0L) & (1 << (index & 63))) == 0
+      val maskIndex = index >> 5
+      val maskVal = if (maskIndex < maskLen) naMask.bitMask(maskIndex) else 0L
+      (maskVal & (1 << (index & 63))) == 0
     }
   }
 }
