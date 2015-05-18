@@ -117,6 +117,8 @@ See this [gist](https://gist.github.com/velvia/213b837c6e02c4982a9a) for how I i
  
 ## Future directions
 
+Cross-platform support - Go, C/C++, etc.
+
 ### Additional Encodings
 
 Still random:

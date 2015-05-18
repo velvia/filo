@@ -4,6 +4,8 @@ import org.openjdk.jmh.annotations.Benchmark
 import org.openjdk.jmh.annotations.BenchmarkMode
 import org.openjdk.jmh.annotations.{Mode, State, Scope}
 import org.openjdk.jmh.annotations.OutputTimeUnit
+import scalaxy.loops._
+import scala.language.postfixOps
 
 import java.util.concurrent.TimeUnit
 
@@ -31,11 +33,9 @@ class BasicFiloBenchmark {
   @BenchmarkMode(Array(Mode.AverageTime))
   @OutputTimeUnit(TimeUnit.MICROSECONDS)
   def sumAllInts(): Int = {
-    var i = 0
     var total = 0
-    while (i < numValues) {
+    for { i <- 0 until numValues optimized } {
       total += sc(i)
-      i += 1
     }
     total
   }
