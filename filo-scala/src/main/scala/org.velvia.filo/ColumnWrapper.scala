@@ -83,18 +83,27 @@ abstract class SimpleColumnWrapper[A](sc: SimpleColumn, vector: Table)
   }
 }
 
+object DictStringColumnWrapper {
+  // Used to represent no string value or NA.  Better than using null.
+  val NoString = ""
+}
+
 abstract class DictStringColumnWrapper(val dsc: DictStringColumn, vector: Table)
     extends ColumnWrapper[String] with NaMaskAvailable {
+  import DictStringColumnWrapper._
+
   // To be mixed in depending on type of code vector
   def getCode(index: Int): Int
 
   val naMask = dsc.naMask
 
   // Cache the Strings so we only pay cost of deserializing each unique string once
-  val strCache = new collection.mutable.HashMap[Int, String]
+  val strCache = Array.fill(dsc.dictionaryLength())(NoString)
 
-  final private def dictString(code: Int): String =
-    strCache.getOrElseUpdate(code, dsc.dictionary(code))
+  final private def dictString(code: Int): String = {
+    if (strCache(code) == NoString) strCache(code) = dsc.dictionary(code)
+    strCache(code)
+  }
 
   final def apply(index: Int): String = dictString(getCode(index))
 
