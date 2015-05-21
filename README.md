@@ -8,9 +8,9 @@ Think of it as the good parts of Parquet without the HDFS and file format cruft 
 ## Properties
 
 * A wire format for efficient data vectors for reading with zero or minimal/lazy deserialization
-    - Native JVM strings require deserialization from UTF8 to JVM UTF16 native format.  This can be avoided if you read the raw bytes.
-    - JVM Objects still get allocated for non-primitive types, but their memory cost can be reduced by pointing back at the raw bytes
-* Random or linear access
+    - Very compact and fast string vectors using cached dictionary encoding
+    - Numeric vectors stored using smaller number of bits if possible
+* Random or linear access, no need to deserialize everything for random access
 * Support for missing / Not Available values, even for primitive vectors
 * Trade off between read speed and compactness -- Dictionary encoding, delta encoding, other techniques
 * Designed for long term persistence - based on Google [FlatBuffers](https://github.com/google/flatbuffers) which has schema evolution

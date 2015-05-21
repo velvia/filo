@@ -24,6 +24,7 @@ class DictStringBenchmark {
   import ColumnParser._
 
   val numValues = 10000
+  // NOTE: results show that time spent is heavily influenced by ratio of unique strings...
   val numUniqueStrings = 500
   val maxStringLength = 15
   val minStringLength = 5
