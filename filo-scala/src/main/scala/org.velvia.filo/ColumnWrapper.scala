@@ -4,7 +4,8 @@ import com.google.flatbuffers.Table
 import java.nio.ByteBuffer
 import org.velvia.filo.column._
 import scala.collection.Traversable
-import scala.util.Try
+import scala.language.postfixOps
+import scalaxy.loops._
 
 /**
  * A ColumnWrapper gives collection API semantics around the binary Filo format vector.
@@ -59,14 +60,16 @@ class EmptyColumnWrapper[A] extends ColumnWrapper[A] {
 trait NaMaskAvailable {
   val naMask: NaMask
   lazy val maskLen = naMask.bitMaskLength()
-  // could be much more optimized, obviously
+  lazy val maskReader = FastBufferReader(naMask.bitMaskAsByteBuffer)
+  lazy val maskType = naMask.maskType
+
   final def isAvailable(index: Int): Boolean = {
-    if (naMask.maskType == MaskType.AllZeroes) {
+    if (maskType == MaskType.AllZeroes) {
       true
     } else {
       // NOTE: length of bitMask may be less than (length / 64) longwords.
       val maskIndex = index >> 5
-      val maskVal = if (maskIndex < maskLen) naMask.bitMask(maskIndex) else 0L
+      val maskVal = if (maskIndex < maskLen) maskReader.readLong(maskIndex) else 0L
       (maskVal & (1 << (index & 63))) == 0
     }
   }
@@ -79,7 +82,7 @@ abstract class SimpleColumnWrapper[A](sc: SimpleColumn, vector: Table)
   final def length: Int = VectorUtils.getLength(vector)
 
   final def foreach[B](fn: A => B): Unit = {
-    for { i <- 0 until length } { if (isAvailable(i)) fn(apply(i)) }
+    for { i <- 0 until length optimized } { if (isAvailable(i)) fn(apply(i)) }
   }
 }
 
@@ -110,6 +113,6 @@ abstract class DictStringColumnWrapper(val dsc: DictStringColumn, vector: Table)
   final def length: Int = VectorUtils.getLength(vector)
 
   final def foreach[B](fn: String => B): Unit = {
-    for { i <- 0 until length } { if (isAvailable(i)) fn(apply(i)) }
+    for { i <- 0 until length optimized } { if (isAvailable(i)) fn(apply(i)) }
   }
 }
