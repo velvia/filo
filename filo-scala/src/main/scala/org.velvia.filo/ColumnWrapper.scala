@@ -104,8 +104,14 @@ abstract class DictStringColumnWrapper(val dsc: DictStringColumn, vector: Table)
   val strCache = Array.fill(dsc.dictionaryLength())(NoString)
 
   final private def dictString(code: Int): String = {
-    if (strCache(code) == NoString) strCache(code) = dsc.dictionary(code)
-    strCache(code)
+    val cacheValue = strCache(code)
+    if (cacheValue == NoString) {
+      val strFromDict = dsc.dictionary(code)
+      strCache(code) = strFromDict
+      strFromDict
+    } else {
+      cacheValue
+    }
   }
 
   final def apply(index: Int): String = dictString(getCode(index))
