@@ -58,9 +58,9 @@ table SimpleColumn {
 }
 
 // Dictionary encoded string column, with NA/missing value support
-// TODO: consider using the 0-value as NA, instead of separate NA mask.  Makes NA detection faster potentially.
+// The 0 value for a code is reserved for NA.  This means dictionary size is actually 1 + (# uniques).
+// In most cases, this results in smaller binaries (no naMask)
 table DictStringColumn {
-  naMask: NaMask;
   dictionary: [string];
   codes: AnyVector;
 }

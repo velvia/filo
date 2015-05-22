@@ -72,28 +72,24 @@ object ColumnParser {
         case AnyColumn.DictStringColumn =>
           val dsc = new DictStringColumn
           column.col(dsc)
-          if (dsc.naMask.maskType == MaskType.AllOnes) {
-            new EmptyColumnWrapper[String]
-          } else {
-            val vector = VectorUtils.getVectorFromType(dsc.codesType)
-            dsc.codes(vector)
-            vector match {
-              case v: IntVector =>
-                new DictStringColumnWrapper(dsc, vector) {
-                  val reader = FastBufferReader(v.dataAsByteBuffer())
-                  final def getCode(i: Int): Int = reader.readInt(i)
-                }
-              case v: ShortVector =>
-                new DictStringColumnWrapper(dsc, vector) {
-                  val reader = FastBufferReader(v.dataAsByteBuffer())
-                  final def getCode(i: Int): Int = reader.readShort(i).toInt
-                }
-              case v: ByteVector if v.dataType == ByteDataType.TByte =>
-                new DictStringColumnWrapper(dsc, vector) {
-                  val reader = FastBufferReader(v.dataAsByteBuffer())
-                  final def getCode(i: Int): Int = reader.readByte(i).toInt
-                }
-            }
+          val vector = VectorUtils.getVectorFromType(dsc.codesType)
+          dsc.codes(vector)
+          vector match {
+            case v: IntVector =>
+              new DictStringColumnWrapper(dsc, vector) {
+                val reader = FastBufferReader(v.dataAsByteBuffer())
+                final def getCode(i: Int): Int = reader.readInt(i)
+              }
+            case v: ShortVector =>
+              new DictStringColumnWrapper(dsc, vector) {
+                val reader = FastBufferReader(v.dataAsByteBuffer())
+                final def getCode(i: Int): Int = reader.readShort(i).toInt
+              }
+            case v: ByteVector if v.dataType == ByteDataType.TByte =>
+              new DictStringColumnWrapper(dsc, vector) {
+                val reader = FastBufferReader(v.dataAsByteBuffer())
+                final def getCode(i: Int): Int = reader.readByte(i).toInt
+              }
           }
       }
     }

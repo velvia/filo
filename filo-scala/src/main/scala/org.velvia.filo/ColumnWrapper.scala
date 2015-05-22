@@ -92,13 +92,11 @@ object DictStringColumnWrapper {
 }
 
 abstract class DictStringColumnWrapper(val dsc: DictStringColumn, vector: Table)
-    extends ColumnWrapper[String] with NaMaskAvailable {
+    extends ColumnWrapper[String] {
   import DictStringColumnWrapper._
 
   // To be mixed in depending on type of code vector
   def getCode(index: Int): Int
-
-  val naMask = dsc.naMask
 
   // Cache the Strings so we only pay cost of deserializing each unique string once
   val strCache = Array.fill(dsc.dictionaryLength())(NoString)
@@ -114,11 +112,16 @@ abstract class DictStringColumnWrapper(val dsc: DictStringColumn, vector: Table)
     }
   }
 
+  final def isAvailable(index: Int): Boolean = getCode(index) != 0
+
   final def apply(index: Int): String = dictString(getCode(index))
 
   final def length: Int = VectorUtils.getLength(vector)
 
   final def foreach[B](fn: String => B): Unit = {
-    for { i <- 0 until length optimized } { if (isAvailable(i)) fn(apply(i)) }
+    for { i <- 0 until length optimized } {
+      val code = getCode(i)
+      if (code != 0) fn(dictString(code))
+    }
   }
 }

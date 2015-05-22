@@ -13,6 +13,9 @@ object DictEncodingEncoders {
 
   var count = 0
 
+  // Note: This is a way to avoid storing null and dealing with NPEs for NA values
+  val NaString = ""
+
   // Uses the smallest vector possible to fit in integer values
   def smallIntVectorBuilder(fbb: FlatBufferBuilder, data: Seq[Int], maxNum: Int): (Int, Byte) = {
     // Add support for stuff below byte level
@@ -29,14 +32,14 @@ object DictEncodingEncoders {
     val strToCode = uniques.zipWithIndex.toMap
 
     // Encode each string to the code per the map above
-    val codes = data.zipWithIndex.map { case (s, i) => if (naMask(i)) 0 else strToCode(s) }
+    val codes = data.zipWithIndex.map { case (s, i) => if (naMask(i)) 0 else strToCode(s) + 1 }
 
     val fbb = new FlatBufferBuilder(BufferSize)
-    val (naOffset, empty) = populateNaMask(fbb, naMask)
-    val (dataOffset, dataType) = if (empty) (0, 0.toByte) else smallIntVectorBuilder(fbb, codes, stringSet.size)
-    val dictVect = makeStringVect(fbb, uniques)
+    val empty = naMask.size > 0 && naMask.size == (naMask.max.get + 1)
+    val (dataOffset, dataType) =
+      if (empty) (0, 0.toByte) else smallIntVectorBuilder(fbb, codes, stringSet.size + 1)
+    val dictVect = makeStringVect(fbb, Seq(NaString) ++ uniques)
     DictStringColumn.startDictStringColumn(fbb)
-    DictStringColumn.addNaMask(fbb, naOffset)
     DictStringColumn.addDictionary(fbb, dictVect)
     if (!empty) {
       DictStringColumn.addCodes(fbb, dataOffset)
