@@ -30,7 +30,7 @@ Get it here:
 
     resolvers += "Velvia Bintray" at "https://dl.bintray.com/velvia/maven"
 
-    libraryDependencies += "org.velvia.filo" % "filo-scala" % "0.0.5"
+    libraryDependencies += "org.velvia.filo" % "filo-scala" % "0.1.0"
 
 Using a `ColumnBuilder` to progressively build a column:
 
