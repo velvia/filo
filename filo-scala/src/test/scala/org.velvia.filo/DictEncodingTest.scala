@@ -25,4 +25,15 @@ class DictEncodingTest extends FunSpec with Matchers {
     binarySeq.toSeq should equal (Seq("apple", "banana"))
     binarySeq.optionIterator.toSeq should equal (orig)
   }
+
+  // Negative byte values might not get converted to ints properly, leading
+  // to an ArrayOutOfBoundsException.
+  it("should ensure proper conversion when there are 128-255 unique strings") {
+    val orig = (0 to 130).map(_.toString).toSeq
+    val buf = BuilderEncoder.seqToBuffer(orig, DictionaryEncoding)
+    val binarySeq = ColumnParser.parse[String](buf)
+
+    binarySeq.length should equal (orig.length)
+    binarySeq.toSeq should equal (orig)
+  }
 }

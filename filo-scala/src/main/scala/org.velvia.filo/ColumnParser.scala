@@ -27,12 +27,12 @@ object ColumnParser {
       case v: ShortVector =>
         new SimpleColumnWrapper[Int](sc, vector) {
           val reader = FastBufferReader(v.dataAsByteBuffer())
-          final def apply(i: Int): Int = reader.readShort(i).toInt
+          final def apply(i: Int): Int = (reader.readShort(i) & 0x0ffff).toInt
         }
       case v: ByteVector if v.dataType == ByteDataType.TByte =>
         new SimpleColumnWrapper[Int](sc, vector) {
           val reader = FastBufferReader(v.dataAsByteBuffer())
-          final def apply(i: Int): Int = reader.readByte(i).toInt
+          final def apply(i: Int): Int = (reader.readByte(i) & 0x00ff).toInt
         }
     }
   }
@@ -83,12 +83,12 @@ object ColumnParser {
             case v: ShortVector =>
               new DictStringColumnWrapper(dsc, vector) {
                 val reader = FastBufferReader(v.dataAsByteBuffer())
-                final def getCode(i: Int): Int = reader.readShort(i).toInt
+                final def getCode(i: Int): Int = (reader.readShort(i) & 0x0ffff).toInt
               }
             case v: ByteVector if v.dataType == ByteDataType.TByte =>
               new DictStringColumnWrapper(dsc, vector) {
                 val reader = FastBufferReader(v.dataAsByteBuffer())
-                final def getCode(i: Int): Int = reader.readByte(i).toInt
+                final def getCode(i: Int): Int = (reader.readByte(i) & 0x00ff).toInt
               }
           }
       }
