@@ -5,6 +5,8 @@ A thin layer of dough for baking fast, memory-efficient, minimal-deserialization
 
 Think of it as the good parts of Parquet without the HDFS and file format cruft -- just the serdes and fast columnar storage.
 
+For Scala, you get `Seq[A]` or `Traversable[A]` APIs directly on top of binary vectors, with minimal/lazy deserialization.
+
 ## Properties
 
 * A wire format for efficient data vectors for reading with zero or minimal/lazy deserialization
