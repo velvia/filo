@@ -7,6 +7,8 @@ Think of it as the good parts of Parquet without the HDFS and file format cruft 
 
 For Scala, you get `Seq[A]` or `Traversable[A]` APIs directly on top of binary vectors, with minimal/lazy deserialization.
 
+The Scala implementation IntColumns have been clocked at 2 billion integer reads per second per thread using JMH on my laptop.
+
 ## Properties
 
 * A wire format for efficient data vectors for reading with zero or minimal/lazy deserialization
@@ -77,6 +79,8 @@ also methods for accessing and iterating over all elements.
 ### Converting rows to Filo columnar chunks
 
 Please see `RowToColumnBuilder` and the `RowToColumnBuilderTest` for an example.
+There is a convenience function to convert a whole bunch of rows at once.  Also
+see `RowExtractorTest` for an example of converting columns back to rows.
 
 ### Support for Seq[A] and Seq[Option[A]]
 
