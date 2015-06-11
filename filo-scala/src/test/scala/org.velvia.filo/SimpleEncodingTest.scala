@@ -41,6 +41,16 @@ class SimpleEncodingTest extends FunSpec with Matchers {
       sc.toList should equal (List(101, 102, 103))
     }
 
+    it("should encode and decode back a sequence starting with NAs") {
+      val orig = Seq(None, None, None, Some(10), Some(15))
+      val buf = BuilderEncoder.seqOptionToBuffer(orig, SimpleEncoding)
+      val binarySeq = ColumnParser.parse[Int](buf)
+
+      binarySeq.length should equal (orig.length)
+      binarySeq.toSeq should equal (Seq(10, 15))
+      binarySeq.optionIterator.toSeq should equal (orig)
+    }
+
     it("should encode and decode back a Seq[Int]") {
       val orig = Seq(1, 2, -5, 101)
       val buf = BuilderEncoder.seqToBuffer(orig)

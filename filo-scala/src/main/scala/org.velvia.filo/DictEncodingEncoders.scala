@@ -35,7 +35,7 @@ object DictEncodingEncoders {
     val codes = data.zipWithIndex.map { case (s, i) => if (naMask(i)) 0 else strToCode(s) + 1 }
 
     val fbb = new FlatBufferBuilder(BufferSize)
-    val empty = naMask.size > 0 && naMask.size == (naMask.max.get + 1)
+    val empty = isDataEmpty(naMask, data.length)
     val (dataOffset, dataType) =
       if (empty) (0, 0.toByte) else smallIntVectorBuilder(fbb, codes, stringSet.size + 1)
     val dictVect = makeStringVect(fbb, Seq(NaString) ++ uniques)

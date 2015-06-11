@@ -15,10 +15,13 @@ object Utils {
   val BufferSize = 64 * 1024
   val SizeOfInt = 4
 
+  // Returns true if every element in the data to be encoded is marked as NA (mask is set)
+  def isDataEmpty(mask: Mask, dataLength: Int): Boolean = mask.size == dataLength
+
   // (offset of mask table, true if all NAs / bitmask full / empty data
-  def populateNaMask(fbb: FlatBufferBuilder, mask: Mask): (Int, Boolean) = {
+  def populateNaMask(fbb: FlatBufferBuilder, mask: Mask, dataLen: Int): (Int, Boolean) = {
     val empty = mask.size == 0
-    val full = mask.size > 0 && mask.size == (mask.max.get + 1)
+    val full = isDataEmpty(mask, dataLen)
     var bitMaskOffset = 0
 
     // Simple bit mask, 1 bit per row
@@ -29,9 +32,9 @@ object Utils {
     if (!empty && !full) bitMaskOffset = NaMask.createBitMaskVector(fbb, mask.toBitSet.toBitMask)
 
     NaMask.startNaMask(fbb)
-    NaMask.addMaskType(fbb, if (empty)     { MaskType.AllZeroes }
-                            else if (full) { MaskType.AllOnes }
-                            else           { MaskType.SimpleBitMask })
+    NaMask.addMaskType(fbb, if (full)       { MaskType.AllOnes }
+                            else if (empty) { MaskType.AllZeroes }
+                            else            { MaskType.SimpleBitMask })
 
     if (!empty && !full) NaMask.addBitMask(fbb, bitMaskOffset)
     (NaMask.endNaMask(fbb), full)

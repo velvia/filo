@@ -18,7 +18,7 @@ object SimpleEncoders {
   def toSimpleColumn[A](data: Seq[A], naMask: Mask, vectBuilder: DataVectorBuilder[A]): ByteBuffer = {
     count += 1
     val fbb = new FlatBufferBuilder(BufferSize)
-    val (naOffset, empty) = populateNaMask(fbb, naMask)
+    val (naOffset, empty) = populateNaMask(fbb, naMask, data.length)
     val (dataOffset, dataType) = if (empty) (0, 0.toByte) else vectBuilder(fbb, data)
     SimpleColumn.startSimpleColumn(fbb)
     SimpleColumn.addNaMask(fbb, naOffset)

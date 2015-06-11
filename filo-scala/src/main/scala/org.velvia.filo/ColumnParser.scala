@@ -72,6 +72,7 @@ object ColumnParser {
         case AnyColumn.DictStringColumn =>
           val dsc = new DictStringColumn
           column.col(dsc)
+          if (dsc.codesType == 0) return new EmptyColumnWrapper[String]
           val vector = VectorUtils.getVectorFromType(dsc.codesType)
           dsc.codes(vector)
           vector match {
