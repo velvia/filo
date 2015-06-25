@@ -15,6 +15,7 @@ lazy val filoScala = (project in file("filo-scala")).dependsOn(schema, flatbuffe
                         .settings(mySettings:_*)
                         .settings(name := "filo-scala")
                         .settings(libraryDependencies ++= deps)
+                        .settings(resolvers ++= myResolvers)
 
 lazy val filoScalaJmh = (project in file("filo-scala-jmh")).dependsOn(filoScala)
                         .settings(mySettings:_*)
@@ -25,7 +26,7 @@ lazy val filoScalaJmh = (project in file("filo-scala-jmh")).dependsOn(filoScala)
 
 lazy val filo = (project in file(".")).aggregate(schema, flatbuffers, filoScala)
 
-resolvers += "Pellucid Bintray" at "http://dl.bintray.com/pellucid/maven"
+lazy val myResolvers = Seq("Pellucid Bintray" at "http://dl.bintray.com/pellucid/maven")
 
 releaseSettings ++ publishSettings
 
