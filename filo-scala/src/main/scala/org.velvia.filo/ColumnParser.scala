@@ -117,6 +117,7 @@ trait SimpleColumnMaker[A] extends ColumnMaker[A] {
   }
 
   def makeColumn(buf: ByteBuffer): ColumnWrapper[A] = {
+    if (buf == null) return new EmptyColumnWrapper[A]
     val column = Column.getRootAsColumn(buf)
     require(column.colType == AnyColumn.SimpleColumn,
             "Not a SimpleColumn, but a " + AnyColumn.name(column.colType))

@@ -18,6 +18,12 @@ class SimpleEncodingTest extends FunSpec with Matchers {
       sc.toList should equal (Nil)
     }
 
+    it("should decode a null ByteBuffer as an empty vector") {
+      val sc = ColumnParser.parse[Int](null)
+      sc.length should equal (0)
+      sc.toList should equal (Nil)
+    }
+
     it("should encode a list of all NAs and decode back to all NAs") (pending)
 
     it("should encode a mix of NAs and Ints and decode iterate and skip NAs") {
