@@ -10,6 +10,8 @@ lazy val schema = (project in file("schema")).dependsOn(flatbuffers)
 
 lazy val flatbuffers = (project in file("flatbuffers"))
                          .settings(mySettings:_*)
+                         .settings(version := "0.1.2")
+                         .settings(publish := {})   // flatbuffers never changes
 
 lazy val filoScala = (project in file("filo-scala")).dependsOn(schema, flatbuffers)
                         .settings(mySettings:_*)
