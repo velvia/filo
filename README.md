@@ -79,8 +79,9 @@ also methods for accessing and iterating over all elements.
 ### Converting rows to Filo columnar chunks
 
 Please see `RowToColumnBuilder` and the `RowToColumnBuilderTest` for an example.
-There is a convenience function to convert a whole bunch of rows at once.  Also
-see `RowExtractorTest` for an example of converting columns back to rows.
+There is a convenience function to convert a whole bunch of rows at once.
+
+Also see `FiloRowReader` for extracting rows out of a bunch of heterogeneous Filo vectors.  Both this and the `RowToColumnBuilder` works with `RowReader`s, to facilitate composing rows to and from Filo vectors.
 
 ### Support for Seq[A] and Seq[Option[A]]
 
