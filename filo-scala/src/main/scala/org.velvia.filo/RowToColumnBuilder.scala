@@ -2,6 +2,8 @@ package org.velvia.filo
 
 import java.nio.ByteBuffer
 import scala.language.existentials
+import scala.language.postfixOps
+import scalaxy.loops._
 
 import BuilderEncoder.{EncodingHint, AutoDetect}
 
@@ -23,36 +25,35 @@ object RowToColumnBuilder {
    * A convenience method to turn a bunch of rows R to Filo serialized columnar chunks.
    * @param rows the rows to convert to columnar chunks
    * @param schema a Seq of IngestColumn describing the [[ColumnBuilder]] used for each column
-   * @param ingestSupport something to convert from a row R to specific types
    * @param hint an EncodingHint for the encoder
    * @return a Map of column name to the byte chunks
    */
-  def buildFromRows[R](rows: Seq[R],
-                       schema: Seq[IngestColumn],
-                       ingestSupport: RowIngestSupport[R],
-                       hint: EncodingHint = AutoDetect): Map[String, ByteBuffer] = {
-    val builder = new RowToColumnBuilder(schema, ingestSupport)
+  def buildFromRows(rows: Iterator[RowReader],
+                    schema: Seq[IngestColumn],
+                    hint: EncodingHint = AutoDetect): Map[String, ByteBuffer] = {
+    val builder = new RowToColumnBuilder(schema)
     rows.foreach(builder.addRow)
     builder.convertToBytes(hint)
   }
 }
 
 /**
- * Class to help transpose a set of rows of type R to ByteBuffer-backed columns.
+ * Class to help transpose a set of rows to Filo binary columns.
  * @param schema a Seq of IngestColumn describing the data type used for each column
- * @param ingestSupport something to convert from a row R to specific types
  *
  * TODO: Add stats about # of rows, chunks/buffers encoded, bytes encoded, # NA's etc.
  */
-class RowToColumnBuilder[R](schema: Seq[IngestColumn], ingestSupport: RowIngestSupport[R]) {
+class RowToColumnBuilder(schema: Seq[IngestColumn]) {
   val builders = schema.map { case IngestColumn(_, dataType) => ColumnBuilder(dataType) }
+  val numColumns = schema.length
 
-  val ingestFuncs: Seq[(R, Int) => Unit] = builders.map {
-    case b: IntColumnBuilder    => (r: R, c: Int) => b.addOption(ingestSupport.getInt(r, c))
-    case b: LongColumnBuilder   => (r: R, c: Int) => b.addOption(ingestSupport.getLong(r, c))
-    case b: DoubleColumnBuilder => (r: R, c: Int) => b.addOption(ingestSupport.getDouble(r, c))
-    case b: StringColumnBuilder => (r: R, c: Int) => b.addOption(ingestSupport.getString(r, c))
-  }
+  // Extract out a value assuming it is available and add to builder
+  val ingestFuncs: Array[RowReader => Unit] = builders.zipWithIndex.map {
+    case (b: IntColumnBuilder,    c) => (r: RowReader) => b.addData(r.getInt(c))
+    case (b: LongColumnBuilder,   c) => (r: RowReader) => b.addData(r.getLong(c))
+    case (b: DoubleColumnBuilder, c) => (r: RowReader) => b.addData(r.getDouble(c))
+    case (b: StringColumnBuilder, c) => (r: RowReader) => b.addData(r.getString(c))
+  }.toArray
 
   /**
    * Resets the ColumnBuilders.  Call this before the next batch of rows to transpose.
@@ -66,9 +67,10 @@ class RowToColumnBuilder[R](schema: Seq[IngestColumn], ingestSupport: RowIngestS
    * Adds a single row of data to each of the ColumnBuilders.
    * @param row the row of data to transpose.  Each column will be added to the right Builders.
    */
-  def addRow(row: R): Unit = {
-    ingestFuncs.zipWithIndex.foreach { case (func, i) =>
-      func(row, i)
+  def addRow(row: RowReader): Unit = {
+    for { i <- 0 until numColumns optimized } {
+      if (row.notNull(i)) { ingestFuncs(i)(row) }
+      else                { builders(i).addNA }
     }
   }
 

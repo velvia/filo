@@ -20,8 +20,8 @@ class RowToColumnBuilderTest extends FunSpec with Matchers {
     import ColumnParser._
 
     it("should add rows and convert them to Filo binary Seqs") {
-      val rtcb = new RowToColumnBuilder(schema, TupleRowIngestSupport)
-      rows.foreach(rtcb.addRow)
+      val rtcb = new RowToColumnBuilder(schema)
+      rows.map(TupleRowReader).foreach(rtcb.addRow)
       rtcb.addEmptyRow()
       val columnData = rtcb.convertToBytes()
 
@@ -36,7 +36,8 @@ class RowToColumnBuilderTest extends FunSpec with Matchers {
     }
 
     it("convenience func should turn rows into bytes") {
-      val columnData = RowToColumnBuilder.buildFromRows(rows, schema, TupleRowIngestSupport,
+      val columnData = RowToColumnBuilder.buildFromRows(rows.map(TupleRowReader).toIterator,
+                                                        schema,
                                                         BuilderEncoder.SimpleEncoding)
       columnData.keys should equal (Set("name", "age"))
       val nameBinSeq = ColumnParser.parse[String](columnData("name"))
