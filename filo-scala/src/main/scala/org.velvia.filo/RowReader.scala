@@ -76,10 +76,14 @@ object RowReader {
 /**
  * A RowReader designed for iteration over rows of multiple Filo vectors, ideally all
  * with the same length.
+ * An Iterator[RowReader] sets the rowNo and returns this RowReader, and
+ * the application is responsible for calling the right method to extract each value.
+ * For example, a Spark Row can inherit from RowReader.
+ * Thus, this is not appropriate for Seq[RowReader].
  */
 abstract class FiloRowReader extends RowReader {
   def parsers: Array[ColumnWrapper[_]]
-  def rowNo: Int
+  var rowNo: Int = -1
 
   final def notNull(columnNo: Int): Boolean = parsers(columnNo).isAvailable(rowNo)
   final def getInt(columnNo: Int): Int = parsers(columnNo).asInstanceOf[ColumnWrapper[Int]](rowNo)
@@ -90,15 +94,10 @@ abstract class FiloRowReader extends RowReader {
 }
 
 /**
- * An Iterator[RowReader] sets the rowNo and returns this RowReader, and
- * the application is responsible for calling the right method to extract each value.
- * For example, a Spark Row can inherit from RowReader.
- * Thus, this is not appropriate for Seq[RowReader].
+ * Just a concrete implementation.
  */
 class FastFiloRowReader(chunks: Array[ByteBuffer], classes: Array[Class[_]]) extends FiloRowReader {
   import ColumnParser._
-
-  var rowNo: Int = -1
 
   require(chunks.size == classes.size, "chunks must be same length as classes")
 
