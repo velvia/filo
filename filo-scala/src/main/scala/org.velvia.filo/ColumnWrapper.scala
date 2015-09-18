@@ -25,6 +25,11 @@ trait ColumnWrapper[@specialized(Int, Double, Long, Short) A] extends Traversabl
   def apply(index: Int): A
 
   /**
+   * Same as apply(), but returns Any, forcing to be an object.
+   */
+  def boxed(index: Int): Any = apply(index).asInstanceOf[Any]
+
+  /**
    * Returns the number of elements in the column.
    */
   def length: Int

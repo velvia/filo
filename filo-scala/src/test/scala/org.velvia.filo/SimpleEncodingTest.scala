@@ -41,6 +41,8 @@ class SimpleEncodingTest extends FunSpec with Matchers {
       sc.isAvailable(1) should equal (true)
       sc.isAvailable(4) should equal (false)
       sc(1) should equal (101)
+      sc.boxed(2) should equal (102)
+      sc.boxed(2) shouldBe a [java.lang.Integer]
       sc.get(0) should equal (None)
       sc.get(-1) should equal (None)
       sc.get(2) should equal (Some(102))
