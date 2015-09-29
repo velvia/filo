@@ -19,7 +19,8 @@ trait RowReader {
  * An example of a RowReader that can read from Scala tuples containing Option[_]
  */
 case class TupleRowReader(tuple: Product) extends RowReader {
-  def notNull(columnNo: Int): Boolean = tuple.productElement(columnNo) != None
+  def notNull(columnNo: Int): Boolean =
+    tuple.productElement(columnNo).asInstanceOf[Option[Any]].nonEmpty
   def getInt(columnNo: Int): Int = tuple.productElement(columnNo) match {
     case Some(x: Int) => x
   }
