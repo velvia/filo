@@ -24,7 +24,19 @@ class SimpleEncodingTest extends FunSpec with Matchers {
       sc.toList should equal (Nil)
     }
 
-    it("should encode a list of all NAs and decode back to all NAs") (pending)
+    it("should encode a list of all NAs and decode back to all NAs") {
+      val cb = new IntColumnBuilder
+      cb.addNA
+      val buf = BuilderEncoder.builderToBuffer(cb, SimpleEncoding)
+      val sc = ColumnParser.parse[Int](buf)
+
+      sc.length should equal (1)
+      sc(0)   // Just to make sure this does not throw an exception
+      intercept[ArrayIndexOutOfBoundsException] { sc(1) }
+      sc.isAvailable(0) should equal (false)
+      sc.toList should equal (Nil)
+      sc.optionIterator.toSeq should equal (Seq(None))
+    }
 
     it("should encode a mix of NAs and Ints and decode iterate and skip NAs") {
       val cb = ColumnBuilder(classOf[Int]).asInstanceOf[ColumnBuilder[Int]]

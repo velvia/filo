@@ -26,6 +26,6 @@ object SimpleEncoders {
       SimpleColumn.addVector(fbb, dataOffset)
       SimpleColumn.addVectorType(fbb, dataType)
     }
-    finishColumn(fbb, AnyColumn.SimpleColumn)
+    finishColumn(fbb, AnyColumn.SimpleColumn, data.length)
   }
 }

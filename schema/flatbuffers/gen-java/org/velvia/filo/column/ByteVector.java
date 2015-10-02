@@ -7,8 +7,10 @@ import java.lang.*;
 import java.util.*;
 import com.google.flatbuffers.*;
 
-public class ByteVector extends Table {
-  public static ByteVector getRootAsByteVector(ByteBuffer _bb) { _bb.order(ByteOrder.LITTLE_ENDIAN); return (new ByteVector()).__init(_bb.getInt(_bb.position()) + _bb.position(), _bb); }
+@SuppressWarnings("unused")
+public final class ByteVector extends Table {
+  public static ByteVector getRootAsByteVector(ByteBuffer _bb) { return getRootAsByteVector(_bb, new ByteVector()); }
+  public static ByteVector getRootAsByteVector(ByteBuffer _bb, ByteVector obj) { _bb.order(ByteOrder.LITTLE_ENDIAN); return (obj.__init(_bb.getInt(_bb.position()) + _bb.position(), _bb)); }
   public ByteVector __init(int _i, ByteBuffer _bb) { bb_pos = _i; bb = _bb; return this; }
 
   public byte dataType() { int o = __offset(4); return o != 0 ? bb.get(o + bb_pos) : 0; }

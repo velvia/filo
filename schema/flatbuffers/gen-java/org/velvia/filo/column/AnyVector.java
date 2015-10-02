@@ -2,7 +2,8 @@
 
 package org.velvia.filo.column;
 
-public class AnyVector {
+public final class AnyVector {
+  private AnyVector() { }
   public static final byte NONE = 0;
   public static final byte ByteVector = 1;
   public static final byte ShortVector = 2;

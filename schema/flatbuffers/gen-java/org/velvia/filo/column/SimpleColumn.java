@@ -7,8 +7,10 @@ import java.lang.*;
 import java.util.*;
 import com.google.flatbuffers.*;
 
-public class SimpleColumn extends Table {
-  public static SimpleColumn getRootAsSimpleColumn(ByteBuffer _bb) { _bb.order(ByteOrder.LITTLE_ENDIAN); return (new SimpleColumn()).__init(_bb.getInt(_bb.position()) + _bb.position(), _bb); }
+@SuppressWarnings("unused")
+public final class SimpleColumn extends Table {
+  public static SimpleColumn getRootAsSimpleColumn(ByteBuffer _bb) { return getRootAsSimpleColumn(_bb, new SimpleColumn()); }
+  public static SimpleColumn getRootAsSimpleColumn(ByteBuffer _bb, SimpleColumn obj) { _bb.order(ByteOrder.LITTLE_ENDIAN); return (obj.__init(_bb.getInt(_bb.position()) + _bb.position(), _bb)); }
   public SimpleColumn __init(int _i, ByteBuffer _bb) { bb_pos = _i; bb = _bb; return this; }
 
   public NaMask naMask() { return naMask(new NaMask()); }

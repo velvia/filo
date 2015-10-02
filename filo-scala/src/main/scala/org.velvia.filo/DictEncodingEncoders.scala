@@ -45,6 +45,6 @@ object DictEncodingEncoders {
       DictStringColumn.addCodes(fbb, dataOffset)
       DictStringColumn.addCodesType(fbb, dataType)
     }
-    finishColumn(fbb, AnyColumn.DictStringColumn)
+    finishColumn(fbb, AnyColumn.DictStringColumn, data.length)
   }
 }

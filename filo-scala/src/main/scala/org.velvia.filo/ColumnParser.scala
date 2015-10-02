@@ -72,7 +72,7 @@ object ColumnParser {
         case AnyColumn.DictStringColumn =>
           val dsc = new DictStringColumn
           column.col(dsc)
-          if (dsc.codesType == 0) return new EmptyColumnWrapper[String]
+          if (dsc.codesType == 0) return new EmptyColumnWrapper[String](column.len)
           val vector = VectorUtils.getVectorFromType(dsc.codesType)
           dsc.codes(vector)
           vector match {
@@ -108,7 +108,7 @@ trait SimpleColumnMaker[A] extends ColumnMaker[A] {
     val sc = new SimpleColumn
     c.col(sc)
     if (sc.naMask.maskType == MaskType.AllOnes) {
-      new EmptyColumnWrapper[A]
+      new EmptyColumnWrapper[A](c.len)
     } else {
       val vector = VectorUtils.getVectorFromType(sc.vectorType)
       sc.vector(vector)
@@ -117,7 +117,7 @@ trait SimpleColumnMaker[A] extends ColumnMaker[A] {
   }
 
   def makeColumn(buf: ByteBuffer): ColumnWrapper[A] = {
-    if (buf == null) return new EmptyColumnWrapper[A]
+    if (buf == null) return new EmptyColumnWrapper[A](0)
     val column = Column.getRootAsColumn(buf)
     require(column.colType == AnyColumn.SimpleColumn,
             "Not a SimpleColumn, but a " + AnyColumn.name(column.colType))

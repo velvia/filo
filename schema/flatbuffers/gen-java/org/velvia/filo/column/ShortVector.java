@@ -7,8 +7,10 @@ import java.lang.*;
 import java.util.*;
 import com.google.flatbuffers.*;
 
-public class ShortVector extends Table {
-  public static ShortVector getRootAsShortVector(ByteBuffer _bb) { _bb.order(ByteOrder.LITTLE_ENDIAN); return (new ShortVector()).__init(_bb.getInt(_bb.position()) + _bb.position(), _bb); }
+@SuppressWarnings("unused")
+public final class ShortVector extends Table {
+  public static ShortVector getRootAsShortVector(ByteBuffer _bb) { return getRootAsShortVector(_bb, new ShortVector()); }
+  public static ShortVector getRootAsShortVector(ByteBuffer _bb, ShortVector obj) { _bb.order(ByteOrder.LITTLE_ENDIAN); return (obj.__init(_bb.getInt(_bb.position()) + _bb.position(), _bb)); }
   public ShortVector __init(int _i, ByteBuffer _bb) { bb_pos = _i; bb = _bb; return this; }
 
   public short data(int j) { int o = __offset(4); return o != 0 ? bb.getShort(__vector(o) + j * 2) : 0; }

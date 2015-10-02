@@ -7,13 +7,14 @@ import java.lang.*;
 import java.util.*;
 import com.google.flatbuffers.*;
 
-public class DictStringColumn extends Table {
-  public static DictStringColumn getRootAsDictStringColumn(ByteBuffer _bb) { _bb.order(ByteOrder.LITTLE_ENDIAN); return (new DictStringColumn()).__init(_bb.getInt(_bb.position()) + _bb.position(), _bb); }
+@SuppressWarnings("unused")
+public final class DictStringColumn extends Table {
+  public static DictStringColumn getRootAsDictStringColumn(ByteBuffer _bb) { return getRootAsDictStringColumn(_bb, new DictStringColumn()); }
+  public static DictStringColumn getRootAsDictStringColumn(ByteBuffer _bb, DictStringColumn obj) { _bb.order(ByteOrder.LITTLE_ENDIAN); return (obj.__init(_bb.getInt(_bb.position()) + _bb.position(), _bb)); }
   public DictStringColumn __init(int _i, ByteBuffer _bb) { bb_pos = _i; bb = _bb; return this; }
 
   public String dictionary(int j) { int o = __offset(4); return o != 0 ? __string(__vector(o) + j * 4) : null; }
   public int dictionaryLength() { int o = __offset(4); return o != 0 ? __vector_len(o) : 0; }
-  public ByteBuffer dictionaryAsByteBuffer() { return __vector_as_bytebuffer(4, 4); }
   public byte codesType() { int o = __offset(6); return o != 0 ? bb.get(o + bb_pos) : 0; }
   public Table codes(Table obj) { int o = __offset(8); return o != 0 ? __union(obj, o) : null; }
 

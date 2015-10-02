@@ -2,7 +2,8 @@
 
 package org.velvia.filo.column;
 
-public class AnyColumn {
+public final class AnyColumn {
+  private AnyColumn() { }
   public static final byte NONE = 0;
   public static final byte SimpleColumn = 1;
   public static final byte DictStringColumn = 2;

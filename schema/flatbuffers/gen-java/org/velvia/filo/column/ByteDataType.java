@@ -2,7 +2,8 @@
 
 package org.velvia.filo.column;
 
-public class ByteDataType {
+public final class ByteDataType {
+  private ByteDataType() { }
   public static final byte TByte = 0;
   public static final byte TNibble = 1;
   public static final byte TBit = 2;

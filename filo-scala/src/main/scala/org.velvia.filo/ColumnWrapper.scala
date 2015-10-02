@@ -52,11 +52,17 @@ trait ColumnWrapper[@specialized(Int, Double, Long, Short) A] extends Traversabl
     for { index <- (0 until length).toIterator } yield { get(index) }
 }
 
-class EmptyColumnWrapper[A] extends ColumnWrapper[A] {
+/**
+ * Represents either an empty column (length 0) or a column where none of the
+ * values are available (null).
+ */
+class EmptyColumnWrapper[A](len: Int) extends ColumnWrapper[A] {
   final def isAvailable(index: Int): Boolean = false
   final def foreach[B](fn: A => B): Unit = {}
-  final def apply(index: Int): A = throw new ArrayIndexOutOfBoundsException
-  final def length: Int = 0
+  final def apply(index: Int): A =
+    if (index < len) { null.asInstanceOf[A] }
+    else { throw new ArrayIndexOutOfBoundsException }
+  final def length: Int = len
 }
 
 // TODO: separate this out into traits for AllZeroes vs mixed ones for speed, no need to do

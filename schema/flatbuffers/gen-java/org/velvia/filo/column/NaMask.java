@@ -7,12 +7,16 @@ import java.lang.*;
 import java.util.*;
 import com.google.flatbuffers.*;
 
-public class NaMask extends Table {
-  public static NaMask getRootAsNaMask(ByteBuffer _bb) { _bb.order(ByteOrder.LITTLE_ENDIAN); return (new NaMask()).__init(_bb.getInt(_bb.position()) + _bb.position(), _bb); }
+@SuppressWarnings("unused")
+public final class NaMask extends Table {
+  public static NaMask getRootAsNaMask(ByteBuffer _bb) { return getRootAsNaMask(_bb, new NaMask()); }
+  public static NaMask getRootAsNaMask(ByteBuffer _bb, NaMask obj) { _bb.order(ByteOrder.LITTLE_ENDIAN); return (obj.__init(_bb.getInt(_bb.position()) + _bb.position(), _bb)); }
   public NaMask __init(int _i, ByteBuffer _bb) { bb_pos = _i; bb = _bb; return this; }
 
   public byte maskType() { int o = __offset(4); return o != 0 ? bb.get(o + bb_pos) : 2; }
-  /// for type = SimpleBitMask
+  /**
+   * for type = SimpleBitMask
+   */
   public long bitMask(int j) { int o = __offset(6); return o != 0 ? bb.getLong(__vector(o) + j * 8) : 0; }
   public int bitMaskLength() { int o = __offset(6); return o != 0 ? __vector_len(o) : 0; }
   public ByteBuffer bitMaskAsByteBuffer() { return __vector_as_bytebuffer(6, 8); }

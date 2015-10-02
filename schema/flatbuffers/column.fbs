@@ -69,6 +69,7 @@ union AnyColumn { SimpleColumn, DictStringColumn }
 
 table Column {
   col: AnyColumn (required);
+  len: int;
 }
 
 root_type Column;

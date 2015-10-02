@@ -2,7 +2,8 @@
 
 package org.velvia.filo.column;
 
-public class MaskType {
+public final class MaskType {
+  private MaskType() { }
   public static final byte AllZeroes = 0;
   public static final byte SimpleBitMask = 1;
   public static final byte AllOnes = 2;

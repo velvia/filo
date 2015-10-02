@@ -79,11 +79,11 @@ object Utils {
 
   // Just finishes the Column and returns the ByteBuffer.
   // It would be nice to wrap the lifecycle, but too many intricacies with building a FB now.
-  def finishColumn(fbb: FlatBufferBuilder, colType: Byte): ByteBuffer = {
+  def finishColumn(fbb: FlatBufferBuilder, colType: Byte, dataLen: Int): ByteBuffer = {
     // We want to at least throw an error here if colType is not in the valid range.
     // Better than writing out a random type byte and failing upon read.
     AnyColumn.name(colType)
-    val colOffset = Column.createColumn(fbb, colType, fbb.endObject())
+    val colOffset = Column.createColumn(fbb, colType, fbb.endObject(), dataLen)
     Column.finishColumnBuffer(fbb, colOffset)
     fbb.dataBuffer()
   }
