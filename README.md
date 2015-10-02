@@ -28,6 +28,14 @@ Just started.  Consider the wire format not stable.  First priority is to stabil
 
 I considered Cap'n Proto, but that has some issues in the Java client that needs to be worked out first.
 
+## Getting Started
+
+1. Clone the Google Flatbuffers [repo](https://github.com/google/flatbuffers).
+1. Install cmake - on OSX: `brew install cmake`
+1. `cmake -G "Unix Makefiles"`
+2. Run `make` at the root of the flatbuffers dir
+3. Put the `flatc` compiler binary in your path
+
 ## Filo-Scala
 
 Get it here:
