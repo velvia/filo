@@ -1,9 +1,9 @@
 package org.velvia.filo
 
 import com.google.flatbuffers.FlatBufferBuilder
-import framian.column.{Mask, MaskBuilder}
 import java.nio.ByteBuffer
 import org.velvia.filo.column._
+import scala.collection.mutable.BitSet
 import scala.reflect.ClassTag
 
 /**
@@ -15,7 +15,7 @@ import scala.reflect.ClassTag
  */
 sealed abstract class ColumnBuilder[A](empty: A)(implicit val classTagA: ClassTag[A]) {
   // True for a row number (or bit is part of the set) if data for that row is not available
-  val naMask = new MaskBuilder
+  val naMask = new BitSet
   val data = new collection.mutable.ArrayBuffer[A]
 
   def addNA(): Unit = {

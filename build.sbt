@@ -17,7 +17,6 @@ lazy val filoScala = (project in file("filo-scala")).dependsOn(schema, flatbuffe
                         .settings(mySettings:_*)
                         .settings(name := "filo-scala")
                         .settings(libraryDependencies ++= deps)
-                        .settings(resolvers ++= myResolvers)
 
 lazy val filoScalaJmh = (project in file("filo-scala-jmh")).dependsOn(filoScala)
                         .settings(mySettings:_*)
@@ -28,16 +27,15 @@ lazy val filoScalaJmh = (project in file("filo-scala-jmh")).dependsOn(filoScala)
 
 lazy val filo = (project in file(".")).aggregate(schema, flatbuffers, filoScala)
 
-lazy val myResolvers = Seq("Pellucid Bintray" at "http://dl.bintray.com/pellucid/maven")
-
 releaseSettings ++ publishSettings
 
 publish := {}   // should only affect the root project.  Don't want publish to error out.
 
-lazy val deps = Seq("com.pellucid" %% "framian" % "0.3.3",
-                    "com.nativelibs4java" %% "scalaxy-loops" % "0.3.3" % "provided",
-                    "org.scalatest" %% "scalatest" % "2.1.0" % "test",
-                    "org.scalacheck" %% "scalacheck" % "1.11.0" % "test")
+lazy val deps = Seq(
+  "org.scodec"             %% "scodec-bits"   % "1.0.10",
+  "com.nativelibs4java"    %% "scalaxy-loops" % "0.3.3" % "provided",
+  "org.scalatest"          %% "scalatest"     % "2.1.0" % "test",
+  "org.scalacheck"         %% "scalacheck"    % "1.11.0" % "test")
 
 lazy val compileJavaSchema = taskKey[Unit]("Run flatc compiler to generate Java classes for schema")
 lazy val compileJavaSchemaTask = compileJavaSchema := {

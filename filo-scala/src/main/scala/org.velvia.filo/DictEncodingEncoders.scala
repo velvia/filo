@@ -1,9 +1,9 @@
 package org.velvia.filo
 
 import com.google.flatbuffers.FlatBufferBuilder
-import framian.column.Mask
 import java.nio.ByteBuffer
 import org.velvia.filo.column._
+import scala.collection.mutable.BitSet
 
 /**
  * Encoders for dictionary encoding/compression
@@ -24,7 +24,7 @@ object DictEncodingEncoders {
     else                     { intVectorBuilder(fbb, data) }
   }
 
-  def toDictStringColumn(data: Seq[String], naMask: Mask, stringSet: collection.Set[String]): ByteBuffer = {
+  def toDictStringColumn(data: Seq[String], naMask: BitSet, stringSet: collection.Set[String]): ByteBuffer = {
     count += 1
 
     // Convert the set of strings to an encoding

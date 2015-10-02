@@ -1,9 +1,9 @@
 package org.velvia.filo
 
 import com.google.flatbuffers.{FlatBufferBuilder, Table}
-import framian.column.Mask
 import java.nio.ByteBuffer
 import org.velvia.filo.column._
+import scala.collection.mutable.BitSet
 
 /**
  * Common utilities for creating FlatBuffers, including mask and data vector building
@@ -16,10 +16,10 @@ object Utils {
   val SizeOfInt = 4
 
   // Returns true if every element in the data to be encoded is marked as NA (mask is set)
-  def isDataEmpty(mask: Mask, dataLength: Int): Boolean = mask.size == dataLength
+  def isDataEmpty(mask: BitSet, dataLength: Int): Boolean = mask.size == dataLength
 
   // (offset of mask table, true if all NAs / bitmask full / empty data
-  def populateNaMask(fbb: FlatBufferBuilder, mask: Mask, dataLen: Int): (Int, Boolean) = {
+  def populateNaMask(fbb: FlatBufferBuilder, mask: BitSet, dataLen: Int): (Int, Boolean) = {
     val empty = mask.size == 0
     val full = isDataEmpty(mask, dataLen)
     var bitMaskOffset = 0
@@ -29,7 +29,7 @@ object Utils {
     // RoaringBitmap is really cool, but very space inefficient when you have less than 4096 integers
     //    it's much better when you have 100000 or more rows
     // NOTE: we cannot nest structure creation, so have to create bitmask vector first :(
-    if (!empty && !full) bitMaskOffset = NaMask.createBitMaskVector(fbb, mask.toBitSet.toBitMask)
+    if (!empty && !full) bitMaskOffset = NaMask.createBitMaskVector(fbb, mask.toBitMask)
 
     NaMask.startNaMask(fbb)
     NaMask.addMaskType(fbb, if (full)       { MaskType.AllOnes }
