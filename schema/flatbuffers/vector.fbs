@@ -1,0 +1,50 @@
+// Google FlatBuffers IDL for efficient, zero-copy serialized data vectors
+// http://google.github.io/flatbuffers/index.html
+//
+// Please stick to FlatBuffers versioning guide for backwards compatibility
+
+namespace org.velvia.filo.vector;
+
+// Many vectors have a bitmask for representing NA values.
+// AllZeroes = every value is available;  AllOnes = no value is available == empty
+enum MaskType : byte { AllZeroes, SimpleBitMask, AllOnes }
+
+table NaMask {
+  maskType: MaskType = AllOnes;
+  /// for type = SimpleBitMask
+  bitMask: [long];
+}
+
+// Designed to hold fixed-size element data vectors.  nbits bits per element.
+// Note that len is the number of elements, which is not the same as data.length,
+// which is simply the number of bytes.
+// The Simple* types are optimized for very few NA values.  If most values are missing, we might
+// want a very different representation.
+table SimplePrimitiveVector {
+  len: int;
+  naMask: NaMask;
+  nbits: ubyte;
+  data: [ubyte];
+}
+
+root_type SimplePrimitiveVector;
+
+table SimpleStringVector {
+  naMask: NaMask;
+  data: [string];
+}
+
+root_type SimpleStringVector;
+
+// Dictionary encoded string column, with NA/missing value support
+// The 0 value for a code is reserved for NA.  This means dictionary size is actually 1 + (# uniques).
+// In most cases, this results in smaller binaries (no naMask)
+// Also codes must translate to an integer type.
+table DictStringVector {
+  len: int;
+  dictionary: [string];
+  nbits: ubyte;
+  codes: [ubyte];
+}
+
+root_type DictStringVector;

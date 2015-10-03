@@ -12,6 +12,7 @@ src_managed/
 project/boot/
 project/plugins/project/
 
+.DS_Store
 .history
 
 # Scala-IDE specific

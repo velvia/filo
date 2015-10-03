@@ -1,6 +1,6 @@
 // automatically generated, do not modify
 
-package org.velvia.filo.column;
+package org.velvia.filo.vector;
 
 public final class MaskType {
   private MaskType() { }

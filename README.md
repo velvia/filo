@@ -11,7 +11,7 @@ The Scala implementation IntColumns have been clocked at 2 billion integer reads
 
 ## Properties
 
-* A wire format for efficient data vectors for reading with zero or minimal/lazy deserialization
+* A [wire format](wire_format.md) for efficient data vectors for reading with zero or minimal/lazy deserialization
     - Very compact and fast string vectors using cached dictionary encoding
     - Numeric vectors stored using smaller number of bits if possible
 * Random or linear access, no need to deserialize everything for random access

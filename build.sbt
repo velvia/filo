@@ -39,7 +39,7 @@ lazy val deps = Seq(
 
 lazy val compileJavaSchema = taskKey[Unit]("Run flatc compiler to generate Java classes for schema")
 lazy val compileJavaSchemaTask = compileJavaSchema := {
-  val result = "flatc -j -o schema/flatbuffers/gen-java schema/flatbuffers/column.fbs".!!
+  val result = "flatc -j -o schema/flatbuffers/gen-java schema/flatbuffers/vector.fbs".!!
   println(s"*** Generated Java classes from FlatBuffer schema\n  results: $result")
 }
 
