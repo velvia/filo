@@ -22,6 +22,8 @@ The valid values of the vector type:
 | 0x00000103  | DictStringVector   | FlatBuffer Vector with dictionary-encoded strings |
 | 0x00000004  | RLEPrimitiveVector | FlatBuffer Run-Length-Encoded vector for primitives |
 
+See `WireFormat.scala` for code definitions.
+
 ## Data vector type
 
 Many of the vectors consists of at least one fixed-size element arrays.  These data vectors are, for flexibility and compactness, not represented with the native FlatBuffer arrays, but rather with two elements:

@@ -1,0 +1,17 @@
+include "vector.fbs";
+
+namespace org.velvia.filo.vector;
+
+// Designed to hold fixed-size element data vectors.  nbits bits per element.
+// Note that len is the number of elements, which is not the same as data.length,
+// which is simply the number of bytes.
+// The Simple* types are optimized for very few NA values.  If most values are missing, we might
+// want a very different representation.
+table SimplePrimitiveVector {
+  len: int;
+  naMask: NaMask;
+  info: DataInfo;
+  data: [ubyte];
+}
+
+root_type SimplePrimitiveVector;

@@ -36,5 +36,6 @@ public final class SimpleStringVector extends Table {
     int o = builder.endObject();
     return o;
   }
+  public static void finishSimpleStringVectorBuffer(FlatBufferBuilder builder, int offset) { builder.finish(offset); }
 };
 

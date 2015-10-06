@@ -1,0 +1,11 @@
+include "vector.fbs";
+
+namespace org.velvia.filo.vector;
+
+table SimpleStringVector {
+  naMask: NaMask;
+  data: [string];
+}
+
+root_type SimpleStringVector;
+
