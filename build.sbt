@@ -10,7 +10,7 @@ lazy val schema = (project in file("schema")).dependsOn(flatbuffers)
 
 lazy val flatbuffers = (project in file("flatbuffers"))
                          .settings(mySettings:_*)
-                         .settings(version := "0.1.2")
+                         .settings(version := "0.2.0")
                          .settings(publish := {})   // flatbuffers never changes
 
 lazy val filoScala = (project in file("filo-scala")).dependsOn(schema, flatbuffers)
@@ -39,8 +39,11 @@ lazy val deps = Seq(
 
 lazy val compileJavaSchema = taskKey[Unit]("Run flatc compiler to generate Java classes for schema")
 lazy val compileJavaSchemaTask = compileJavaSchema := {
-  val result = "flatc -j -o schema/flatbuffers/gen-java schema/flatbuffers/vector.fbs".!!
-  println(s"*** Generated Java classes from FlatBuffer schema\n  results: $result")
+  val schemaFiles = ("ls -1 schema/flatbuffers/".!!).split("\n")
+  schemaFiles.filter(_.endsWith(".fbs")).foreach { schema =>
+    val result = s"flatc -j -o schema/flatbuffers/gen-java schema/flatbuffers/$schema".!!
+    println(s"*** Generated Java classes from FlatBuffer schema $schema.  Results: $result")
+  }
 }
 
 //////////////////////////

@@ -18,12 +18,14 @@ package com.google.flatbuffers;
 
 import static com.google.flatbuffers.Constants.*;
 import java.nio.ByteBuffer;
-import java.nio.charset.Charset;
+import java.nio.ByteOrder;
 
 // All tables in the generated code derive from this class, and add their own accessors.
 public class Table {
   protected int bb_pos;
   protected ByteBuffer bb;
+
+  public ByteBuffer getByteBuffer() { return bb; }
 
   // Look up a field in the vtable, return an offset into the object, or 0 if the field is not
   // present.
@@ -45,16 +47,16 @@ public class Table {
   protected String __string(int offset) {
     offset += bb.getInt(offset);
     if (bb.hasArray()) {
-      return new String(bb.array(), offset + SIZEOF_INT, bb.getInt(offset), Charset.forName("UTF-8"));
+      return new String(bb.array(), bb.arrayOffset() + offset + SIZEOF_INT, bb.getInt(offset), FlatBufferBuilder.utf8charset);
     } else {
-      // We can't access .array(), since the ByteBuffer is read-only.
+      // We can't access .array(), since the ByteBuffer is read-only,
+      // off-heap or a memory map
+      ByteBuffer bb = this.bb.duplicate().order(ByteOrder.LITTLE_ENDIAN);
       // We're forced to make an extra copy:
       byte[] copy = new byte[bb.getInt(offset)];
-      int old_pos = bb.position();
       bb.position(offset + SIZEOF_INT);
       bb.get(copy);
-      bb.position(old_pos);
-      return new String(copy, 0, copy.length, Charset.forName("UTF-8"));
+      return new String(copy, 0, copy.length, FlatBufferBuilder.utf8charset);
     }
   }
 
@@ -78,12 +80,11 @@ public class Table {
   protected ByteBuffer __vector_as_bytebuffer(int vector_offset, int elem_size) {
     int o = __offset(vector_offset);
     if (o == 0) return null;
-    int old_pos = bb.position();
-    bb.position(__vector(o));
-    ByteBuffer nbb = bb.slice();
-    bb.position(old_pos);
-    nbb.limit(__vector_len(o) * elem_size);
-    return nbb;
+    ByteBuffer bb = this.bb.duplicate().order(ByteOrder.LITTLE_ENDIAN);
+    int vectorstart = __vector(o);
+    bb.position(vectorstart);
+    bb.limit(vectorstart + __vector_len(o) * elem_size);
+    return bb;
   }
 
   // Initialize any Table-derived type to point to the union at the given offset.
