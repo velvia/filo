@@ -39,19 +39,28 @@ class EncodingPropertiesTest extends FunSpec with Matchers with PropertyChecks {
   }
 
   import org.scalacheck._
-  import Gen._
   import Arbitrary.arbitrary
+
+  // Generate a list of bounded integers, every time bound it slightly differently
+  // (to test different int compression techniques)
+  def boundedIntList: Gen[Seq[Option[Int]]] =
+    for {
+      minVal <- Gen.oneOf(Int.MinValue, -65536, -32768, -256, -128, 0)
+      maxVal <- Gen.oneOf(15, 127, 255, 32767, Int.MaxValue)
+      seqOptList <- Gen.containerOf[Seq, Option[Int]](
+                      noneOrThing[Int](Arbitrary(Gen.choose(minVal, maxVal))))
+    } yield { seqOptList }
 
   // Write our own generator to force frequent NA elements
   def noneOrThing[T](implicit a: Arbitrary[T]): Gen[Option[T]] =
     Gen.frequency((5, arbitrary[T].map(Some(_))),
-                  (1, const(None)))
+                  (1, Gen.const(None)))
 
   def optionList[T](implicit a: Arbitrary[T]): Gen[Seq[Option[T]]] =
     Gen.containerOf[Seq, Option[T]](noneOrThing[T])
 
   it("should match elements and length for Int vectors with missing/NA elements") {
-    forAll(optionList[Int]) { s =>
+    forAll(boundedIntList) { s =>
       val buf = seqOptionToBuffer(s, SimpleEncoding)
       val binarySeq = ColumnParser.parse[Int](buf)
 
