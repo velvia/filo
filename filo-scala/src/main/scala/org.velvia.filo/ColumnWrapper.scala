@@ -80,9 +80,9 @@ trait NaMaskAvailable {
       false
     } else {
       // NOTE: length of bitMask may be less than (length / 64) longwords.
-      val maskIndex = index >> 5
+      val maskIndex = index >> 6
       val maskVal = if (maskIndex < maskLen) maskReader.readLong(maskIndex) else 0L
-      (maskVal & (1 << (index & 63))) == 0
+      (maskVal & (1L << (index & 63))) == 0
     }
   }
 }

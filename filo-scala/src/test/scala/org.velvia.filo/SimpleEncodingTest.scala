@@ -79,6 +79,18 @@ class SimpleEncodingTest extends FunSpec with Matchers {
       binarySeq.length should equal (orig.length)
       binarySeq.sum should equal (orig.sum)
     }
+
+    it("should handle NAs properly for Seq[Int] with more than 64 elements") {
+      val orig: Seq[Option[Int]] = Seq(None, None) ++ (2 to 77).map(Some(_)) ++ Seq(None, None)
+      val buf = BuilderEncoder.seqOptionToBuffer(orig, SimpleEncoding)
+      val binarySeq = ColumnParser.parse[Int](buf)
+
+      binarySeq.length should equal (orig.length)
+      binarySeq.isAvailable(77) should be (true)
+      binarySeq.isAvailable(78) should be (false)
+      binarySeq.optionIterator.toSeq should equal (orig)
+      binarySeq.sum should equal ((2 to 77).sum)
+    }
   }
 
   describe("String Encoding") {
