@@ -24,9 +24,7 @@ Perfect for efficiently representing your data for storing in files, mmap, NoSQL
 
 ## Current Status
 
-Just started.  Consider the wire format not stable.  First priority is to stabilize wire format, then stabilize Scala APIs.
-
-I considered Cap'n Proto, but that has some issues in the Java client that needs to be worked out first.
+Wire format is stable; header bytes enable future expansion into even non-FlatBuffer based binary formats.
 
 ## Getting Started
 
