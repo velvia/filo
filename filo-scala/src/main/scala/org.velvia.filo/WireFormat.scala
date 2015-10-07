@@ -13,7 +13,7 @@ object WireFormat {
   def majorVectorType(headerBytes: Int): Int = headerBytes & 0x00ff
   def emptyVectorLen(headerBytes: Int): Int = {
     require(majorVectorType(headerBytes) == VECTORTYPE_EMPTY)
-    headerBytes & 0xffffff00
+    java.lang.Integer.rotateRight(headerBytes & 0xffffff00, 8)
   }
 
   val SUBTYPE_PRIMITIVE = 0x00
@@ -21,10 +21,12 @@ object WireFormat {
   val SUBTYPE_BINARY = 0x02
   val SUBTYPE_FIXEDSTRING = 0x03
 
-  def vectorSubType(headerBytes: Int): Int = headerBytes & 0x00ff00
+  def vectorSubType(headerBytes: Int): Int = (headerBytes & 0x00ff00) >> 8
+
+  val MaxEmptyVectorLen = 0x00ffffff
 
   def emptyVector(len: Int): Int = {
-    require(len <= 0x00ffffff, "Vector len too long")
+    require(len <= MaxEmptyVectorLen, "Vector len too long")
     (len << 8) | VECTORTYPE_EMPTY
   }
 

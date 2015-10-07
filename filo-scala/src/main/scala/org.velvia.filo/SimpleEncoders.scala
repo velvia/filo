@@ -2,7 +2,7 @@ package org.velvia.filo
 
 import com.google.flatbuffers.FlatBufferBuilder
 import java.nio.ByteBuffer
-import org.velvia.filo.column._
+import org.velvia.filo.vector._
 import scala.collection.mutable.BitSet
 
 /**
@@ -14,17 +14,46 @@ object SimpleEncoders {
 
   var count = 0
 
-  def toSimpleColumn[A](data: Seq[A], naMask: BitSet, vectBuilder: DataVectorBuilder[A]): ByteBuffer = {
+  /**
+   * Creates a SimplePrimitiveVector-based Filo vector.
+   * @param min the minimum value from the data points that are available.
+   *            Be careful not to include points from NA parts of the data sequence.
+   */
+  def toPrimitiveVector[A: PrimitiveDataVectBuilder](data: Seq[A],
+                                                     naMask: BitSet,
+                                                     min: A,
+                                                     max: A,
+                                                     signed: Boolean): ByteBuffer = {
+    import SimplePrimitiveVector._
+
+    val vectBuilder = implicitly[PrimitiveDataVectBuilder[A]]
     count += 1
     val fbb = new FlatBufferBuilder(BufferSize)
-    val (naOffset, empty) = populateNaMask(fbb, naMask, data.length)
-    val (dataOffset, dataType) = if (empty) (0, 0.toByte) else vectBuilder(fbb, data)
-    SimpleColumn.startSimpleColumn(fbb)
-    SimpleColumn.addNaMask(fbb, naOffset)
-    if (!empty) {
-      SimpleColumn.addVector(fbb, dataOffset)
-      SimpleColumn.addVectorType(fbb, dataType)
-    }
-    finishColumn(fbb, AnyColumn.SimpleColumn, data.length)
+    val naOffset = populateNaMask(fbb, naMask, data.length)
+    val (dataOffset, nbits) = vectBuilder.build(fbb, data, min, max)
+    startSimplePrimitiveVector(fbb)
+    addNaMask(fbb, naOffset)
+    addLen(fbb, data.length)
+    addData(fbb, dataOffset)
+    addInfo(fbb, DataInfo.createDataInfo(fbb, nbits, signed))
+    finishSimplePrimitiveVectorBuffer(fbb, endSimplePrimitiveVector(fbb))
+    putHeaderAndGet(fbb, WireFormat.VECTORTYPE_SIMPLE, WireFormat.SUBTYPE_PRIMITIVE)
+    // TODO: copy the ByteBuffer out?  Esp if we try to reuse ByteBuffers to avoid allocation costs
+  }
+
+  def toEmptyVector(len: Int): ByteBuffer = {
+    val bb = ByteBuffer.allocate(4)
+    bb.putInt(WireFormat.emptyVector(len))
+    bb.position(0)
+    bb
+  }
+
+  def toStringVector(data: Seq[String], naMask: BitSet): ByteBuffer = {
+    val fbb = new FlatBufferBuilder(BufferSize)
+    val naOffset = populateNaMask(fbb, naMask, data.length)
+    val dataOffset = stringVect(fbb, data)
+    val ssvOffset = SimpleStringVector.createSimpleStringVector(fbb, naOffset, dataOffset)
+    SimpleStringVector.finishSimpleStringVectorBuffer(fbb, ssvOffset)
+    putHeaderAndGet(fbb, WireFormat.VECTORTYPE_SIMPLE, WireFormat.SUBTYPE_STRING)
   }
 }

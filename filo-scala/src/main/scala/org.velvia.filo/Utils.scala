@@ -2,7 +2,7 @@ package org.velvia.filo
 
 import com.google.flatbuffers.{FlatBufferBuilder, Table}
 import java.nio.ByteBuffer
-import org.velvia.filo.column._
+import org.velvia.filo.vector._
 import scala.collection.mutable.BitSet
 
 /**
@@ -16,12 +16,12 @@ object Utils {
   val SizeOfInt = 4
 
   // Returns true if every element in the data to be encoded is marked as NA (mask is set)
-  def isDataEmpty(mask: BitSet, dataLength: Int): Boolean = mask.size == dataLength
+  def isAllNA(mask: BitSet, dataLength: Int): Boolean = mask.size == dataLength
 
-  // (offset of mask table, true if all NAs / bitmask full / empty data
-  def populateNaMask(fbb: FlatBufferBuilder, mask: BitSet, dataLen: Int): (Int, Boolean) = {
+  // @returns offset of mask table
+  def populateNaMask(fbb: FlatBufferBuilder, mask: BitSet, dataLen: Int): Int = {
     val empty = mask.size == 0
-    val full = isDataEmpty(mask, dataLen)
+    val full = isAllNA(mask, dataLen)
     var bitMaskOffset = 0
 
     // Simple bit mask, 1 bit per row
@@ -37,78 +37,68 @@ object Utils {
                             else            { MaskType.SimpleBitMask })
 
     if (!empty && !full) NaMask.addBitMask(fbb, bitMaskOffset)
-    (NaMask.endNaMask(fbb), full)
+    NaMask.endNaMask(fbb)
   }
 
-  type DataVectorBuilder[A] = (FlatBufferBuilder, Seq[A]) => (Int, Byte)
+  private final def roundUp(n: Int, align: Int): Int = ((n + (align - 1)) / align) * align
 
-  def byteVectorBuilder(fbb: FlatBufferBuilder, data: Seq[Byte]): (Int, Byte) = {
-    val vectOffset = ByteVector.createDataVector(fbb, data.toArray)
-    (ByteVector.createByteVector(fbb, ByteDataType.TByte, vectOffset), AnyVector.ByteVector)
+  /**
+   * Sets up and closes the FlatBuffer [ubyte] vector inside of many Filo vectors, figuring
+   * out proper translation to byte vector length and alignment.
+   * NOTE: We don't really use FlatBuffer's individual element read methods, so I suppose the
+   * length in the FBB vector doesn't matter, but it's much better to be consistent to avoid bugs
+   * @param nbits the # of bits per element
+   * @param numElems the number of nbits length elements
+   * @param alignment the byte alignment, eg 1 = byte aligned, 4 = int aligned
+   *        This is basically what chunk size is going to fill up the FBB.
+   *        Should be a power of two, I think.
+   * @param addFunc a func to populate the elements in FBB, in reverse order
+   * @returns (offset, nbits)
+   */
+  def makeByteVector(fbb: FlatBufferBuilder, nbits: Int, numElems: Int, alignment: Int)
+                    (addFunc: FlatBufferBuilder => Unit): (Int, Int) = {
+    fbb.startVector(1, roundUp(nbits * numElems, alignment * 8) / 8, alignment)
+    addFunc(fbb)
+    (fbb.endVector(), nbits)
   }
 
-  def shortVectorBuilder(fbb: FlatBufferBuilder, data: Seq[Short]): (Int, Byte) = {
-    val vectOffset = ShortVector.createDataVector(fbb, data.toArray)
-    (ShortVector.createShortVector(fbb, vectOffset), AnyVector.ShortVector)
+  // Builds the FB [ubyte] vector for data of different types
+  // They are all fed a reverse iterator of items
+  def byteVect(fbb: FlatBufferBuilder, len: Int, reverseElems: Iterator[Byte]): (Int, Int) =
+    makeByteVector(fbb, 8, len, 1) { fbb => reverseElems.foreach(fbb.addByte) }
+
+  def shortVect(fbb: FlatBufferBuilder, len: Int, reverseElems: Iterator[Short]): (Int, Int) =
+    makeByteVector(fbb, 16, len, 2) { fbb => reverseElems.foreach(fbb.addShort) }
+
+  def intVect(fbb: FlatBufferBuilder, len: Int, reverseElems: Iterator[Int]): (Int, Int) =
+    makeByteVector(fbb, 32, len, 4) { fbb => reverseElems.foreach(fbb.addInt) }
+
+  def longVect(fbb: FlatBufferBuilder, len: Int, reverseElems: Iterator[Long]): (Int, Int) =
+    makeByteVector(fbb, 64, len, 8) { fbb => reverseElems.foreach(fbb.addLong) }
+
+  def doubleVect(fbb: FlatBufferBuilder, len: Int, reverseElems: Iterator[Double]): (Int, Int) =
+    makeByteVector(fbb, 64, len, 8) { fbb => reverseElems.foreach(fbb.addDouble) }
+
+  // stringVect is fed a Seq of strings in normal order
+  // Only the offset is returned, nbits is not useful for [string]
+  def stringVect(fbb: FlatBufferBuilder, data: Seq[String]): Int = {
+    // Create string vectors in reverse order, since FBB builds from top down
+    // Also remember in FBB you cannot nest vector creation, so create all string vects first
+    val reverseOffsets = data.reverseMap { str =>
+      if (str != null) fbb.createString(str) else 0
+    }
+    fbb.startVector(4, data.length, 4)
+    reverseOffsets.foreach(fbb.addOffset)
+    fbb.endVector()
   }
 
-  def intVectorBuilder(fbb: FlatBufferBuilder, data: Seq[Int]): (Int, Byte) = {
-    val vectOffset = IntVector.createDataVector(fbb, data.toArray)
-    (IntVector.createIntVector(fbb, vectOffset), AnyVector.IntVector)
+  def putHeaderAndGet(fbb: FlatBufferBuilder, headerBytes: Int): ByteBuffer = {
+    fbb.addInt(headerBytes)
+    val bb = fbb.dataBuffer
+    bb.position(bb.position - 4)   // Change position to before header bytes
+    bb
   }
 
-  def longVectorBuilder(fbb: FlatBufferBuilder, data: Seq[Long]): (Int, Byte) = {
-    val vectOffset = LongVector.createDataVector(fbb, data.toArray)
-    (LongVector.createLongVector(fbb, vectOffset), AnyVector.LongVector)
-  }
-
-  def doubleVectorBuilder(fbb: FlatBufferBuilder, data: Seq[Double]): (Int, Byte) = {
-    val vectOffset = DoubleVector.createDataVector(fbb, data.toArray)
-    (DoubleVector.createDoubleVector(fbb, vectOffset), AnyVector.DoubleVector)
-  }
-
-  def stringVectorBuilder(fbb: FlatBufferBuilder, data: Seq[String]): (Int, Byte) = {
-    val vectOffset = makeStringVect(fbb, data)
-    (StringVector.createStringVector(fbb, vectOffset), AnyVector.StringVector)
-  }
-
-  def makeStringVect(fbb: FlatBufferBuilder, data: Seq[String]): Int = {
-    val offsets = data.map { str => fbb.createString(str) }.toArray
-    StringVector.createDataVector(fbb, offsets)
-  }
-
-  // Just finishes the Column and returns the ByteBuffer.
-  // It would be nice to wrap the lifecycle, but too many intricacies with building a FB now.
-  def finishColumn(fbb: FlatBufferBuilder, colType: Byte, dataLen: Int): ByteBuffer = {
-    // We want to at least throw an error here if colType is not in the valid range.
-    // Better than writing out a random type byte and failing upon read.
-    AnyColumn.name(colType)
-    val colOffset = Column.createColumn(fbb, colType, fbb.endObject(), dataLen)
-    Column.finishColumnBuffer(fbb, colOffset)
-    fbb.dataBuffer()
-  }
-}
-
-// Yuck.  I think we really need to generate native Scala FlatBuffers code, because the Java
-// code it generates is pretty pretty yucky.
-object VectorUtils {
-  final def getLength(t: Table): Int = t match {
-    case i: IntVector    => i.dataLength
-    case s: StringVector => s.dataLength
-    case l: LongVector   => l.dataLength
-    case d: DoubleVector => d.dataLength
-    case s: ShortVector  => s.dataLength
-    case b: ByteVector   => b.dataLength
-    case f: FloatVector  => f.dataLength
-  }
-
-  final def getVectorFromType(vectorType: Byte): Table = vectorType match {
-    case AnyVector.IntVector    => new IntVector
-    case AnyVector.StringVector => new StringVector
-    case AnyVector.LongVector   => new LongVector
-    case AnyVector.DoubleVector => new DoubleVector
-    case AnyVector.ShortVector  => new ShortVector
-    case AnyVector.ByteVector   => new ByteVector
-    case AnyVector.FloatVector  => new FloatVector
-  }
+  def putHeaderAndGet(fbb: FlatBufferBuilder, majorVectorType: Int, subType: Int): ByteBuffer =
+    putHeaderAndGet(fbb, WireFormat(majorVectorType, subType))
 }

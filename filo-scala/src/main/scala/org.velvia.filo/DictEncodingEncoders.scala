@@ -2,7 +2,7 @@ package org.velvia.filo
 
 import com.google.flatbuffers.FlatBufferBuilder
 import java.nio.ByteBuffer
-import org.velvia.filo.column._
+import org.velvia.filo.vector._
 import scala.collection.mutable.BitSet
 
 /**
@@ -16,16 +16,11 @@ object DictEncodingEncoders {
   // Note: This is a way to avoid storing null and dealing with NPEs for NA values
   val NaString = ""
 
-  // Uses the smallest vector possible to fit in integer values
-  def smallIntVectorBuilder(fbb: FlatBufferBuilder, data: Seq[Int], maxNum: Int): (Int, Byte) = {
-    // Add support for stuff below byte level
-    if (maxNum < 256)        { byteVectorBuilder(fbb, data.map(_.toByte)) }
-    else if (maxNum < 65536) { shortVectorBuilder(fbb, data.map(_.toShort)) }
-    else                     { intVectorBuilder(fbb, data) }
-  }
+  def toStringVector(data: Seq[String], naMask: BitSet, stringSet: collection.Set[String]): ByteBuffer = {
+    import DictStringVector._
 
-  def toDictStringColumn(data: Seq[String], naMask: BitSet, stringSet: collection.Set[String]): ByteBuffer = {
     count += 1
+    val builder = PrimitiveUnsignedBuilders.IntDataVectBuilder
 
     // Convert the set of strings to an encoding
     val uniques = stringSet.toSeq
@@ -35,16 +30,14 @@ object DictEncodingEncoders {
     val codes = data.zipWithIndex.map { case (s, i) => if (naMask(i)) 0 else strToCode(s) + 1 }
 
     val fbb = new FlatBufferBuilder(BufferSize)
-    val empty = isDataEmpty(naMask, data.length)
-    val (dataOffset, dataType) =
-      if (empty) (0, 0.toByte) else smallIntVectorBuilder(fbb, codes, stringSet.size + 1)
-    val dictVect = makeStringVect(fbb, Seq(NaString) ++ uniques)
-    DictStringColumn.startDictStringColumn(fbb)
-    DictStringColumn.addDictionary(fbb, dictVect)
-    if (!empty) {
-      DictStringColumn.addCodes(fbb, dataOffset)
-      DictStringColumn.addCodesType(fbb, dataType)
-    }
-    finishColumn(fbb, AnyColumn.DictStringColumn, data.length)
+    val (dataOffset, nbits) = builder.build(fbb, codes, 0, stringSet.size + 1)
+    val dictVect = stringVect(fbb, Seq(NaString) ++ uniques)
+    startDictStringVector(fbb)
+    addDictionary(fbb, dictVect)
+    addLen(fbb, data.length)
+    addCodes(fbb, dataOffset)
+    addInfo(fbb, DataInfo.createDataInfo(fbb, nbits, false))
+    finishDictStringVectorBuffer(fbb, endDictStringVector(fbb))
+    putHeaderAndGet(fbb, WireFormat.VECTORTYPE_DICT, WireFormat.SUBTYPE_STRING)
   }
 }

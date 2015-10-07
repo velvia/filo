@@ -1,8 +1,7 @@
 package org.velvia.filo
 
-import com.google.flatbuffers.Table
 import java.nio.ByteBuffer
-import org.velvia.filo.column._
+import org.velvia.filo.vector._
 import scala.collection.Traversable
 import scala.language.postfixOps
 import scalaxy.loops._
@@ -61,7 +60,7 @@ class EmptyColumnWrapper[A](len: Int) extends ColumnWrapper[A] {
   final def foreach[B](fn: A => B): Unit = {}
   final def apply(index: Int): A =
     if (index < len) { null.asInstanceOf[A] }
-    else { throw new ArrayIndexOutOfBoundsException }
+    else             { throw new ArrayIndexOutOfBoundsException }
   final def length: Int = len
 }
 
@@ -77,6 +76,8 @@ trait NaMaskAvailable {
   final def isAvailable(index: Int): Boolean = {
     if (maskType == MaskType.AllZeroes) {
       true
+    } else if (maskType == MaskType.AllOnes) {
+      false
     } else {
       // NOTE: length of bitMask may be less than (length / 64) longwords.
       val maskIndex = index >> 5
@@ -86,36 +87,55 @@ trait NaMaskAvailable {
   }
 }
 
-abstract class SimpleColumnWrapper[A](sc: SimpleColumn, vector: Table)
+abstract class SimplePrimitiveWrapper[A](spv: SimplePrimitiveVector)
     extends ColumnWrapper[A] with NaMaskAvailable {
-  val naMask = sc.naMask
+  val naMask = spv.naMask
+  val info = spv.info
+  val _len = spv.len
+  val reader = FastBufferReader(spv.dataAsByteBuffer())
 
-  final def length: Int = VectorUtils.getLength(vector)
+  final def length: Int = _len
 
   final def foreach[B](fn: A => B): Unit = {
     for { i <- 0 until length optimized } { if (isAvailable(i)) fn(apply(i)) }
   }
 }
 
-object DictStringColumnWrapper {
+// TODO: ditch naMask
+class SimpleStringWrapper(ssv: SimpleStringVector) extends ColumnWrapper[String] with NaMaskAvailable {
+  val naMask = ssv.naMask
+  val _len = ssv.dataLength
+
+  final def length: Int = _len
+
+  final def apply(i: Int): String = ssv.data(i)
+
+  final def foreach[B](fn: String => B): Unit = {
+    for { i <- 0 until length optimized } { if (isAvailable(i)) fn(apply(i)) }
+  }
+}
+
+object DictStringWrapper {
   // Used to represent no string value or NA.  Better than using null.
   val NoString = ""
 }
 
-abstract class DictStringColumnWrapper(val dsc: DictStringColumn, vector: Table)
-    extends ColumnWrapper[String] {
-  import DictStringColumnWrapper._
+abstract class DictStringWrapper(val dsv: DictStringVector) extends ColumnWrapper[String] {
+  import DictStringWrapper._
+
+  private val _len = dsv.len
+  val reader = FastBufferReader(dsv.codesAsByteBuffer())
 
   // To be mixed in depending on type of code vector
   def getCode(index: Int): Int
 
   // Cache the Strings so we only pay cost of deserializing each unique string once
-  val strCache = Array.fill(dsc.dictionaryLength())(NoString)
+  val strCache = Array.fill(dsv.dictionaryLength())(NoString)
 
   final private def dictString(code: Int): String = {
     val cacheValue = strCache(code)
     if (cacheValue == NoString) {
-      val strFromDict = dsc.dictionary(code)
+      val strFromDict = dsv.dictionary(code)
       strCache(code) = strFromDict
       strFromDict
     } else {
@@ -127,7 +147,7 @@ abstract class DictStringColumnWrapper(val dsc: DictStringColumn, vector: Table)
 
   final def apply(index: Int): String = dictString(getCode(index))
 
-  final def length: Int = VectorUtils.getLength(vector)
+  final def length: Int = _len
 
   final def foreach[B](fn: String => B): Unit = {
     for { i <- 0 until length optimized } {

@@ -2,18 +2,14 @@ package org.velvia.filo
 
 import com.google.flatbuffers.FlatBufferBuilder
 import java.nio.ByteBuffer
-import org.velvia.filo.column._
 import scala.collection.mutable.BitSet
-import scala.reflect.ClassTag
 
 /**
  * A bunch of builders for row-oriented ingestion to create columns in parallel
  * Use these for support of missing/NA values
  * @param empty The empty value to insert for an NA or missing value
- *
- * TODO: Either fully embrace Framian and use their builders, or have no dependency on them
  */
-sealed abstract class ColumnBuilder[A](empty: A)(implicit val classTagA: ClassTag[A]) {
+sealed abstract class ColumnBuilder[A](empty: A) {
   // True for a row number (or bit is part of the set) if data for that row is not available
   val naMask = new BitSet
   val data = new collection.mutable.ArrayBuffer[A]
@@ -36,6 +32,21 @@ sealed abstract class ColumnBuilder[A](empty: A)(implicit val classTagA: ClassTa
   }
 }
 
+sealed abstract class MinMaxColumnBuilder[A: Ordering](minValue: A,
+                                                       maxValue: A,
+                                                       val zero: A) extends ColumnBuilder(zero) {
+  val ordering = implicitly[Ordering[A]]
+
+  var min: A = maxValue
+  var max: A = minValue
+
+  override def addData(value: A): Unit = {
+    super.addData(value)
+    if (ordering.compare(value, max) > 0) max = value
+    if (ordering.compare(value, min) < 0) min = value
+  }
+}
+
 // Please add your builder here when you add a type
 object ColumnBuilder {
   def apply(dataType: Class[_]): ColumnBuilder[_] = dataType match {
@@ -46,9 +57,9 @@ object ColumnBuilder {
   }
 }
 
-class IntColumnBuilder extends ColumnBuilder(0)
-class LongColumnBuilder extends ColumnBuilder(0L)
-class DoubleColumnBuilder extends ColumnBuilder(0.0)
+class IntColumnBuilder extends MinMaxColumnBuilder(Int.MinValue, Int.MaxValue, 0)
+class LongColumnBuilder extends MinMaxColumnBuilder(Long.MinValue, Long.MaxValue, 0L)
+class DoubleColumnBuilder extends MinMaxColumnBuilder(Double.MinValue, Double.MaxValue, 0.0)
 class StringColumnBuilder extends ColumnBuilder("") {
   // For dictionary encoding. NOTE: this set does NOT include empty value
   val stringSet = new collection.mutable.HashSet[String]

@@ -2,125 +2,132 @@ package org.velvia.filo
 
 import com.google.flatbuffers.Table
 import java.nio.ByteBuffer
-import org.velvia.filo.column._
+import org.velvia.filo.vector._
+
+case class UnsupportedFiloType(vectType: Int, subType: Int) extends
+  Exception(s"Unsupported Filo vector type $vectType, subType $subType")
 
 /**
  * The main entry point for parsing a Filo binary vector, returning a ColumnWrapper with which
  * to iterate over and read the data vector.
  */
 object ColumnParser {
+  import WireFormat._
+
+  type NBitsToWrapper[A] = PartialFunction[(Int, Boolean), ColumnWrapper[A]]
+
+  def UnsupportedVectPF[A]: NBitsToWrapper[A] = {
+    case (nbits, signed) => throw new RuntimeException(s"Unsupported Filo vector nbits=$nbits signed=$signed")
+  }
+
   /**
    * Parses a Filo-format ByteBuffer into a ColumnWrapper.  Automatically detects what type of encoding
    * is used underneath.
    */
   def parse[A](buf: ByteBuffer)(implicit cm: ColumnMaker[A]): ColumnWrapper[A] = {
-    cm.makeColumn(buf)
-  }
-
-  implicit object IntSimpleColumnMaker extends SimpleColumnMaker[Int] {
-    def makeSimpleCol(sc: SimpleColumn, vector: Table): ColumnWrapper[Int] = vector match {
-      case v: IntVector =>
-        new SimpleColumnWrapper[Int](sc, vector) {
-          val reader = FastBufferReader(v.dataAsByteBuffer())
-          final def apply(i: Int): Int = reader.readInt(i)
-        }
-      case v: ShortVector =>
-        new SimpleColumnWrapper[Int](sc, vector) {
-          val reader = FastBufferReader(v.dataAsByteBuffer())
-          final def apply(i: Int): Int = (reader.readShort(i) & 0x0ffff).toInt
-        }
-      case v: ByteVector if v.dataType == ByteDataType.TByte =>
-        new SimpleColumnWrapper[Int](sc, vector) {
-          val reader = FastBufferReader(v.dataAsByteBuffer())
-          final def apply(i: Int): Int = (reader.readByte(i) & 0x00ff).toInt
-        }
+    if (buf == null) return new EmptyColumnWrapper[A](0)
+    val headerBytes = buf.getInt()
+    majorVectorType(headerBytes) match {
+      case VECTORTYPE_EMPTY =>
+        new EmptyColumnWrapper[A](emptyVectorLen(headerBytes))
+      case other =>
+        cm.makeColumn(buf, headerBytes)
     }
   }
 
-  implicit object LongSimpleColumnMaker extends SimpleColumnMaker[Long] {
-    def makeSimpleCol(sc: SimpleColumn, vector: Table): ColumnWrapper[Long] = vector match {
-      case v: LongVector =>
-        new SimpleColumnWrapper[Long](sc, vector) {
-          val reader = FastBufferReader(v.dataAsByteBuffer())
-          final def apply(i: Int): Long = reader.readLong(i)
-        }
+  implicit object IntColumnMaker extends PrimitiveColumnMaker[Int] {
+    def simpleVectPF(spv: SimplePrimitiveVector): NBitsToWrapper[Int] = {
+      case (32, false) => new SimplePrimitiveWrapper[Int](spv) {
+                            final def apply(i: Int): Int = reader.readInt(i)
+                          }
+      case (16, false) => new SimplePrimitiveWrapper[Int](spv) {
+                            final def apply(i: Int): Int = (reader.readShort(i) & 0x0ffff).toInt
+                          }
+      case (8, false)  => new SimplePrimitiveWrapper[Int](spv) {
+                            final def apply(i: Int): Int = (reader.readByte(i) & 0x00ff).toInt
+                          }
     }
   }
 
-  implicit object DoubleSimpleColumnMaker extends SimpleColumnMaker[Double] {
-    def makeSimpleCol(sc: SimpleColumn, vector: Table): ColumnWrapper[Double] = vector match {
-      case v: DoubleVector =>
-        new SimpleColumnWrapper[Double](sc, vector) {
-          val reader = FastBufferReader(v.dataAsByteBuffer())
-          final def apply(i: Int): Double = reader.readDouble(i)
-        }
+  implicit object LongColumnMaker extends PrimitiveColumnMaker[Long] {
+    def simpleVectPF(spv: SimplePrimitiveVector): NBitsToWrapper[Long] = {
+      case (64, false) => new SimplePrimitiveWrapper[Long](spv) {
+                            final def apply(i: Int): Long = reader.readLong(i)
+                          }
+      case (32, false) => new SimplePrimitiveWrapper[Long](spv) {
+                            final def apply(i: Int): Long = (reader.readInt(i) & 0x0ffffffffL).toLong
+                          }
+      case (16, false) => new SimplePrimitiveWrapper[Long](spv) {
+                            final def apply(i: Int): Long = (reader.readShort(i) & 0x0ffff).toLong
+                          }
+      case (8, false)  => new SimplePrimitiveWrapper[Long](spv) {
+                            final def apply(i: Int): Long = (reader.readInt(i) & 0x00ff).toLong
+                          }
     }
   }
 
-  implicit object StringColumnMaker extends SimpleColumnMaker[String] {
-    def makeSimpleCol(sc: SimpleColumn, vector: Table): ColumnWrapper[String] = vector match {
-      case v: StringVector =>
-        new SimpleColumnWrapper[String](sc, vector) {
-          final def apply(i: Int): String = v.data(i)
-        }
+  implicit object DoubleSimpleColumnMaker extends PrimitiveColumnMaker[Double] {
+    def simpleVectPF(spv: SimplePrimitiveVector): NBitsToWrapper[Double] = {
+      case (64, false) => new SimplePrimitiveWrapper[Double](spv) {
+                            final def apply(i: Int): Double = reader.readDouble(i)
+                          }
     }
+  }
 
-    override def makeColumn(buf: ByteBuffer): ColumnWrapper[String] = {
-      val column = Column.getRootAsColumn(buf)
-      column.colType match {
-        case AnyColumn.SimpleColumn => simpleColumnWrap(column)
-        case AnyColumn.DictStringColumn =>
-          val dsc = new DictStringColumn
-          column.col(dsc)
-          if (dsc.codesType == 0) return new EmptyColumnWrapper[String](column.len)
-          val vector = VectorUtils.getVectorFromType(dsc.codesType)
-          dsc.codes(vector)
-          vector match {
-            case v: IntVector =>
-              new DictStringColumnWrapper(dsc, vector) {
-                val reader = FastBufferReader(v.dataAsByteBuffer())
-                final def getCode(i: Int): Int = reader.readInt(i)
-              }
-            case v: ShortVector =>
-              new DictStringColumnWrapper(dsc, vector) {
-                val reader = FastBufferReader(v.dataAsByteBuffer())
-                final def getCode(i: Int): Int = (reader.readShort(i) & 0x0ffff).toInt
-              }
-            case v: ByteVector if v.dataType == ByteDataType.TByte =>
-              new DictStringColumnWrapper(dsc, vector) {
-                val reader = FastBufferReader(v.dataAsByteBuffer())
-                final def getCode(i: Int): Int = (reader.readByte(i) & 0x00ff).toInt
-              }
-          }
+  implicit object StringColumnMaker extends ColumnMaker[String] {
+    def makeColumn(buf: ByteBuffer, headerBytes: Int): ColumnWrapper[String] = {
+      (majorVectorType(headerBytes), vectorSubType(headerBytes)) match {
+        case (VECTORTYPE_SIMPLE, SUBTYPE_STRING) =>
+          val ssv = SimpleStringVector.getRootAsSimpleStringVector(buf)
+          new SimpleStringWrapper(ssv)
+        case (VECTORTYPE_DICT, SUBTYPE_STRING) =>
+          val dsv = DictStringVector.getRootAsDictStringVector(buf)
+          (dictStringVectPF(dsv) orElse UnsupportedVectPF)((dsv.info.nbits, dsv.info.signed))
+        case (vectType, subType) => throw UnsupportedFiloType(vectType, subType)
       }
     }
+
+    def dictStringVectPF(dsv: DictStringVector): NBitsToWrapper[String] = {
+      case (32, false) => new DictStringWrapper(dsv) {
+                            final def getCode(i: Int): Int = reader.readInt(i)
+                          }
+      case (16, false) => new DictStringWrapper(dsv) {
+                            final def getCode(i: Int): Int = (reader.readShort(i) & 0x0ffff).toInt
+                          }
+      case (8, false)  => new DictStringWrapper(dsv) {
+                            final def getCode(i: Int): Int = (reader.readByte(i) & 0x00ff).toInt
+                          }
+    }
   }
 }
 
+/**
+ * Implemented by specific Filo column/vector types.
+ */
 trait ColumnMaker[A] {
-  def makeColumn(buf: ByteBuffer): ColumnWrapper[A]
+  /**
+   * Creates a ColumnWrapper based on the remaining bytes.  Needs to decipher
+   * what sort of vector it is and make the appropriate choice.
+   * @param buf a ByteBuffer of the binary vector, with the position at right after
+   *            the 4 header bytes... at the beginning of FlatBuffers or whatever
+   * @param the four byte headerBytes
+   */
+  def makeColumn(buf: ByteBuffer, headerBytes: Int): ColumnWrapper[A]
 }
 
-trait SimpleColumnMaker[A] extends ColumnMaker[A] {
-  def makeSimpleCol(sc: SimpleColumn, vector: Table): ColumnWrapper[A]
+// TODO: Move this somewhere else
+trait PrimitiveColumnMaker[A] extends ColumnMaker[A] {
+  import ColumnParser._
+  import WireFormat._
 
-  def simpleColumnWrap(c: Column): ColumnWrapper[A] = {
-    val sc = new SimpleColumn
-    c.col(sc)
-    if (sc.naMask.maskType == MaskType.AllOnes) {
-      new EmptyColumnWrapper[A](c.len)
-    } else {
-      val vector = VectorUtils.getVectorFromType(sc.vectorType)
-      sc.vector(vector)
-      makeSimpleCol(sc, vector)
+  def makeColumn(buf: ByteBuffer, headerBytes: Int): ColumnWrapper[A] = {
+    (majorVectorType(headerBytes), vectorSubType(headerBytes)) match {
+      case (VECTORTYPE_SIMPLE, SUBTYPE_PRIMITIVE) =>
+        val spv = SimplePrimitiveVector.getRootAsSimplePrimitiveVector(buf)
+        (simpleVectPF(spv) orElse UnsupportedVectPF[A])((spv.info.nbits, spv.info.signed))
+      case (vectType, subType) => throw UnsupportedFiloType(vectType, subType)
     }
   }
 
-  def makeColumn(buf: ByteBuffer): ColumnWrapper[A] = {
-    if (buf == null) return new EmptyColumnWrapper[A](0)
-    val column = Column.getRootAsColumn(buf)
-    require(column.colType == AnyColumn.SimpleColumn,
-            "Not a SimpleColumn, but a " + AnyColumn.name(column.colType))
-    simpleColumnWrap(column)
-  }
+  def simpleVectPF(spv: SimplePrimitiveVector): NBitsToWrapper[A]
 }

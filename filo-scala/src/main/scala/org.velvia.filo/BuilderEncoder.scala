@@ -1,6 +1,7 @@
 package org.velvia.filo
 
 import java.nio.ByteBuffer
+import scala.reflect.ClassTag
 
 /**
  * Type class for encoding a ColumnBuilder to queryable binary Filo format
@@ -8,7 +9,32 @@ import java.nio.ByteBuffer
 trait BuilderEncoder[A] {
   // Used for automatic conversion of Seq[A] and Seq[Option[A]]
   def getBuilder(): ColumnBuilder[A]
-  def encode(builder: ColumnBuilder[A], hint: BuilderEncoder.EncodingHint): ByteBuffer
+  def encodeInner(builder: ColumnBuilder[A], hint: BuilderEncoder.EncodingHint): ByteBuffer
+  def encode(builder: ColumnBuilder[A], hint: BuilderEncoder.EncodingHint): ByteBuffer = {
+    if (Utils.isAllNA(builder.naMask, builder.data.length) &&
+        builder.data.length <= WireFormat.MaxEmptyVectorLen) {
+      SimpleEncoders.toEmptyVector(builder.data.length)
+    } else {
+      encodeInner(builder, hint)
+    }
+  }
+}
+
+trait MinMaxEncoder[A] {
+  def minMaxZero(builder: ColumnBuilder[A]): (A, A, A) = {
+    val minMaxBuilder = builder.asInstanceOf[MinMaxColumnBuilder[A]]
+    (minMaxBuilder.min, minMaxBuilder.max, minMaxBuilder.zero)
+  }
+}
+
+trait IntegralEncoder[A] extends BuilderEncoder[A] with MinMaxEncoder[A] {
+  def unsignedBuilder: PrimitiveDataVectBuilder[A]
+  def encodeInner(builder: ColumnBuilder[A], hint: BuilderEncoder.EncodingHint): ByteBuffer = {
+    val (min, max, zero) = minMaxZero(builder)
+    // TODO: use signed typeclasses once they are done
+    SimpleEncoders.toPrimitiveVector(builder.data, builder.naMask.result,
+                                     min, max, false)(unsignedBuilder)
+  }
 }
 
 /**
@@ -26,33 +52,29 @@ object BuilderEncoder {
 
   def apply[T: BuilderEncoder]: BuilderEncoder[T] = implicitly[BuilderEncoder[T]]
 
-  implicit object IntEncoder extends BuilderEncoder[Int] {
-    def getBuilder(): ColumnBuilder[Int] = new IntColumnBuilder
-    def encode(builder: ColumnBuilder[Int], hint: EncodingHint): ByteBuffer = {
-      SimpleEncoders.toSimpleColumn(builder.data, builder.naMask.result,
-                                      Utils.intVectorBuilder)
-    }
+  implicit object IntEncoder extends IntegralEncoder[Int] {
+    def getBuilder: ColumnBuilder[Int] = new IntColumnBuilder
+    val unsignedBuilder = PrimitiveUnsignedBuilders.IntDataVectBuilder
   }
 
-  implicit object LongEncoder extends BuilderEncoder[Long] {
-    def getBuilder(): ColumnBuilder[Long] = new LongColumnBuilder
-    def encode(builder: ColumnBuilder[Long], hint: EncodingHint): ByteBuffer = {
-      SimpleEncoders.toSimpleColumn(builder.data, builder.naMask.result,
-                                      Utils.longVectorBuilder)
-    }
+  implicit object LongEncoder extends IntegralEncoder[Long] {
+    def getBuilder: ColumnBuilder[Long] = new LongColumnBuilder
+    val unsignedBuilder = PrimitiveUnsignedBuilders.LongDataVectBuilder
   }
 
-  implicit object DoubleEncoder extends BuilderEncoder[Double] {
-    def getBuilder(): ColumnBuilder[Double] = new DoubleColumnBuilder
-    def encode(builder: ColumnBuilder[Double], hint: EncodingHint): ByteBuffer = {
-      SimpleEncoders.toSimpleColumn(builder.data, builder.naMask.result,
-                                      Utils.doubleVectorBuilder)
+  implicit object DoubleEncoder extends BuilderEncoder[Double] with MinMaxEncoder[Double] {
+    def getBuilder: ColumnBuilder[Double] = new DoubleColumnBuilder
+    def encodeInner(builder: ColumnBuilder[Double], hint: EncodingHint): ByteBuffer = {
+      import FPBuilders._
+      val (min, max, _) = minMaxZero(builder)
+      SimpleEncoders.toPrimitiveVector(builder.data, builder.naMask.result,
+                                       min, max, false)
     }
   }
 
   implicit object StringEncoder extends BuilderEncoder[String] {
-    def getBuilder(): ColumnBuilder[String] = new StringColumnBuilder
-    def encode(builder: ColumnBuilder[String], hint: EncodingHint): ByteBuffer = {
+    def getBuilder: ColumnBuilder[String] = new StringColumnBuilder
+    def encodeInner(builder: ColumnBuilder[String], hint: EncodingHint): ByteBuffer = {
       val useDictEncoding = hint match {
         case DictionaryEncoding => true
         case SimpleEncoding     => false
@@ -70,10 +92,9 @@ object BuilderEncoder {
       }
       (useDictEncoding, builder) match {
         case (true, sb: StringColumnBuilder) =>
-          DictEncodingEncoders.toDictStringColumn(sb.data, sb.naMask.result, sb.stringSet)
+          DictEncodingEncoders.toStringVector(sb.data, sb.naMask.result, sb.stringSet)
         case x: Any =>
-          SimpleEncoders.toSimpleColumn(builder.data, builder.naMask.result,
-                                          Utils.stringVectorBuilder)
+          SimpleEncoders.toStringVector(builder.data, builder.naMask.result)
       }
     }
   }

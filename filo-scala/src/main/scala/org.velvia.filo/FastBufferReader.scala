@@ -42,7 +42,7 @@ trait FastBufferReader {
 import FastBufferReader._
 
 class FastUnsafeArrayBufferReader(buf: ByteBuffer) extends FastBufferReader {
-  val offset = arayOffset + buf.arrayOffset
+  val offset = arayOffset + buf.arrayOffset + buf.position
   val byteArray = buf.array()
   final def readByte(i: Int): Byte = unsafe.getByte(byteArray, (offset + i).toLong)
   final def readShort(i: Int): Short = unsafe.getShort(byteArray, (offset + i * 2).toLong)
