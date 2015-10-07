@@ -38,8 +38,20 @@ class EncodingPropertiesTest extends FunSpec with Matchers with PropertyChecks {
     }
   }
 
+  import org.scalacheck._
+  import Gen._
+  import Arbitrary.arbitrary
+
+  // Write our own generator to force frequent NA elements
+  def noneOrThing[T](implicit a: Arbitrary[T]): Gen[Option[T]] =
+    Gen.frequency((5, arbitrary[T].map(Some(_))),
+                  (1, const(None)))
+
+  def optionList[T](implicit a: Arbitrary[T]): Gen[Seq[Option[T]]] =
+    Gen.containerOf[Seq, Option[T]](noneOrThing[T])
+
   it("should match elements and length for Int vectors with missing/NA elements") {
-    forAll { (s: List[Option[Int]]) =>
+    forAll(optionList[Int]) { s =>
       val buf = seqOptionToBuffer(s, SimpleEncoding)
       val binarySeq = ColumnParser.parse[Int](buf)
 
@@ -50,7 +62,7 @@ class EncodingPropertiesTest extends FunSpec with Matchers with PropertyChecks {
   }
 
   it("should match elements and length for simple string vectors with missing/NA elements") {
-    forAll { (s: List[Option[String]]) =>
+    forAll(optionList[String]) { s =>
       val buf = seqOptionToBuffer(s, SimpleEncoding)
       val binarySeq = ColumnParser.parse[String](buf)
 
@@ -61,7 +73,7 @@ class EncodingPropertiesTest extends FunSpec with Matchers with PropertyChecks {
   }
 
   it("should match elements and length for dictionary string vectors with missing/NA elements") {
-    forAll { (s: List[Option[String]]) =>
+    forAll(optionList[String]) { s =>
       val buf = seqOptionToBuffer(s, DictionaryEncoding)
       val binarySeq = ColumnParser.parse[String](buf)
 
