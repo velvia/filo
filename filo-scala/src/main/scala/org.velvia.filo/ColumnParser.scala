@@ -61,7 +61,7 @@ object ColumnParser {
                             final def apply(i: Int): Long = (reader.readShort(i) & 0x0ffff).toLong
                           }
       case (8, false)  => new SimplePrimitiveWrapper[Long](spv) {
-                            final def apply(i: Int): Long = (reader.readInt(i) & 0x00ff).toLong
+                            final def apply(i: Int): Long = (reader.readByte(i) & 0x00ff).toLong
                           }
     }
   }

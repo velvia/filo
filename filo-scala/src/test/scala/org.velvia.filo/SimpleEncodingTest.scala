@@ -93,6 +93,17 @@ class SimpleEncodingTest extends FunSpec with Matchers {
     }
   }
 
+  describe("Long encoding") {
+    it("should encode and decode back a Seq[Long]") {
+      val orig = Seq(0L, 0L)
+      val buf = BuilderEncoder.seqToBuffer(orig)
+      val binarySeq = ColumnParser.parse[Long](buf)
+
+      binarySeq.length should equal (orig.length)
+      binarySeq.sum should equal (orig.sum)
+    }
+  }
+
   describe("String Encoding") {
     it("should encode and decode back a Seq[String]") {
       val orig = Seq("apple", "banana")
