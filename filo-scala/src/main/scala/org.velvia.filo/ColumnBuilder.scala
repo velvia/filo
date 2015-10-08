@@ -26,6 +26,13 @@ sealed abstract class ColumnBuilder[A](empty: A) {
     value.orElse  { addNA(); None }
   }
 
+  final def add(row: RowReader, colNo: Int): Unit = {
+    if (row.notNull(colNo)) { addData(fromReader(row, colNo)) }
+    else                    { addNA() }
+  }
+
+  def fromReader(row: RowReader, colNo: Int): A
+
   def reset(): Unit = {
     naMask.clear
     data.clear
@@ -50,19 +57,30 @@ sealed abstract class MinMaxColumnBuilder[A: Ordering](minValue: A,
 // Please add your builder here when you add a type
 object ColumnBuilder {
   def apply(dataType: Class[_]): ColumnBuilder[_] = dataType match {
-    case Classes.Int => new IntColumnBuilder
-    case Classes.Long => new LongColumnBuilder
+    case Classes.Int    => new IntColumnBuilder
+    case Classes.Long   => new LongColumnBuilder
     case Classes.Double => new DoubleColumnBuilder
     case Classes.String => new StringColumnBuilder
   }
 }
 
-class IntColumnBuilder extends MinMaxColumnBuilder(Int.MinValue, Int.MaxValue, 0)
-class LongColumnBuilder extends MinMaxColumnBuilder(Long.MinValue, Long.MaxValue, 0L)
-class DoubleColumnBuilder extends MinMaxColumnBuilder(Double.MinValue, Double.MaxValue, 0.0)
+class IntColumnBuilder extends MinMaxColumnBuilder(Int.MinValue, Int.MaxValue, 0) {
+  final def fromReader(row: RowReader, colNo: Int): Int = row.getInt(colNo)
+}
+
+class LongColumnBuilder extends MinMaxColumnBuilder(Long.MinValue, Long.MaxValue, 0L) {
+  final def fromReader(row: RowReader, colNo: Int): Long = row.getLong(colNo)
+}
+
+class DoubleColumnBuilder extends MinMaxColumnBuilder(Double.MinValue, Double.MaxValue, 0.0) {
+  final def fromReader(row: RowReader, colNo: Int): Double = row.getDouble(colNo)
+}
+
 class StringColumnBuilder extends ColumnBuilder("") {
   // For dictionary encoding. NOTE: this set does NOT include empty value
   val stringSet = new collection.mutable.HashSet[String]
+
+  final def fromReader(row: RowReader, colNo: Int): String = row.getString(colNo)
 
   override def addData(value: String): Unit = {
     stringSet += value

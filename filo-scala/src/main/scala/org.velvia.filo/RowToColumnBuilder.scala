@@ -47,14 +47,6 @@ class RowToColumnBuilder(schema: Seq[IngestColumn]) {
   val builders = schema.map { case IngestColumn(_, dataType) => ColumnBuilder(dataType) }
   val numColumns = schema.length
 
-  // Extract out a value assuming it is available and add to builder
-  val ingestFuncs: Array[RowReader => Unit] = builders.zipWithIndex.map {
-    case (b: IntColumnBuilder,    c) => (r: RowReader) => b.addData(r.getInt(c))
-    case (b: LongColumnBuilder,   c) => (r: RowReader) => b.addData(r.getLong(c))
-    case (b: DoubleColumnBuilder, c) => (r: RowReader) => b.addData(r.getDouble(c))
-    case (b: StringColumnBuilder, c) => (r: RowReader) => b.addData(r.getString(c))
-  }.toArray
-
   /**
    * Resets the ColumnBuilders.  Call this before the next batch of rows to transpose.
    * @return {[type]} [description]
@@ -69,8 +61,7 @@ class RowToColumnBuilder(schema: Seq[IngestColumn]) {
    */
   def addRow(row: RowReader): Unit = {
     for { i <- 0 until numColumns optimized } {
-      if (row.notNull(i)) { ingestFuncs(i)(row) }
-      else                { builders(i).addNA }
+      builders(i).add(row, i)
     }
   }
 
