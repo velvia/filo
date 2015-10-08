@@ -8,7 +8,7 @@ import scala.collection.mutable.BitSet
 /**
  * Encoders for dictionary encoding/compression
  */
-object DictEncodingEncoders {
+object DictEncodingEncoders extends ThreadLocalBuffers {
   import Utils._
 
   var count = 0
@@ -29,7 +29,7 @@ object DictEncodingEncoders {
     // Encode each string to the code per the map above
     val codes = data.zipWithIndex.map { case (s, i) => if (naMask(i)) 0 else strToCode(s) + 1 }
 
-    val fbb = new FlatBufferBuilder(BufferSize)
+    val fbb = new FlatBufferBuilder(getBuffer)
     val (dataOffset, nbits) = builder.build(fbb, codes, 0, stringSet.size + 1)
     val dictVect = stringVect(fbb, Seq(NaString) ++ uniques)
     startDictStringVector(fbb)

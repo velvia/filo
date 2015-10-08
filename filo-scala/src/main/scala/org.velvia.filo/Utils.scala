@@ -1,7 +1,7 @@
 package org.velvia.filo
 
 import com.google.flatbuffers.{FlatBufferBuilder, Table}
-import java.nio.ByteBuffer
+import java.nio.{ByteBuffer, ByteOrder}
 import org.velvia.filo.vector._
 import scala.collection.mutable.BitSet
 
@@ -94,11 +94,31 @@ object Utils {
 
   def putHeaderAndGet(fbb: FlatBufferBuilder, headerBytes: Int): ByteBuffer = {
     fbb.addInt(headerBytes)
-    val bb = fbb.dataBuffer
-    bb.position(bb.position - 4)   // Change position to before header bytes
-    bb
+    // Create a separate bytebuffer as original might be reused
+    ByteBuffer.wrap(fbb.sizedByteArray).order(ByteOrder.LITTLE_ENDIAN)
   }
 
   def putHeaderAndGet(fbb: FlatBufferBuilder, majorVectorType: Int, subType: Int): ByteBuffer =
     putHeaderAndGet(fbb, WireFormat(majorVectorType, subType))
+}
+
+/**
+ * Mix in to encoders to allow reuse of ByteBuffers for subsequent building of FBBs.
+ * This avoids allocation and GC of lots of ByteBuffers during heavy periods of building Filo vectors.
+ * Note that FBB itself can "grow" a BB by allocating a new bigger one, and that would not be saved here.
+ * That's probably a good thing, because otherwise the BB for each thread could grow to be really big.
+ */
+trait ThreadLocalBuffers {
+  val bb = new ThreadLocal[ByteBuffer]
+
+  def getBuffer: ByteBuffer = {
+    val _bb = bb.get
+    if (_bb == null) {
+      val newbb = ByteBuffer.allocate(Utils.BufferSize)
+      bb.set(newbb)
+      newbb
+    } else {
+      _bb
+    }
+  }
 }

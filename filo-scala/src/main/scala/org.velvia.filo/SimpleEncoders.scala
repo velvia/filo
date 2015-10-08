@@ -9,7 +9,7 @@ import scala.collection.mutable.BitSet
  * A whole bunch of encoders for simple (no compression) binary representation of sequences,
  * using Google FlatBuffers
  */
-object SimpleEncoders {
+object SimpleEncoders extends ThreadLocalBuffers {
   import Utils._
 
   var count = 0
@@ -28,7 +28,7 @@ object SimpleEncoders {
 
     val vectBuilder = implicitly[PrimitiveDataVectBuilder[A]]
     count += 1
-    val fbb = new FlatBufferBuilder(BufferSize)
+    val fbb = new FlatBufferBuilder(getBuffer)
     val naOffset = populateNaMask(fbb, naMask, data.length)
     val (dataOffset, nbits) = vectBuilder.build(fbb, data, min, max)
     startSimplePrimitiveVector(fbb)
@@ -38,7 +38,6 @@ object SimpleEncoders {
     addInfo(fbb, DataInfo.createDataInfo(fbb, nbits, signed))
     finishSimplePrimitiveVectorBuffer(fbb, endSimplePrimitiveVector(fbb))
     putHeaderAndGet(fbb, WireFormat.VECTORTYPE_SIMPLE, WireFormat.SUBTYPE_PRIMITIVE)
-    // TODO: copy the ByteBuffer out?  Esp if we try to reuse ByteBuffers to avoid allocation costs
   }
 
   def toEmptyVector(len: Int): ByteBuffer = {
@@ -49,7 +48,7 @@ object SimpleEncoders {
   }
 
   def toStringVector(data: Seq[String], naMask: BitSet): ByteBuffer = {
-    val fbb = new FlatBufferBuilder(BufferSize)
+    val fbb = new FlatBufferBuilder(getBuffer)
     val naOffset = populateNaMask(fbb, naMask, data.length)
     val dataOffset = stringVect(fbb, data)
     val ssvOffset = SimpleStringVector.createSimpleStringVector(fbb, naOffset, dataOffset)
