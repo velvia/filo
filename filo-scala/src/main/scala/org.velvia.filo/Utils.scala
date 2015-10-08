@@ -18,7 +18,7 @@ object Utils {
   // Returns true if every element in the data to be encoded is marked as NA (mask is set)
   def isAllNA(mask: BitSet, dataLength: Int): Boolean = mask.size == dataLength
 
-  // @returns offset of mask table
+  // @return offset of mask table
   def populateNaMask(fbb: FlatBufferBuilder, mask: BitSet, dataLen: Int): Int = {
     val empty = mask.size == 0
     val full = isAllNA(mask, dataLen)
@@ -53,7 +53,7 @@ object Utils {
    *        This is basically what chunk size is going to fill up the FBB.
    *        Should be a power of two, I think.
    * @param addFunc a func to populate the elements in FBB, in reverse order
-   * @returns (offset, nbits)
+   * @return (offset, nbits)
    */
   def makeByteVector(fbb: FlatBufferBuilder, nbits: Int, numElems: Int, alignment: Int)
                     (addFunc: FlatBufferBuilder => Unit): (Int, Int) = {
