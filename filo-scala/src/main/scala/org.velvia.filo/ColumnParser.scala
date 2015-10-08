@@ -2,6 +2,8 @@ package org.velvia.filo
 
 import com.google.flatbuffers.Table
 import java.nio.ByteBuffer
+
+import org.velvia.filo.codecs._
 import org.velvia.filo.vector._
 
 case class UnsupportedFiloType(vectType: Int, subType: Int) extends

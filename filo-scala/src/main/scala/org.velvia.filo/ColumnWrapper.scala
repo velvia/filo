@@ -51,19 +51,6 @@ trait ColumnWrapper[@specialized(Int, Double, Long, Short) A] extends Traversabl
     for { index <- (0 until length).toIterator } yield { get(index) }
 }
 
-/**
- * Represents either an empty column (length 0) or a column where none of the
- * values are available (null).
- */
-class EmptyColumnWrapper[A](len: Int) extends ColumnWrapper[A] {
-  final def isAvailable(index: Int): Boolean = false
-  final def foreach[B](fn: A => B): Unit = {}
-  final def apply(index: Int): A =
-    if (index < len) { null.asInstanceOf[A] }
-    else             { throw new ArrayIndexOutOfBoundsException }
-  final def length: Int = len
-}
-
 // TODO: separate this out into traits for AllZeroes vs mixed ones for speed, no need to do
 // if sc.naMask.maskType lookup every time
 // TODO: wrap bitMask with FastBufferReader for speed
@@ -83,76 +70,6 @@ trait NaMaskAvailable {
       val maskIndex = index >> 6
       val maskVal = if (maskIndex < maskLen) maskReader.readLong(maskIndex) else 0L
       (maskVal & (1L << (index & 63))) == 0
-    }
-  }
-}
-
-abstract class SimplePrimitiveWrapper[A](spv: SimplePrimitiveVector)
-    extends ColumnWrapper[A] with NaMaskAvailable {
-  val naMask = spv.naMask
-  val info = spv.info
-  val _len = spv.len
-  val reader = FastBufferReader(spv.dataAsByteBuffer())
-
-  final def length: Int = _len
-
-  final def foreach[B](fn: A => B): Unit = {
-    for { i <- 0 until length optimized } { if (isAvailable(i)) fn(apply(i)) }
-  }
-}
-
-// TODO: ditch naMask
-class SimpleStringWrapper(ssv: SimpleStringVector) extends ColumnWrapper[String] with NaMaskAvailable {
-  val naMask = ssv.naMask
-  val _len = ssv.dataLength
-
-  final def length: Int = _len
-
-  final def apply(i: Int): String = ssv.data(i)
-
-  final def foreach[B](fn: String => B): Unit = {
-    for { i <- 0 until length optimized } { if (isAvailable(i)) fn(apply(i)) }
-  }
-}
-
-object DictStringWrapper {
-  // Used to represent no string value or NA.  Better than using null.
-  val NoString = ""
-}
-
-abstract class DictStringWrapper(val dsv: DictStringVector) extends ColumnWrapper[String] {
-  import DictStringWrapper._
-
-  private val _len = dsv.len
-  val reader = FastBufferReader(dsv.codesAsByteBuffer())
-
-  // To be mixed in depending on type of code vector
-  def getCode(index: Int): Int
-
-  // Cache the Strings so we only pay cost of deserializing each unique string once
-  val strCache = Array.fill(dsv.dictionaryLength())(NoString)
-
-  final private def dictString(code: Int): String = {
-    val cacheValue = strCache(code)
-    if (cacheValue == NoString) {
-      val strFromDict = dsv.dictionary(code)
-      strCache(code) = strFromDict
-      strFromDict
-    } else {
-      cacheValue
-    }
-  }
-
-  final def isAvailable(index: Int): Boolean = getCode(index) != 0
-
-  final def apply(index: Int): String = dictString(getCode(index))
-
-  final def length: Int = _len
-
-  final def foreach[B](fn: String => B): Unit = {
-    for { i <- 0 until length optimized } {
-      val code = getCode(i)
-      if (code != 0) fn(dictString(code))
     }
   }
 }

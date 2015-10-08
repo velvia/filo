@@ -3,6 +3,8 @@ package org.velvia.filo
 import java.nio.ByteBuffer
 import scala.reflect.ClassTag
 
+import org.velvia.filo.codecs._
+
 /**
  * Type class for encoding a ColumnBuilder to queryable binary Filo format
  */

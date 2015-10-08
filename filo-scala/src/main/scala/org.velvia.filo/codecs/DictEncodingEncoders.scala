@@ -1,9 +1,11 @@
-package org.velvia.filo
+package org.velvia.filo.codecs
 
 import com.google.flatbuffers.FlatBufferBuilder
 import java.nio.ByteBuffer
-import org.velvia.filo.vector._
 import scala.collection.mutable.BitSet
+
+import org.velvia.filo._
+import org.velvia.filo.vector._
 
 /**
  * Encoders for dictionary encoding/compression
