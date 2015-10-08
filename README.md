@@ -120,11 +120,13 @@ potentially missing elements, start with a `Seq[Option[A]]`, then use
 
 To just get overall run times:
 
-    sbt filoScalaJmh/run
+    sbt filoScalaJmh/run -i 10 -wi 10 -f5
 
 To also get profiling of top methods:
 
-    sbt filoScalaJmh/run -prof stack -jvmArgsAppend -Djmh.stack.lines=3
+    sbt filoScalaJmh/run -i 10 -wi 10 -f5 -prof stack -jvmArgsAppend -Djmh.stack.lines=3
+
+For help, do `sbt filoScalaJmh/run -h`.
 
 See this [gist](https://gist.github.com/velvia/213b837c6e02c4982a9a) for how I improved the `ColumnWrapper.apply()` method performance by 50x.
  
