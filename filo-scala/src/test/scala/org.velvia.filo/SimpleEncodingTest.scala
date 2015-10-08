@@ -1,5 +1,7 @@
 package org.velvia.filo
 
+import java.nio.ByteOrder
+
 import org.scalatest.FunSpec
 import org.scalatest.Matchers
 
@@ -90,6 +92,24 @@ class SimpleEncodingTest extends FunSpec with Matchers {
       binarySeq.isAvailable(78) should be (false)
       binarySeq.optionIterator.toSeq should equal (orig)
       binarySeq.sum should equal ((2 to 77).sum)
+    }
+
+    it("should be able to parse same ByteBuffer many times") {
+      val orig = Seq(1, 2, -5, 101)
+      val buf = BuilderEncoder.seqToBuffer(orig)
+
+      val seq1 = ColumnParser.parse[Int](buf)
+      seq1.length should equal (orig.length)
+      seq1.sum should equal (orig.sum)
+
+      buf.order(ByteOrder.BIG_ENDIAN)   // See if the byte order will be reset when reading
+      val seq2 = ColumnParser.parse[Int](buf)
+      seq2.length should equal (orig.length)
+      seq2.sum should equal (orig.sum)
+
+      val seq3 = ColumnParser.parse[Int](buf)
+      seq3.length should equal (orig.length)
+      seq3.sum should equal (orig.sum)
     }
   }
 

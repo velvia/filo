@@ -1,7 +1,7 @@
 package org.velvia.filo
 
 import com.google.flatbuffers.Table
-import java.nio.ByteBuffer
+import java.nio.{ByteBuffer, ByteOrder}
 
 import org.velvia.filo.codecs._
 import org.velvia.filo.vector._
@@ -25,16 +25,23 @@ object ColumnParser {
   /**
    * Parses a Filo-format ByteBuffer into a ColumnWrapper.  Automatically detects what type of encoding
    * is used underneath.
+   *
+   * @param buf the ByteBuffer with the columnar chunk at the current position.  After parse returns, the
+   *            position will be restored to its original value, but it may change in the meantime.
    */
   def parse[A](buf: ByteBuffer)(implicit cm: ColumnMaker[A]): ColumnWrapper[A] = {
     if (buf == null) return new EmptyColumnWrapper[A](0)
+    val origPos = buf.position
+    buf.order(ByteOrder.LITTLE_ENDIAN)
     val headerBytes = buf.getInt()
-    majorVectorType(headerBytes) match {
+    val wrapper = majorVectorType(headerBytes) match {
       case VECTORTYPE_EMPTY =>
         new EmptyColumnWrapper[A](emptyVectorLen(headerBytes))
       case other =>
         cm.makeColumn(buf, headerBytes)
     }
+    buf.position(origPos)
+    wrapper
   }
 
   implicit object IntColumnMaker extends PrimitiveColumnMaker[Int] {

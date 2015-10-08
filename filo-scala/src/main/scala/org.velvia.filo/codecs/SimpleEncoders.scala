@@ -1,7 +1,7 @@
 package org.velvia.filo.codecs
 
 import com.google.flatbuffers.FlatBufferBuilder
-import java.nio.ByteBuffer
+import java.nio.{ByteBuffer, ByteOrder}
 import scala.collection.mutable.BitSet
 
 import org.velvia.filo._
@@ -43,7 +43,7 @@ object SimpleEncoders extends ThreadLocalBuffers {
   }
 
   def toEmptyVector(len: Int): ByteBuffer = {
-    val bb = ByteBuffer.allocate(4)
+    val bb = ByteBuffer.allocate(4).order(ByteOrder.LITTLE_ENDIAN)
     bb.putInt(WireFormat.emptyVector(len))
     bb.position(0)
     bb
