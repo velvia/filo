@@ -77,13 +77,7 @@ class RowToColumnBuilder(schema: Seq[IngestColumn]) {
    * @param hint an EncodingHint for the encoder
    */
   def convertToBytes(hint: EncodingHint = AutoDetect): Map[String, ByteBuffer] = {
-    val chunks = builders.map {
-      case b: IntColumnBuilder    => BuilderEncoder.builderToBuffer(b, hint)
-      case b: LongColumnBuilder   => BuilderEncoder.builderToBuffer(b, hint)
-      case b: DoubleColumnBuilder => BuilderEncoder.builderToBuffer(b, hint)
-      case b: FloatColumnBuilder  => BuilderEncoder.builderToBuffer(b, hint)
-      case b: StringColumnBuilder => BuilderEncoder.builderToBuffer(b, hint)
-    }
+    val chunks = builders.map(_.toFiloBuffer(hint))
     schema.zip(chunks).map { case (IngestColumn(colName, _), bytes) => (colName, bytes) }.toMap
   }
 

@@ -13,7 +13,7 @@ The Scala implementation IntColumns have been clocked at 2 billion integer reads
 
 * A [wire format](wire_format.md) for efficient data vectors for reading with zero or minimal/lazy deserialization
     - Very compact and fast string vectors using cached dictionary encoding
-    - Numeric vectors stored using smaller number of bits if possible
+    - Numeric vectors compressed with minimal bits, differential encoding, other techniques
 * Random or linear access, no need to deserialize everything for random access
 * Support for missing / Not Available values, even for primitive vectors
 * Trade off between read speed and compactness -- Dictionary encoding, delta encoding, other techniques
@@ -62,17 +62,22 @@ scala> cb.addData(103)
 scala> cb.addNA
 ```
 
-Encoding it to a `ByteBuffer`:
+Encoding it to a Filo binary `ByteBuffer`:
 
 ```scala
-scala> BuilderEncoder.builderToBuffer(cb)
-res6: java.nio.ByteBuffer = java.nio.HeapByteBuffer[pos=65408 lim=65536 cap=65536]
+scala> cb.toFiloBuffer
+res5: java.nio.ByteBuffer = java.nio.HeapByteBuffer[pos=0 lim=84 cap=84]
 ```
+
+The `toFiloBuffer` method takes an optional encoding hint.  By default, `ColumnBuilder`s will automatically detect the most space efficient encoding method.
 
 Parsing and iterating through the ByteBuffer as a collection:
 
 ```scala
-scala> ColumnParser.parse[Int](res6).foreach(println)
+scala> import ColumnParser._
+import ColumnParser._
+
+scala> ColumnParser.parse[Int](res5).foreach(println)
 101
 102
 103
@@ -83,6 +88,8 @@ and iterating over the non-missing elements of a Filo binary vector.  There are
 also methods for accessing and iterating over all elements.
 
 ### Converting rows to Filo columnar chunks
+
+Filo is designed to enable efficient conversion and composition between rows haing heterogeneous types and Filo vectors.
 
 Please see `RowToColumnBuilder` and the `RowToColumnBuilderTest` for an example.
 There is a convenience function to convert a whole bunch of rows at once.
@@ -100,20 +107,20 @@ import org.velvia.filo._
 scala> val orig = Seq(1, 2, -5, 101)
 orig: Seq[Int] = List(1, 2, -5, 101)
 
-scala> val buf = BuilderEncoder.seqToBuffer(orig)
-buf: java.nio.ByteBuffer = java.nio.HeapByteBuffer[pos=65432 lim=65536 cap=65536]
+scala> val buf = ColumnBuilder(orig).toFiloBuffer
+buf: java.nio.ByteBuffer = java.nio.HeapByteBuffer[pos=0 lim=76 cap=76]
 
 scala> val binarySeq = ColumnParser.parse[Int](buf)
-binarySeq: org.velvia.filo.ColumnWrapper[Int] = SimpleColumnWrapper(1, 2, -5, 101)
+binarySeq: org.velvia.filo.ColumnWrapper[Int] = ColumnParser(1, 2, -5, 101)
 
 scala> binarySeq.sum == orig.sum
-res2: Boolean = true
+res10: Boolean = true
 ```
 
 Note that even though a `ColumnWrapper` implements `Traversable`, it only
 traverses over defined elements that are not NA.  To work with collections of
 potentially missing elements, start with a `Seq[Option[A]]`, then use
-`BuilderEncoder.seqOptionToBuffer`.  You can extract out an
+`ColumnBuilder.fromOptions`.  You can extract out an
 `Iterator[Option[A]]` with the `optionIterator` method.
 
 ### Performance Benchmarking

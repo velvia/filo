@@ -15,7 +15,7 @@ class SimpleEncodingTest extends FunSpec with Matchers {
   describe("Int encoding") {
     it("should encode an empty list and decode back to empty") {
       val cb = new IntColumnBuilder
-      val buf = BuilderEncoder.builderToBuffer(cb, SimpleEncoding)
+      val buf = cb.toFiloBuffer(SimpleEncoding)
       val sc = ColumnParser.parse[Int](buf)
 
       sc.length should equal (0)
@@ -32,7 +32,7 @@ class SimpleEncodingTest extends FunSpec with Matchers {
     it("should encode a list of all NAs and decode back to all NAs") {
       val cb = new IntColumnBuilder
       cb.addNA
-      val buf = BuilderEncoder.builderToBuffer(cb, SimpleEncoding)
+      val buf = cb.toFiloBuffer(SimpleEncoding)
       val sc = ColumnParser.parse[Int](buf)
 
       sc.length should equal (1)
@@ -50,7 +50,7 @@ class SimpleEncodingTest extends FunSpec with Matchers {
       cb.addData(102)
       cb.addData(103)
       cb.addNA
-      val buf = BuilderEncoder.builderToBuffer(cb, SimpleEncoding)
+      val buf = cb.toFiloBuffer(SimpleEncoding)
       val sc = ColumnParser.parse[Int](buf)
 
       sc.length should equal (5)
@@ -68,7 +68,7 @@ class SimpleEncodingTest extends FunSpec with Matchers {
 
     it("should encode and decode back a sequence starting with NAs") {
       val orig = Seq(None, None, None, Some(10), Some(15))
-      val buf = BuilderEncoder.seqOptionToBuffer(orig, SimpleEncoding)
+      val buf = ColumnBuilder.fromOptions(orig).toFiloBuffer(SimpleEncoding)
       val binarySeq = ColumnParser.parse[Int](buf)
 
       binarySeq.length should equal (orig.length)
@@ -78,7 +78,7 @@ class SimpleEncodingTest extends FunSpec with Matchers {
 
     it("should encode and decode back a Seq[Int]") {
       val orig = Seq(1, 2, -5, 101)
-      val buf = BuilderEncoder.seqToBuffer(orig)
+      val buf = ColumnBuilder(orig).toFiloBuffer
       val binarySeq = ColumnParser.parse[Int](buf)
 
       binarySeq.length should equal (orig.length)
@@ -90,7 +90,7 @@ class SimpleEncodingTest extends FunSpec with Matchers {
 
     it("should handle NAs properly for Seq[Int] with more than 64 elements") {
       val orig: Seq[Option[Int]] = Seq(None, None) ++ (2 to 77).map(Some(_)) ++ Seq(None, None)
-      val buf = BuilderEncoder.seqOptionToBuffer(orig, SimpleEncoding)
+      val buf = ColumnBuilder.fromOptions(orig).toFiloBuffer(SimpleEncoding)
       val binarySeq = ColumnParser.parse[Int](buf)
 
       binarySeq.length should equal (orig.length)
@@ -102,7 +102,7 @@ class SimpleEncodingTest extends FunSpec with Matchers {
 
     it("should be able to parse same ByteBuffer many times") {
       val orig = Seq(1, 2, -5, 101)
-      val buf = BuilderEncoder.seqToBuffer(orig)
+      val buf = ColumnBuilder(orig).toFiloBuffer
 
       val seq1 = ColumnParser.parse[Int](buf)
       seq1.length should equal (orig.length)
@@ -122,7 +122,7 @@ class SimpleEncodingTest extends FunSpec with Matchers {
   describe("Long encoding") {
     it("should encode and decode back a Seq[Long]") {
       val orig = Seq(0L, 0L)
-      val buf = BuilderEncoder.seqToBuffer(orig)
+      val buf = ColumnBuilder(orig).toFiloBuffer
       val binarySeq = ColumnParser.parse[Long](buf)
 
       binarySeq.length should equal (orig.length)
@@ -133,7 +133,7 @@ class SimpleEncodingTest extends FunSpec with Matchers {
   describe("String Encoding") {
     it("should encode and decode back a Seq[String]") {
       val orig = Seq("apple", "banana")
-      val buf = BuilderEncoder.seqToBuffer(orig, SimpleEncoding)
+      val buf = ColumnBuilder(orig).toFiloBuffer(SimpleEncoding)
       val binarySeq = ColumnParser.parse[String](buf)
 
       binarySeq.length should equal (orig.length)

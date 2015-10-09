@@ -3,6 +3,7 @@ package org.velvia.filo
 import com.google.flatbuffers.FlatBufferBuilder
 import java.nio.ByteBuffer
 import scala.collection.mutable.BitSet
+import scala.reflect.ClassTag
 
 import RowReader._
 
@@ -35,6 +36,24 @@ sealed trait ColumnBuilderBase {
 
   /** Resets the builder state to build a new column */
   def reset(): Unit
+
+  /** Number of elements added so far */
+  def length: Int
+
+  /** Returns true if every element added is NA, or no elements have been added */
+  def isAllNA: Boolean
+
+  implicit val builder: BuilderEncoder[T]
+
+  /**
+   * Produces a binary Filo vector as a ByteBuffer, using default encoding hints
+   */
+  def toFiloBuffer(): ByteBuffer = toFiloBuffer(BuilderEncoder.AutoDetect)
+
+  /**
+   * Produces a binary Filo vector as a ByteBuffer, with a specific encoding hint
+   */
+  def toFiloBuffer(hint: BuilderEncoder.EncodingHint): ByteBuffer = builder.encode(this, hint)
 }
 
 /**
@@ -59,13 +78,21 @@ sealed abstract class ColumnBuilder[A](empty: A) extends ColumnBuilderBase {
     naMask.clear
     data.clear
   }
+
+  def length: Int = data.length
+  def isAllNA: Boolean = Utils.isAllNA(naMask, data.length)
 }
+
+sealed abstract class TypedColumnBuilder[A](empty: A)
+   (implicit val extractor: TypedFieldExtractor[A],
+    implicit val builder: BuilderEncoder[A]) extends ColumnBuilder(empty)
 
 sealed abstract class MinMaxColumnBuilder[A](minValue: A,
                                              maxValue: A,
                                              val zero: A)
                                             (implicit val ordering: Ordering[A],
-                                             implicit val extractor: TypedFieldExtractor[A])
+                                             implicit val extractor: TypedFieldExtractor[A],
+                                             implicit val builder: BuilderEncoder[A])
 extends ColumnBuilder(zero) {
   var min: A = maxValue
   var max: A = minValue
@@ -77,14 +104,39 @@ extends ColumnBuilder(zero) {
   }
 }
 
-// Please add your builder here when you add a type
 object ColumnBuilder {
-  def apply(dataType: Class[_]): ColumnBuilder[_] = dataType match {
-    case Classes.Int    => new IntColumnBuilder
-    case Classes.Long   => new LongColumnBuilder
-    case Classes.Double => new DoubleColumnBuilder
-    case Classes.Float  => new FloatColumnBuilder
-    case Classes.String => new StringColumnBuilder
+  /**
+   * Creates a ColumnBuilder dynamically based on a passed in class.
+   * Please add your builder here when you add a type
+   */
+  def apply[A](dataType: Class[_]): ColumnBuilder[A] = dataType match {
+    case Classes.Int    => (new IntColumnBuilder).asInstanceOf[ColumnBuilder[A]]
+    case Classes.Long   => (new LongColumnBuilder).asInstanceOf[ColumnBuilder[A]]
+    case Classes.Double => (new DoubleColumnBuilder).asInstanceOf[ColumnBuilder[A]]
+    case Classes.Float  => (new FloatColumnBuilder).asInstanceOf[ColumnBuilder[A]]
+    case Classes.String => (new StringColumnBuilder).asInstanceOf[ColumnBuilder[A]]
+  }
+
+  import BuilderEncoder._
+
+  /**
+   * Builds a ColumnBuilder automatically from a scala collection.
+   * All values will be marked available.
+   */
+  def apply[A: ClassTag: BuilderEncoder](seq: collection.Seq[A]): ColumnBuilderBase = {
+    val builder = apply[A](implicitly[ClassTag[A]].runtimeClass)
+    seq.foreach(builder.addData)
+    builder
+  }
+
+  /**
+   * Encodes a sequence of type Option[A] to a Filo format ByteBuffer.
+   * Elements which are None will get encoded as NA bits.
+   */
+  def fromOptions[A: ClassTag: BuilderEncoder](seq: collection.Seq[Option[A]]): ColumnBuilderBase = {
+    val builder = apply[A](implicitly[ClassTag[A]].runtimeClass)
+    seq.foreach(builder.addOption)
+    builder
   }
 }
 
@@ -93,9 +145,7 @@ class LongColumnBuilder extends MinMaxColumnBuilder(Long.MinValue, Long.MaxValue
 class DoubleColumnBuilder extends MinMaxColumnBuilder(Double.MinValue, Double.MaxValue, 0.0)
 class FloatColumnBuilder extends MinMaxColumnBuilder(Float.MinValue, Float.MaxValue, 0.0F)
 
-class StringColumnBuilder extends ColumnBuilder("") {
-  implicit val extractor = StringFieldExtractor
-
+class StringColumnBuilder extends TypedColumnBuilder("") {
   // For dictionary encoding. NOTE: this set does NOT include empty value
   val stringSet = new collection.mutable.HashSet[String]
 

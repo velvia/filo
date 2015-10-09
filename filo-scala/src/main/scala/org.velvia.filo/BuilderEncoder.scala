@@ -9,15 +9,12 @@ import org.velvia.filo.codecs._
  * Type class for encoding a ColumnBuilder to queryable binary Filo format
  */
 trait BuilderEncoder[A] {
-  // Used for automatic conversion of Seq[A] and Seq[Option[A]]
-  def getBuilder(): ColumnBuilder[A]
   def encodeInner(builder: ColumnBuilder[A], hint: BuilderEncoder.EncodingHint): ByteBuffer
-  def encode(builder: ColumnBuilder[A], hint: BuilderEncoder.EncodingHint): ByteBuffer = {
-    if (Utils.isAllNA(builder.naMask, builder.data.length) &&
-        builder.data.length <= WireFormat.MaxEmptyVectorLen) {
-      SimpleEncoders.toEmptyVector(builder.data.length)
+  def encode(builder: ColumnBuilderBase, hint: BuilderEncoder.EncodingHint): ByteBuffer = {
+    if (builder.isAllNA && builder.length <= WireFormat.MaxEmptyVectorLen) {
+      SimpleEncoders.toEmptyVector(builder.length)
     } else {
-      encodeInner(builder, hint)
+      encodeInner(builder.asInstanceOf[ColumnBuilder[A]], hint)
     }
   }
 }
@@ -52,20 +49,15 @@ object BuilderEncoder {
   case object SimpleEncoding extends EncodingHint
   case object DictionaryEncoding extends EncodingHint
 
-  def apply[T: BuilderEncoder]: BuilderEncoder[T] = implicitly[BuilderEncoder[T]]
-
   implicit object IntEncoder extends IntegralEncoder[Int] {
-    def getBuilder: ColumnBuilder[Int] = new IntColumnBuilder
     val unsignedBuilder = PrimitiveUnsignedBuilders.IntDataVectBuilder
   }
 
   implicit object LongEncoder extends IntegralEncoder[Long] {
-    def getBuilder: ColumnBuilder[Long] = new LongColumnBuilder
     val unsignedBuilder = PrimitiveUnsignedBuilders.LongDataVectBuilder
   }
 
   implicit object DoubleEncoder extends BuilderEncoder[Double] with MinMaxEncoder[Double] {
-    def getBuilder: ColumnBuilder[Double] = new DoubleColumnBuilder
     def encodeInner(builder: ColumnBuilder[Double], hint: EncodingHint): ByteBuffer = {
       import FPBuilders._
       val (min, max, _) = minMaxZero(builder)
@@ -75,7 +67,6 @@ object BuilderEncoder {
   }
 
   implicit object FloatEncoder extends BuilderEncoder[Float] with MinMaxEncoder[Float] {
-    def getBuilder: ColumnBuilder[Float] = new FloatColumnBuilder
     def encodeInner(builder: ColumnBuilder[Float], hint: EncodingHint): ByteBuffer = {
       import FPBuilders._
       val (min, max, _) = minMaxZero(builder)
@@ -85,7 +76,6 @@ object BuilderEncoder {
   }
 
   implicit object StringEncoder extends BuilderEncoder[String] {
-    def getBuilder: ColumnBuilder[String] = new StringColumnBuilder
     def encodeInner(builder: ColumnBuilder[String], hint: EncodingHint): ByteBuffer = {
       val useDictEncoding = hint match {
         case DictionaryEncoding => true
@@ -109,38 +99,6 @@ object BuilderEncoder {
           SimpleEncoders.toStringVector(builder.data, builder.naMask.result)
       }
     }
-  }
-
-  /**
-   * Encodes a [[org.velvia.filo.ColumnBuilder]] to a Filo format ByteBuffer
-   */
-  def builderToBuffer[A: BuilderEncoder](builder: ColumnBuilder[A],
-                                         hint: EncodingHint = AutoDetect): ByteBuffer = {
-    BuilderEncoder[A].encode(builder, hint)
-  }
-
-  /**
-   * Encodes a sequence of type A to a Filo format ByteBuffer
-   * All values will be marked available.
-   * I know this may not be the most efficient way to encode, but the benefits is that
-   * all of the auto-encoding-detection is available.
-   */
-  def seqToBuffer[A: BuilderEncoder](vector: collection.Seq[A],
-                                     hint: EncodingHint = AutoDetect): ByteBuffer = {
-    val builder = BuilderEncoder[A].getBuilder
-    vector.foreach(builder.addData)
-    builderToBuffer(builder, hint)
-  }
-
-  /**
-   * Encodes a sequence of type Option[A] to a Filo format ByteBuffer.
-   * Elements which are None will get encoded as NA bits.
-   */
-  def seqOptionToBuffer[A: BuilderEncoder](vector: collection.Seq[Option[A]],
-                                           hint: EncodingHint = AutoDetect): ByteBuffer = {
-    val builder = BuilderEncoder[A].getBuilder
-    vector.foreach(builder.addOption)
-    builderToBuffer(builder, hint)
   }
 }
 

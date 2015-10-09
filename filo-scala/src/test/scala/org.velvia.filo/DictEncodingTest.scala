@@ -8,7 +8,7 @@ class DictEncodingTest extends FunSpec with Matchers {
   import ColumnParser._
 
   it("should encode and decode back an empty Seq") {
-    val buf = BuilderEncoder.seqToBuffer(Seq[String](), DictionaryEncoding)
+    val buf = ColumnBuilder(Seq[String]()).toFiloBuffer(DictionaryEncoding)
     val binarySeq = ColumnParser.parse[String](buf)
 
     binarySeq.length should equal (0)
@@ -16,7 +16,7 @@ class DictEncodingTest extends FunSpec with Matchers {
 
   it("should encode and decode back a Seq[String]") {
     val orig = Seq("apple", "banana")
-    val buf = BuilderEncoder.seqToBuffer(orig, DictionaryEncoding)
+    val buf = ColumnBuilder(orig).toFiloBuffer(DictionaryEncoding)
     val binarySeq = ColumnParser.parse[String](buf)
 
     binarySeq.length should equal (orig.length)
@@ -25,7 +25,7 @@ class DictEncodingTest extends FunSpec with Matchers {
 
   it("should encode and decode back a Seq[Option[String]]") {
     val orig = Seq(Some("apple"), None, Some("banana"))
-    val buf = BuilderEncoder.seqOptionToBuffer(orig, DictionaryEncoding)
+    val buf = ColumnBuilder.fromOptions(orig).toFiloBuffer(DictionaryEncoding)
     val binarySeq = ColumnParser.parse[String](buf)
 
     binarySeq.length should equal (orig.length)
@@ -35,7 +35,7 @@ class DictEncodingTest extends FunSpec with Matchers {
 
   it("should encode and decode back a sequence starting with NAs") {
     val orig = Seq(None, None, None, Some("apple"), Some("banana"))
-    val buf = BuilderEncoder.seqOptionToBuffer(orig, DictionaryEncoding)
+    val buf = ColumnBuilder.fromOptions(orig).toFiloBuffer(DictionaryEncoding)
     val binarySeq = ColumnParser.parse[String](buf)
 
     binarySeq.length should equal (orig.length)
@@ -47,7 +47,7 @@ class DictEncodingTest extends FunSpec with Matchers {
   // to an ArrayOutOfBoundsException.
   it("should ensure proper conversion when there are 128-255 unique strings") {
     val orig = (0 to 130).map(_.toString).toSeq
-    val buf = BuilderEncoder.seqToBuffer(orig, DictionaryEncoding)
+    val buf = ColumnBuilder(orig).toFiloBuffer(DictionaryEncoding)
     val binarySeq = ColumnParser.parse[String](buf)
 
     binarySeq.length should equal (orig.length)
