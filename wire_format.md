@@ -19,6 +19,7 @@ The valid values of the vector type:
 | 0x00000102  | SimpleStringVector | FlatBuffer Vector with variable-size string elements |
 | 0x00000202  | SimpleBinaryVector | FlatBuffer Vector with variable-size binary elements |
 | 0x00000302  | SimpleFixedStringVector | Actually a SimplePrimitiveVector for string vectors where max string len < 15 chars |
+| 0x00000402  | SimpleConstVector  | A SimplePrimitiveVector for representing primitives holding the same value for entire vector
 | 0x00000103  | DictStringVector   | FlatBuffer Vector with dictionary-encoded strings |
 | 0x00000004  | RLEPrimitiveVector | FlatBuffer Run-Length-Encoded vector for primitives |
 
@@ -28,9 +29,11 @@ See `WireFormat.scala` for code definitions.
 
 Many of the vectors consists of at least one fixed-size element arrays.  These data vectors are, for flexibility and compactness, not represented with the native FlatBuffer arrays, but rather with two elements:
 
-* nbits - a u8 representing the number of bits per element
+* info - a struct with the following elements:
+    * nbits - a u8 representing the number of bits per element
+    * signed - a bool, true if the vector contains signed integers
 * data - a u8 array with each element aligned to every nbits, stored in little endian order.
-    - For example, if nbits was 4, and the array was [1, 2, 3, 4], then in network / file byte order, the bytes would be 0x21 0x43
+    - For example, if nbits was 4, and the array was [1, 2, 3, 4], then in file byte order, the bytes would be 0x21 0x43
 
 The following types and standard nbits sizes should be supported by all Filo implementations:
 
@@ -50,6 +53,8 @@ Nothing follows the 4 header bytes since the length is already captured there.
 
 The FlatBuffers buffer for each type follows the header bytes.  See the *.fbs files for exact definition.
 
+SimplePrimitiveVector contains a data vector as described above with nbits and signed struct, with a separate len field, while SimpleStringVector simply contains a [string].
+
 Note that when implementing custom types, if the binary blobs are all fixed size, it is probably more efficient to use SimplePrimitiveVector - assuming the blobs are less than 256 bytes long each.
 
 ## SimpleFixedStringVector
@@ -61,6 +66,10 @@ The `SimpleFixedStringVector` uses a `SimplePrimitiveVector` for short strings a
 The actual equation for determining when simpleFixedString works well is this:
 
     (maxStringLen + 1) < (4 + 4 + avgStringLen)
+
+## SimpleConstVector
+
+This is really a SimplePrimitiveVector, in which the data vector contains one element only.  This vector logically represents this single element repeated *len* times.  The NA bitmask is still available.
 
 ## DictStringVector
 
