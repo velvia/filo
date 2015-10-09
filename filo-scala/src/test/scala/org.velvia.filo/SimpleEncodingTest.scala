@@ -2,6 +2,9 @@ package org.velvia.filo
 
 import java.nio.ByteOrder
 
+import org.velvia.filo.codecs.SimplePrimitiveWrapper
+import org.velvia.filo.vector._
+
 import org.scalatest.FunSpec
 import org.scalatest.Matchers
 
@@ -80,6 +83,9 @@ class SimpleEncodingTest extends FunSpec with Matchers {
 
       binarySeq.length should equal (orig.length)
       binarySeq.sum should equal (orig.sum)
+      val spw = binarySeq.asInstanceOf[SimplePrimitiveWrapper[Int]]
+      spw.maskType should equal (MaskType.AllZeroes)   // no NA bit set
+      spw.maskLen should equal (0)
     }
 
     it("should handle NAs properly for Seq[Int] with more than 64 elements") {
