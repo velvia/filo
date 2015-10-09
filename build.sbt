@@ -32,7 +32,6 @@ releaseSettings ++ publishSettings
 publish := {}   // should only affect the root project.  Don't want publish to error out.
 
 lazy val deps = Seq(
-  "org.scodec"             %% "scodec-bits"   % "1.0.10",
   "com.nativelibs4java"    %% "scalaxy-loops" % "0.3.3" % "provided",
   "org.scalatest"          %% "scalatest"     % "2.1.0" % "test",
   "org.scalacheck"         %% "scalacheck"    % "1.11.0" % "test")
