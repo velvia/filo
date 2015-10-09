@@ -48,6 +48,16 @@ class EncodingPropertiesTest extends FunSpec with Matchers with PropertyChecks {
     }
   }
 
+  it("Filo format boolean vectors should match length and number of true values") {
+    forAll { (s: List[Boolean]) =>
+      val buf = ColumnBuilder(s).toFiloBuffer
+      val binarySeq = ColumnParser.parse[Boolean](buf)
+
+      binarySeq.length should equal (s.length)
+      binarySeq.filter(x => x) should equal (s.filter(x => x))
+    }
+  }
+
   import org.scalacheck._
   import Arbitrary.arbitrary
 

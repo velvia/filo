@@ -49,6 +49,10 @@ object BuilderEncoder {
   case object SimpleEncoding extends EncodingHint
   case object DictionaryEncoding extends EncodingHint
 
+  implicit object BoolEncoder extends IntegralEncoder[Boolean] {
+    val unsignedBuilder = PrimitiveUnsignedBuilders.BoolDataVectBuilder
+  }
+
   implicit object IntEncoder extends IntegralEncoder[Int] {
     val unsignedBuilder = PrimitiveUnsignedBuilders.IntDataVectBuilder
   }

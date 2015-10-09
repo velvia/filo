@@ -11,6 +11,7 @@ case class IngestColumn(name: String, dataType: Class[_])
 
 // To help matching against the ClassTag in the ColumnBuilder
 private object Classes {
+  val Boolean = classOf[Boolean]
   val Byte = java.lang.Byte.TYPE
   val Short = java.lang.Short.TYPE
   val Int = java.lang.Integer.TYPE

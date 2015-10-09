@@ -1,6 +1,9 @@
 package org.velvia.filo
 
 import com.google.flatbuffers.FlatBufferBuilder
+import scala.collection.mutable.BitSet
+import scala.language.postfixOps
+import scalaxy.loops._
 
 /**
  * A trait to build the smallest space fitting data vector possible given numeric
@@ -18,6 +21,18 @@ trait PrimitiveDataVectBuilder[A] {
  */
 object PrimitiveUnsignedBuilders {
   import Utils._
+
+  implicit object BoolDataVectBuilder extends PrimitiveDataVectBuilder[Boolean] {
+    def build(fbb: FlatBufferBuilder, data: Seq[Boolean], min: Boolean, max: Boolean): (Int, Int) = {
+      // TODO: handle case where all booleans are true or false
+      val bitset = new BitSet
+      for { i <- 0 until data.length optimized } {
+        if (data(i)) bitset += i
+      }
+      val mask = bitset.toBitMask
+      longVect(fbb, mask.size, mask.reverseIterator)
+    }
+  }
 
   implicit object ShortDataVectBuilder extends PrimitiveDataVectBuilder[Short] {
     def build(fbb: FlatBufferBuilder, data: Seq[Short], min: Short, max: Short): (Int, Int) = {

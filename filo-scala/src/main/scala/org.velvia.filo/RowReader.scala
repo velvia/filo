@@ -9,6 +9,7 @@ import java.nio.ByteBuffer
  */
 trait RowReader {
   def notNull(columnNo: Int): Boolean
+  def getBoolean(columnNo: Int): Boolean
   def getInt(columnNo: Int): Int
   def getLong(columnNo: Int): Long
   def getDouble(columnNo: Int): Double
@@ -22,6 +23,11 @@ trait RowReader {
 case class TupleRowReader(tuple: Product) extends RowReader {
   def notNull(columnNo: Int): Boolean =
     tuple.productElement(columnNo).asInstanceOf[Option[Any]].nonEmpty
+
+  def getBoolean(columnNo: Int): Boolean = tuple.productElement(columnNo) match {
+    case Some(x: Boolean) => x
+  }
+
   def getInt(columnNo: Int): Int = tuple.productElement(columnNo) match {
     case Some(x: Int) => x
   }
@@ -50,6 +56,7 @@ case class ArrayStringRowReader(strings: Array[String]) extends RowReader {
   //scalastyle:off
   def notNull(columnNo: Int): Boolean = strings(columnNo) != null && strings(columnNo) != ""
   //scalastyle:on
+  def getBoolean(columnNo: Int): Boolean = strings(columnNo).toBoolean
   def getInt(columnNo: Int): Int = strings(columnNo).toInt
   def getLong(columnNo: Int): Long = strings(columnNo).toLong
   def getDouble(columnNo: Int): Double = strings(columnNo).toDouble
@@ -61,6 +68,10 @@ object RowReader {
   // Type class for extracting a field of a specific type
   trait TypedFieldExtractor[F] {
     def getField(reader: RowReader, columnNo: Int): F
+  }
+
+  implicit object BooleanFieldExtractor extends TypedFieldExtractor[Boolean] {
+    final def getField(reader: RowReader, columnNo: Int): Boolean = reader.getBoolean(columnNo)
   }
 
   implicit object LongFieldExtractor extends TypedFieldExtractor[Long] {
@@ -97,6 +108,7 @@ abstract class FiloRowReader extends RowReader {
   var rowNo: Int = -1
 
   final def notNull(columnNo: Int): Boolean = parsers(columnNo).isAvailable(rowNo)
+  final def getBoolean(columnNo: Int): Boolean = parsers(columnNo).asInstanceOf[ColumnWrapper[Boolean]](rowNo)
   final def getInt(columnNo: Int): Int = parsers(columnNo).asInstanceOf[ColumnWrapper[Int]](rowNo)
   final def getLong(columnNo: Int): Long = parsers(columnNo).asInstanceOf[ColumnWrapper[Long]](rowNo)
   final def getDouble(columnNo: Int): Double = parsers(columnNo).asInstanceOf[ColumnWrapper[Double]](rowNo)
@@ -114,6 +126,7 @@ class FastFiloRowReader(chunks: Array[ByteBuffer], classes: Array[Class[_]]) ext
   require(chunks.size == classes.size, "chunks must be same length as classes")
 
   val parsers: Array[ColumnWrapper[_]] = chunks.zip(classes).map {
+    case (chunk, Classes.Boolean) => parse[Boolean](chunk)
     case (chunk, Classes.String) => parse[String](chunk)
     case (chunk, Classes.Int) => parse[Int](chunk)
     case (chunk, Classes.Long) => parse[Long](chunk)

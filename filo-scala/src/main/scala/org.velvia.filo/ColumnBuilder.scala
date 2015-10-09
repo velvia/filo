@@ -110,6 +110,7 @@ object ColumnBuilder {
    * Please add your builder here when you add a type
    */
   def apply[A](dataType: Class[_]): ColumnBuilder[A] = dataType match {
+    case Classes.Boolean => (new BoolColumnBuilder).asInstanceOf[ColumnBuilder[A]]
     case Classes.Int    => (new IntColumnBuilder).asInstanceOf[ColumnBuilder[A]]
     case Classes.Long   => (new LongColumnBuilder).asInstanceOf[ColumnBuilder[A]]
     case Classes.Double => (new DoubleColumnBuilder).asInstanceOf[ColumnBuilder[A]]
@@ -140,6 +141,7 @@ object ColumnBuilder {
   }
 }
 
+class BoolColumnBuilder extends MinMaxColumnBuilder(false, true, false)
 class IntColumnBuilder extends MinMaxColumnBuilder(Int.MinValue, Int.MaxValue, 0)
 class LongColumnBuilder extends MinMaxColumnBuilder(Long.MinValue, Long.MaxValue, 0L)
 class DoubleColumnBuilder extends MinMaxColumnBuilder(Double.MinValue, Double.MaxValue, 0.0)

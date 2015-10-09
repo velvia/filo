@@ -44,6 +44,15 @@ object ColumnParser {
     wrapper
   }
 
+  implicit object BoolColumnMaker extends PrimitiveColumnMaker[Boolean] {
+    def simpleVectPF(spv: SimplePrimitiveVector): NBitsToWrapper[Boolean] = {
+      case (64, false) =>
+        new SimplePrimitiveWrapper[Boolean](spv) {
+          final def apply(i: Int): Boolean = ((reader.readByte(i >> 3) >> (i & 0x07)) & 0x01) != 0
+        }
+    }
+  }
+
   implicit object IntColumnMaker extends PrimitiveColumnMaker[Int] {
     def simpleVectPF(spv: SimplePrimitiveVector): NBitsToWrapper[Int] = {
       case (32, false) => new SimplePrimitiveWrapper[Int](spv) {
