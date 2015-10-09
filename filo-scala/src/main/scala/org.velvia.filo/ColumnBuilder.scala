@@ -4,12 +4,46 @@ import com.google.flatbuffers.FlatBufferBuilder
 import java.nio.ByteBuffer
 import scala.collection.mutable.BitSet
 
+import RowReader._
+
 /**
  * A bunch of builders for row-oriented ingestion to create columns in parallel
- * Use these for support of missing/NA values
+ * Use these for support of missing/NA values.
+ */
+sealed trait ColumnBuilderBase {
+  type T
+
+  /** Add a Not Available (null) element to the builder. */
+  def addNA(): Unit
+
+  /** Add a value of type T to the builder.  It will be marked as available. */
+  def addData(value: T): Unit
+
+  /** If value is defined, then use addData, otherwise use addNA */
+  def addOption(value: Option[T]): Unit = {
+    value.foreach { v => addData(v) }
+    value.orElse  { addNA(); None }
+  }
+
+  implicit val extractor: TypedFieldExtractor[T]
+
+  /** Adds an element from a RowReader */
+  final def add(row: RowReader, colNo: Int): Unit = {
+    if (row.notNull(colNo)) { addData(extractor.getField(row, colNo)) }
+    else                    { addNA() }
+  }
+
+  /** Resets the builder state to build a new column */
+  def reset(): Unit
+}
+
+/**
+ * A concrete implementation of ColumnBuilderBase based on ArrayBuffer and BitSet for a mask
  * @param empty The empty value to insert for an NA or missing value
  */
-sealed abstract class ColumnBuilder[A](empty: A) {
+sealed abstract class ColumnBuilder[A](empty: A) extends ColumnBuilderBase {
+  type T = A
+
   // True for a row number (or bit is part of the set) if data for that row is not available
   val naMask = new BitSet
   val data = new collection.mutable.ArrayBuffer[A]
@@ -21,29 +55,18 @@ sealed abstract class ColumnBuilder[A](empty: A) {
 
   def addData(value: A): Unit = { data += value }
 
-  def addOption(value: Option[A]): Unit = {
-    value.foreach { v => addData(v) }
-    value.orElse  { addNA(); None }
-  }
-
-  final def add(row: RowReader, colNo: Int): Unit = {
-    if (row.notNull(colNo)) { addData(fromReader(row, colNo)) }
-    else                    { addNA() }
-  }
-
-  def fromReader(row: RowReader, colNo: Int): A
-
   def reset(): Unit = {
     naMask.clear
     data.clear
   }
 }
 
-sealed abstract class MinMaxColumnBuilder[A: Ordering](minValue: A,
-                                                       maxValue: A,
-                                                       val zero: A) extends ColumnBuilder(zero) {
-  val ordering = implicitly[Ordering[A]]
-
+sealed abstract class MinMaxColumnBuilder[A](minValue: A,
+                                             maxValue: A,
+                                             val zero: A)
+                                            (implicit val ordering: Ordering[A],
+                                             implicit val extractor: TypedFieldExtractor[A])
+extends ColumnBuilder(zero) {
   var min: A = maxValue
   var max: A = minValue
 
@@ -60,27 +83,19 @@ object ColumnBuilder {
     case Classes.Int    => new IntColumnBuilder
     case Classes.Long   => new LongColumnBuilder
     case Classes.Double => new DoubleColumnBuilder
+    case Classes.Float  => new FloatColumnBuilder
     case Classes.String => new StringColumnBuilder
   }
 }
 
-class IntColumnBuilder extends MinMaxColumnBuilder(Int.MinValue, Int.MaxValue, 0) {
-  final def fromReader(row: RowReader, colNo: Int): Int = row.getInt(colNo)
-}
-
-class LongColumnBuilder extends MinMaxColumnBuilder(Long.MinValue, Long.MaxValue, 0L) {
-  final def fromReader(row: RowReader, colNo: Int): Long = row.getLong(colNo)
-}
-
-class DoubleColumnBuilder extends MinMaxColumnBuilder(Double.MinValue, Double.MaxValue, 0.0) {
-  final def fromReader(row: RowReader, colNo: Int): Double = row.getDouble(colNo)
-}
-
-class FloatColumnBuilder extends MinMaxColumnBuilder(Float.MinValue, Float.MaxValue, 0.0F) {
-  final def fromReader(row: RowReader, colNo: Int): Float = row.getFloat(colNo)
-}
+class IntColumnBuilder extends MinMaxColumnBuilder(Int.MinValue, Int.MaxValue, 0)
+class LongColumnBuilder extends MinMaxColumnBuilder(Long.MinValue, Long.MaxValue, 0L)
+class DoubleColumnBuilder extends MinMaxColumnBuilder(Double.MinValue, Double.MaxValue, 0.0)
+class FloatColumnBuilder extends MinMaxColumnBuilder(Float.MinValue, Float.MaxValue, 0.0F)
 
 class StringColumnBuilder extends ColumnBuilder("") {
+  implicit val extractor = StringFieldExtractor
+
   // For dictionary encoding. NOTE: this set does NOT include empty value
   val stringSet = new collection.mutable.HashSet[String]
 
