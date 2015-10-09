@@ -42,14 +42,14 @@ Get it here:
 
     libraryDependencies += "org.velvia.filo" % "filo-scala" % "0.1.1"
 
-Using a `ColumnBuilder` to progressively build a column:
+Using a `VectorBuilder` to progressively build a column:
 
 ```scala
 scala> import org.velvia.filo._
 import org.velvia.filo._
 
-scala> val cb = new IntColumnBuilder
-cb: org.velvia.filo.IntColumnBuilder = org.velvia.filo.IntColumnBuilder@48cbb760
+scala> val cb = new IntVectorBuilder
+cb: org.velvia.filo.IntVectorBuilder = org.velvia.filo.IntVectorBuilder@48cbb760
 
 scala> cb.addNA
 
@@ -69,32 +69,32 @@ scala> cb.toFiloBuffer
 res5: java.nio.ByteBuffer = java.nio.HeapByteBuffer[pos=0 lim=84 cap=84]
 ```
 
-The `toFiloBuffer` method takes an optional encoding hint.  By default, `ColumnBuilder`s will automatically detect the most space efficient encoding method.
+The `toFiloBuffer` method takes an optional encoding hint.  By default, `VectorBuilder`s will automatically detect the most space efficient encoding method.
 
 Parsing and iterating through the ByteBuffer as a collection:
 
 ```scala
-scala> import ColumnParser._
-import ColumnParser._
+scala> import VectorReader._
+import VectorReader._
 
-scala> ColumnParser.parse[Int](res5).foreach(println)
+scala> FiloVector[Int](res5).foreach(println)
 101
 102
 103
 ```
 
-All `ColumnWrappers` implement `scala.collection.Traversable` for transforming
+All `FiloVectors` implement `scala.collection.Traversable` for transforming
 and iterating over the non-missing elements of a Filo binary vector.  There are
 also methods for accessing and iterating over all elements.
 
-### Converting rows to Filo columnar chunks
+### Converting rows to Filo binary vectors
 
 Filo is designed to enable efficient conversion and composition between rows haing heterogeneous types and Filo vectors.
 
-Please see `RowToColumnBuilder` and the `RowToColumnBuilderTest` for an example.
+Please see `RowToVectorBuilder` and the `RowToVectorBuilderTest` for an example.
 There is a convenience function to convert a whole bunch of rows at once.
 
-Also see `FiloRowReader` for extracting rows out of a bunch of heterogeneous Filo vectors.  Both this and the `RowToColumnBuilder` works with `RowReader`s, to facilitate composing rows to and from Filo vectors.
+Also see `FiloRowReader` for extracting rows out of a bunch of heterogeneous Filo vectors.  Both this and the `RowToVectorBuilder` works with `RowReader`s, to facilitate composing rows to and from Filo vectors.
 
 ### Support for Seq[A] and Seq[Option[A]]
 
@@ -107,20 +107,20 @@ import org.velvia.filo._
 scala> val orig = Seq(1, 2, -5, 101)
 orig: Seq[Int] = List(1, 2, -5, 101)
 
-scala> val buf = ColumnBuilder(orig).toFiloBuffer
+scala> val buf = VectorBuilder(orig).toFiloBuffer
 buf: java.nio.ByteBuffer = java.nio.HeapByteBuffer[pos=0 lim=76 cap=76]
 
-scala> val binarySeq = ColumnParser.parse[Int](buf)
-binarySeq: org.velvia.filo.ColumnWrapper[Int] = ColumnParser(1, 2, -5, 101)
+scala> val binarySeq = FiloVector[Int](buf)
+binarySeq: org.velvia.filo.FiloVector[Int] = VectorReader(1, 2, -5, 101)
 
 scala> binarySeq.sum == orig.sum
 res10: Boolean = true
 ```
 
-Note that even though a `ColumnWrapper` implements `Traversable`, it only
+Note that even though a `FiloVector` implements `Traversable`, it only
 traverses over defined elements that are not NA.  To work with collections of
 potentially missing elements, start with a `Seq[Option[A]]`, then use
-`ColumnBuilder.fromOptions`.  You can extract out an
+`VectorBuilder.fromOptions`.  You can extract out an
 `Iterator[Option[A]]` with the `optionIterator` method.
 
 ### Performance Benchmarking
@@ -135,7 +135,7 @@ To also get profiling of top methods:
 
 For help, do `sbt filoScalaJmh/run -h`.
 
-See this [gist](https://gist.github.com/velvia/213b837c6e02c4982a9a) for how I improved the `ColumnWrapper.apply()` method performance by 50x.
+See this [gist](https://gist.github.com/velvia/213b837c6e02c4982a9a) for how I improved the `FiloVector.apply()` method performance by 50x.
  
 ## Future directions
 

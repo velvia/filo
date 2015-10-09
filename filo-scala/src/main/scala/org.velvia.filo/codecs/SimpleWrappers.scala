@@ -10,7 +10,7 @@ import org.velvia.filo.vector._
  * Represents either an empty column (length 0) or a column where none of the
  * values are available (null).
  */
-class EmptyColumnWrapper[A](len: Int) extends ColumnWrapper[A] {
+class EmptyFiloVector[A](len: Int) extends FiloVector[A] {
   final def isAvailable(index: Int): Boolean = false
   final def foreach[B](fn: A => B): Unit = {}
   final def apply(index: Int): A =
@@ -20,7 +20,7 @@ class EmptyColumnWrapper[A](len: Int) extends ColumnWrapper[A] {
 }
 
 abstract class SimplePrimitiveWrapper[A](spv: SimplePrimitiveVector)
-    extends ColumnWrapper[A] with NaMaskAvailable {
+    extends FiloVector[A] with NaMaskAvailable {
   val naMask = spv.naMask
   val info = spv.info
   val _len = spv.len
@@ -34,7 +34,7 @@ abstract class SimplePrimitiveWrapper[A](spv: SimplePrimitiveVector)
 }
 
 // TODO: ditch naMask
-class SimpleStringWrapper(ssv: SimpleStringVector) extends ColumnWrapper[String] with NaMaskAvailable {
+class SimpleStringWrapper(ssv: SimpleStringVector) extends FiloVector[String] with NaMaskAvailable {
   val naMask = ssv.naMask
   val _len = ssv.dataLength
 

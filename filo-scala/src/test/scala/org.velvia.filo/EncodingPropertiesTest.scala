@@ -6,12 +6,12 @@ import org.scalatest.prop.PropertyChecks
 
 class EncodingPropertiesTest extends FunSpec with Matchers with PropertyChecks {
   import BuilderEncoder._
-  import ColumnParser._
+  import VectorReader._
 
   it("Filo format int vectors should match length and sum") {
     forAll { (s: List[Int]) =>
-      val buf = ColumnBuilder(s).toFiloBuffer
-      val binarySeq = ColumnParser.parse[Int](buf)
+      val buf = VectorBuilder(s).toFiloBuffer
+      val binarySeq = FiloVector[Int](buf)
 
       binarySeq.length should equal (s.length)
       binarySeq.sum should equal (s.sum)
@@ -20,8 +20,8 @@ class EncodingPropertiesTest extends FunSpec with Matchers with PropertyChecks {
 
   it("Filo format long vectors should match length and sum") {
     forAll { (s: List[Long]) =>
-      val buf = ColumnBuilder(s).toFiloBuffer
-      val binarySeq = ColumnParser.parse[Long](buf)
+      val buf = VectorBuilder(s).toFiloBuffer
+      val binarySeq = FiloVector[Long](buf)
 
       binarySeq.length should equal (s.length)
       binarySeq.sum should equal (s.sum)
@@ -30,8 +30,8 @@ class EncodingPropertiesTest extends FunSpec with Matchers with PropertyChecks {
 
   it("Filo format double vectors should match length and sum") {
     forAll { (s: List[Double]) =>
-      val buf = ColumnBuilder(s).toFiloBuffer
-      val binarySeq = ColumnParser.parse[Double](buf)
+      val buf = VectorBuilder(s).toFiloBuffer
+      val binarySeq = FiloVector[Double](buf)
 
       binarySeq.length should equal (s.length)
       binarySeq.sum should equal (s.sum)
@@ -40,8 +40,8 @@ class EncodingPropertiesTest extends FunSpec with Matchers with PropertyChecks {
 
   it("Filo format float vectors should match length and sum") {
     forAll { (s: List[Float]) =>
-      val buf = ColumnBuilder(s).toFiloBuffer
-      val binarySeq = ColumnParser.parse[Float](buf)
+      val buf = VectorBuilder(s).toFiloBuffer
+      val binarySeq = FiloVector[Float](buf)
 
       binarySeq.length should equal (s.length)
       binarySeq.sum should equal (s.sum)
@@ -50,8 +50,8 @@ class EncodingPropertiesTest extends FunSpec with Matchers with PropertyChecks {
 
   it("Filo format boolean vectors should match length and number of true values") {
     forAll { (s: List[Boolean]) =>
-      val buf = ColumnBuilder(s).toFiloBuffer
-      val binarySeq = ColumnParser.parse[Boolean](buf)
+      val buf = VectorBuilder(s).toFiloBuffer
+      val binarySeq = FiloVector[Boolean](buf)
 
       binarySeq.length should equal (s.length)
       binarySeq.filter(x => x) should equal (s.filter(x => x))
@@ -81,8 +81,8 @@ class EncodingPropertiesTest extends FunSpec with Matchers with PropertyChecks {
 
   it("should match elements and length for Int vectors with missing/NA elements") {
     forAll(boundedIntList) { s =>
-      val buf = ColumnBuilder.fromOptions(s).toFiloBuffer
-      val binarySeq = ColumnParser.parse[Int](buf)
+      val buf = VectorBuilder.fromOptions(s).toFiloBuffer
+      val binarySeq = FiloVector[Int](buf)
 
       binarySeq.length should equal (s.length)
       val elements = binarySeq.optionIterator.toSeq
@@ -92,8 +92,8 @@ class EncodingPropertiesTest extends FunSpec with Matchers with PropertyChecks {
 
   it("should match elements and length for simple string vectors with missing/NA elements") {
     forAll(optionList[String]) { s =>
-      val buf = ColumnBuilder.fromOptions(s).toFiloBuffer(SimpleEncoding)
-      val binarySeq = ColumnParser.parse[String](buf)
+      val buf = VectorBuilder.fromOptions(s).toFiloBuffer(SimpleEncoding)
+      val binarySeq = FiloVector[String](buf)
 
       binarySeq.length should equal (s.length)
       val elements = binarySeq.optionIterator.toSeq
@@ -103,8 +103,8 @@ class EncodingPropertiesTest extends FunSpec with Matchers with PropertyChecks {
 
   it("should match elements and length for dictionary string vectors with missing/NA elements") {
     forAll(optionList[String]) { s =>
-      val buf = ColumnBuilder.fromOptions(s).toFiloBuffer(DictionaryEncoding)
-      val binarySeq = ColumnParser.parse[String](buf)
+      val buf = VectorBuilder.fromOptions(s).toFiloBuffer(DictionaryEncoding)
+      val binarySeq = FiloVector[String](buf)
 
       binarySeq.length should equal (s.length)
       val elements = binarySeq.optionIterator.toSeq

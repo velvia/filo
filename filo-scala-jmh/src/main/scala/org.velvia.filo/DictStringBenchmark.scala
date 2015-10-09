@@ -21,7 +21,7 @@ import java.util.concurrent.TimeUnit
 @State(Scope.Thread)
 class DictStringBenchmark {
   import scala.util.Random.{alphanumeric, nextInt, nextFloat}
-  import ColumnParser._
+  import VectorReader._
 
   val numValues = 10000
   // NOTE: results show that time spent is heavily influenced by ratio of unique strings...
@@ -37,14 +37,14 @@ class DictStringBenchmark {
   }
   val randomStrings = (0 until numValues).map(i => uniqueStrings(nextInt(numUniqueStrings)))
   val filoBufferNoNA = BuilderEncoder.seqToBuffer(randomStrings)
-  val scNoNA = ColumnParser.parse[String](filoBufferNoNA)
+  val scNoNA = FiloVector[String](filoBufferNoNA)
 
   def shouldNA: Boolean = nextFloat < naChance
 
   val filoBufferNA = BuilderEncoder.seqOptionToBuffer(
                        randomStrings.map(str => if (shouldNA) None else Some(str))
                      )
-  val scNA = ColumnParser.parse[String](filoBufferNA)
+  val scNA = FiloVector[String](filoBufferNA)
 
   @Benchmark
   @BenchmarkMode(Array(Mode.AverageTime))

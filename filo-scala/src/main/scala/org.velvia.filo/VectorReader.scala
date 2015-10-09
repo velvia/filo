@@ -1,7 +1,7 @@
 package org.velvia.filo
 
 import com.google.flatbuffers.Table
-import java.nio.{ByteBuffer, ByteOrder}
+import java.nio.ByteBuffer
 
 import org.velvia.filo.codecs._
 import org.velvia.filo.vector._
@@ -10,41 +10,19 @@ case class UnsupportedFiloType(vectType: Int, subType: Int) extends
   Exception(s"Unsupported Filo vector type $vectType, subType $subType")
 
 /**
- * The main entry point for parsing a Filo binary vector, returning a ColumnWrapper with which
- * to iterate over and read the data vector.
+ * VectorReader is a type class to help create FiloVector's from the raw Filo binary byte buffers --
+ * mostly parsing the header bytes and ensuring the creation of the right FiloVector parsing class.
  */
-object ColumnParser {
+object VectorReader {
   import WireFormat._
 
-  type NBitsToWrapper[A] = PartialFunction[(Int, Boolean), ColumnWrapper[A]]
+  type NBitsToWrapper[A] = PartialFunction[(Int, Boolean), FiloVector[A]]
 
   def UnsupportedVectPF[A]: NBitsToWrapper[A] = {
     case (nbits, signed) => throw new RuntimeException(s"Unsupported Filo vector nbits=$nbits signed=$signed")
   }
 
-  /**
-   * Parses a Filo-format ByteBuffer into a ColumnWrapper.  Automatically detects what type of encoding
-   * is used underneath.
-   *
-   * @param buf the ByteBuffer with the columnar chunk at the current position.  After parse returns, the
-   *            position will be restored to its original value, but it may change in the meantime.
-   */
-  def parse[A](buf: ByteBuffer)(implicit cm: ColumnMaker[A]): ColumnWrapper[A] = {
-    if (buf == null) return new EmptyColumnWrapper[A](0)
-    val origPos = buf.position
-    buf.order(ByteOrder.LITTLE_ENDIAN)
-    val headerBytes = buf.getInt()
-    val wrapper = majorVectorType(headerBytes) match {
-      case VECTORTYPE_EMPTY =>
-        new EmptyColumnWrapper[A](emptyVectorLen(headerBytes))
-      case other =>
-        cm.makeColumn(buf, headerBytes)
-    }
-    buf.position(origPos)
-    wrapper
-  }
-
-  implicit object BoolColumnMaker extends PrimitiveColumnMaker[Boolean] {
+  implicit object BoolVectorReader extends PrimitiveVectorReader[Boolean] {
     def simpleVectPF(spv: SimplePrimitiveVector): NBitsToWrapper[Boolean] = {
       case (64, false) =>
         new SimplePrimitiveWrapper[Boolean](spv) {
@@ -53,7 +31,7 @@ object ColumnParser {
     }
   }
 
-  implicit object IntColumnMaker extends PrimitiveColumnMaker[Int] {
+  implicit object IntVectorReader extends PrimitiveVectorReader[Int] {
     def simpleVectPF(spv: SimplePrimitiveVector): NBitsToWrapper[Int] = {
       case (32, false) => new SimplePrimitiveWrapper[Int](spv) {
                             final def apply(i: Int): Int = reader.readInt(i)
@@ -67,7 +45,7 @@ object ColumnParser {
     }
   }
 
-  implicit object LongColumnMaker extends PrimitiveColumnMaker[Long] {
+  implicit object LongVectorReader extends PrimitiveVectorReader[Long] {
     def simpleVectPF(spv: SimplePrimitiveVector): NBitsToWrapper[Long] = {
       case (64, false) => new SimplePrimitiveWrapper[Long](spv) {
                             final def apply(i: Int): Long = reader.readLong(i)
@@ -84,7 +62,7 @@ object ColumnParser {
     }
   }
 
-  implicit object DoubleColumnMaker extends PrimitiveColumnMaker[Double] {
+  implicit object DoubleVectorReader extends PrimitiveVectorReader[Double] {
     def simpleVectPF(spv: SimplePrimitiveVector): NBitsToWrapper[Double] = {
       case (64, false) => new SimplePrimitiveWrapper[Double](spv) {
                             final def apply(i: Int): Double = reader.readDouble(i)
@@ -92,7 +70,7 @@ object ColumnParser {
     }
   }
 
-  implicit object FloatColumnMaker extends PrimitiveColumnMaker[Float] {
+  implicit object FloatVectorReader extends PrimitiveVectorReader[Float] {
     def simpleVectPF(spv: SimplePrimitiveVector): NBitsToWrapper[Float] = {
       case (32, false) => new SimplePrimitiveWrapper[Float](spv) {
                             final def apply(i: Int): Float = reader.readFloat(i)
@@ -100,8 +78,8 @@ object ColumnParser {
     }
   }
 
-  implicit object StringColumnMaker extends ColumnMaker[String] {
-    def makeColumn(buf: ByteBuffer, headerBytes: Int): ColumnWrapper[String] = {
+  implicit object StringVectorReader extends VectorReader[String] {
+    def makeVector(buf: ByteBuffer, headerBytes: Int): FiloVector[String] = {
       (majorVectorType(headerBytes), vectorSubType(headerBytes)) match {
         case (VECTORTYPE_SIMPLE, SUBTYPE_STRING) =>
           val ssv = SimpleStringVector.getRootAsSimpleStringVector(buf)
@@ -130,23 +108,23 @@ object ColumnParser {
 /**
  * Implemented by specific Filo column/vector types.
  */
-trait ColumnMaker[A] {
+trait VectorReader[A] {
   /**
-   * Creates a ColumnWrapper based on the remaining bytes.  Needs to decipher
+   * Creates a FiloVector based on the remaining bytes.  Needs to decipher
    * what sort of vector it is and make the appropriate choice.
    * @param buf a ByteBuffer of the binary vector, with the position at right after
    *            the 4 header bytes... at the beginning of FlatBuffers or whatever
    * @param the four byte headerBytes
    */
-  def makeColumn(buf: ByteBuffer, headerBytes: Int): ColumnWrapper[A]
+  def makeVector(buf: ByteBuffer, headerBytes: Int): FiloVector[A]
 }
 
 // TODO: Move this somewhere else
-trait PrimitiveColumnMaker[A] extends ColumnMaker[A] {
-  import ColumnParser._
+trait PrimitiveVectorReader[A] extends VectorReader[A] {
+  import VectorReader._
   import WireFormat._
 
-  def makeColumn(buf: ByteBuffer, headerBytes: Int): ColumnWrapper[A] = {
+  def makeVector(buf: ByteBuffer, headerBytes: Int): FiloVector[A] = {
     (majorVectorType(headerBytes), vectorSubType(headerBytes)) match {
       case (VECTORTYPE_SIMPLE, SUBTYPE_PRIMITIVE) =>
         val spv = SimplePrimitiveVector.getRootAsSimplePrimitiveVector(buf)

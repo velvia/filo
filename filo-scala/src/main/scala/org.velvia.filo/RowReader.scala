@@ -4,7 +4,7 @@ import java.nio.ByteBuffer
 
 /**
  * A generic trait for reading typed values out of a row of data.
- * Used for both reading out of Filo vectors as well as for RowToColumnBuilder,
+ * Used for both reading out of Filo vectors as well as for RowToVectorBuilder,
  * which means it can be used to compose heterogeneous Filo vectors together.
  */
 trait RowReader {
@@ -104,16 +104,16 @@ object RowReader {
  * Thus, this is not appropriate for Seq[RowReader].
  */
 abstract class FiloRowReader extends RowReader {
-  def parsers: Array[ColumnWrapper[_]]
+  def parsers: Array[FiloVector[_]]
   var rowNo: Int = -1
 
   final def notNull(columnNo: Int): Boolean = parsers(columnNo).isAvailable(rowNo)
-  final def getBoolean(columnNo: Int): Boolean = parsers(columnNo).asInstanceOf[ColumnWrapper[Boolean]](rowNo)
-  final def getInt(columnNo: Int): Int = parsers(columnNo).asInstanceOf[ColumnWrapper[Int]](rowNo)
-  final def getLong(columnNo: Int): Long = parsers(columnNo).asInstanceOf[ColumnWrapper[Long]](rowNo)
-  final def getDouble(columnNo: Int): Double = parsers(columnNo).asInstanceOf[ColumnWrapper[Double]](rowNo)
-  final def getFloat(columnNo: Int): Float = parsers(columnNo).asInstanceOf[ColumnWrapper[Float]](rowNo)
-  final def getString(columnNo: Int): String = parsers(columnNo).asInstanceOf[ColumnWrapper[String]](rowNo)
+  final def getBoolean(columnNo: Int): Boolean = parsers(columnNo).asInstanceOf[FiloVector[Boolean]](rowNo)
+  final def getInt(columnNo: Int): Int = parsers(columnNo).asInstanceOf[FiloVector[Int]](rowNo)
+  final def getLong(columnNo: Int): Long = parsers(columnNo).asInstanceOf[FiloVector[Long]](rowNo)
+  final def getDouble(columnNo: Int): Double = parsers(columnNo).asInstanceOf[FiloVector[Double]](rowNo)
+  final def getFloat(columnNo: Int): Float = parsers(columnNo).asInstanceOf[FiloVector[Float]](rowNo)
+  final def getString(columnNo: Int): String = parsers(columnNo).asInstanceOf[FiloVector[String]](rowNo)
   final def getAny(columnNo: Int): Any = parsers(columnNo).boxed(rowNo)
 }
 
@@ -121,16 +121,16 @@ abstract class FiloRowReader extends RowReader {
  * Just a concrete implementation.
  */
 class FastFiloRowReader(chunks: Array[ByteBuffer], classes: Array[Class[_]]) extends FiloRowReader {
-  import ColumnParser._
+  import VectorReader._
 
   require(chunks.size == classes.size, "chunks must be same length as classes")
 
-  val parsers: Array[ColumnWrapper[_]] = chunks.zip(classes).map {
-    case (chunk, Classes.Boolean) => parse[Boolean](chunk)
-    case (chunk, Classes.String) => parse[String](chunk)
-    case (chunk, Classes.Int) => parse[Int](chunk)
-    case (chunk, Classes.Long) => parse[Long](chunk)
-    case (chunk, Classes.Double) => parse[Double](chunk)
-    case (chunk, Classes.Float) => parse[Float](chunk)
+  val parsers: Array[FiloVector[_]] = chunks.zip(classes).map {
+    case (chunk, Classes.Boolean) => FiloVector[Boolean](chunk)
+    case (chunk, Classes.String) => FiloVector[String](chunk)
+    case (chunk, Classes.Int) => FiloVector[Int](chunk)
+    case (chunk, Classes.Long) => FiloVector[Long](chunk)
+    case (chunk, Classes.Double) => FiloVector[Double](chunk)
+    case (chunk, Classes.Float) => FiloVector[Float](chunk)
   }
 }

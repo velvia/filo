@@ -3,7 +3,7 @@ package org.velvia.filo.codecs
 import scala.language.postfixOps
 import scalaxy.loops._
 
-import org.velvia.filo.{ColumnWrapper, FastBufferReader}
+import org.velvia.filo.{FiloVector, FastBufferReader}
 import org.velvia.filo.vector._
 
 object DictStringWrapper {
@@ -11,7 +11,7 @@ object DictStringWrapper {
   val NoString = ""
 }
 
-abstract class DictStringWrapper(val dsv: DictStringVector) extends ColumnWrapper[String] {
+abstract class DictStringWrapper(val dsv: DictStringVector) extends FiloVector[String] {
   import DictStringWrapper._
 
   private val _len = dsv.len

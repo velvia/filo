@@ -5,8 +5,8 @@ import org.scalatest.Matchers
 
 class RowReaderTest extends FunSpec with Matchers {
   val schema = Seq(
-                 IngestColumn("name", classOf[String]),
-                 IngestColumn("age",  classOf[Int])
+                 VectorInfo("name", classOf[String]),
+                 VectorInfo("age",  classOf[Int])
                )
 
   val rows = Seq(
@@ -24,7 +24,7 @@ class RowReaderTest extends FunSpec with Matchers {
   }
 
   it("should extract from columns back to rows") {
-    val columnData = RowToColumnBuilder.buildFromRows(rows.map(TupleRowReader).toIterator,
+    val columnData = RowToVectorBuilder.buildFromRows(rows.map(TupleRowReader).toIterator,
                                                       schema,
                                                       BuilderEncoder.SimpleEncoding)
     val chunks = Array(columnData("name"), columnData("age"))

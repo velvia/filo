@@ -7,9 +7,9 @@ import scalaxy.loops._
 
 import BuilderEncoder.{EncodingHint, AutoDetect}
 
-case class IngestColumn(name: String, dataType: Class[_])
+case class VectorInfo(name: String, dataType: Class[_])
 
-// To help matching against the ClassTag in the ColumnBuilder
+// To help matching against the ClassTag in the VectorBuilder
 private object Classes {
   val Boolean = classOf[Boolean]
   val Byte = java.lang.Byte.TYPE
@@ -21,35 +21,35 @@ private object Classes {
   val String = classOf[String]
 }
 
-object RowToColumnBuilder {
+object RowToVectorBuilder {
   /**
    * A convenience method to turn a bunch of rows R to Filo serialized columnar chunks.
    * @param rows the rows to convert to columnar chunks
-   * @param schema a Seq of IngestColumn describing the [[ColumnBuilder]] used for each column
+   * @param schema a Seq of VectorInfo describing the [[VectorBuilder]] used for each column
    * @param hint an EncodingHint for the encoder
    * @return a Map of column name to the byte chunks
    */
   def buildFromRows(rows: Iterator[RowReader],
-                    schema: Seq[IngestColumn],
+                    schema: Seq[VectorInfo],
                     hint: EncodingHint = AutoDetect): Map[String, ByteBuffer] = {
-    val builder = new RowToColumnBuilder(schema)
+    val builder = new RowToVectorBuilder(schema)
     rows.foreach(builder.addRow)
     builder.convertToBytes(hint)
   }
 }
 
 /**
- * Class to help transpose a set of rows to Filo binary columns.
- * @param schema a Seq of IngestColumn describing the data type used for each column
+ * Class to help transpose a set of rows to Filo binary vectors.
+ * @param schema a Seq of VectorInfo describing the data type used for each column
  *
  * TODO: Add stats about # of rows, chunks/buffers encoded, bytes encoded, # NA's etc.
  */
-class RowToColumnBuilder(schema: Seq[IngestColumn]) {
-  val builders = schema.map { case IngestColumn(_, dataType) => ColumnBuilder(dataType) }
+class RowToVectorBuilder(schema: Seq[VectorInfo]) {
+  val builders = schema.map { case VectorInfo(_, dataType) => VectorBuilder(dataType) }
   val numColumns = schema.length
 
   /**
-   * Resets the ColumnBuilders.  Call this before the next batch of rows to transpose.
+   * Resets the VectorBuilders.  Call this before the next batch of rows to transpose.
    * @return {[type]} [description]
    */
   def reset(): Unit = {
@@ -57,7 +57,7 @@ class RowToColumnBuilder(schema: Seq[IngestColumn]) {
   }
 
   /**
-   * Adds a single row of data to each of the ColumnBuilders.
+   * Adds a single row of data to each of the VectorBuilders.
    * @param row the row of data to transpose.  Each column will be added to the right Builders.
    */
   def addRow(row: RowReader): Unit = {
@@ -74,12 +74,12 @@ class RowToColumnBuilder(schema: Seq[IngestColumn]) {
   }
 
   /**
-   * Converts the contents of the [[ColumnBuilder]]s to ByteBuffers for writing or transmission.
+   * Converts the contents of the [[VectorBuilder]]s to ByteBuffers for writing or transmission.
    * @param hint an EncodingHint for the encoder
    */
   def convertToBytes(hint: EncodingHint = AutoDetect): Map[String, ByteBuffer] = {
     val chunks = builders.map(_.toFiloBuffer(hint))
-    schema.zip(chunks).map { case (IngestColumn(colName, _), bytes) => (colName, bytes) }.toMap
+    schema.zip(chunks).map { case (VectorInfo(colName, _), bytes) => (colName, bytes) }.toMap
   }
 
   private def unsupportedInput(typ: Any) =

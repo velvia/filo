@@ -1,15 +1,49 @@
 package org.velvia.filo
 
-import java.nio.ByteBuffer
-import org.velvia.filo.vector._
+import java.nio.{ByteBuffer, ByteOrder}
 import scala.collection.Traversable
 import scala.language.postfixOps
 import scalaxy.loops._
 
+import org.velvia.filo.codecs.EmptyFiloVector
+import org.velvia.filo.vector._
+
 /**
- * A ColumnWrapper gives collection API semantics around the binary Filo format vector.
+ * The main entry point for parsing a Filo binary vector, returning a FiloVector with which
+ * to iterate over and read the data vector.
  */
-trait ColumnWrapper[@specialized(Int, Double, Long, Short) A] extends Traversable[A] {
+object FiloVector {
+  import WireFormat._
+
+  /**
+   * Parses a Filo-format ByteBuffer into a FiloVector.  Automatically detects what type of encoding
+   * is used underneath.
+   *
+   * @param buf the ByteBuffer with the columnar chunk at the current position.  After apply returns, the
+   *            position will be restored to its original value, but it may change in the meantime.
+   */
+  def apply[A](buf: ByteBuffer)(implicit cm: VectorReader[A]): FiloVector[A] = {
+    if (buf == null) return new EmptyFiloVector[A](0)
+    val origPos = buf.position
+    buf.order(ByteOrder.LITTLE_ENDIAN)
+    val headerBytes = buf.getInt()
+    val vector = majorVectorType(headerBytes) match {
+      case VECTORTYPE_EMPTY =>
+        new EmptyFiloVector[A](emptyVectorLen(headerBytes))
+      case other =>
+        cm.makeVector(buf, headerBytes)
+    }
+    buf.position(origPos)
+    vector
+  }
+}
+
+/**
+ * A FiloVector gives collection API semantics around the binary Filo format vector,
+ * as well as extremely fast read APIs, all with minimal or zero deserialization, and
+ * able to be completely off-heap.
+ */
+trait FiloVector[@specialized(Int, Double, Long, Short) A] extends Traversable[A] {
   // Returns true if the element at position index is available, false if NA
   def isAvailable(index: Int): Boolean
 
