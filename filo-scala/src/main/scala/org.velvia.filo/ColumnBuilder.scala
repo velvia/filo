@@ -76,6 +76,10 @@ class DoubleColumnBuilder extends MinMaxColumnBuilder(Double.MinValue, Double.Ma
   final def fromReader(row: RowReader, colNo: Int): Double = row.getDouble(colNo)
 }
 
+class FloatColumnBuilder extends MinMaxColumnBuilder(Float.MinValue, Float.MaxValue, 0.0F) {
+  final def fromReader(row: RowReader, colNo: Int): Float = row.getFloat(colNo)
+}
+
 class StringColumnBuilder extends ColumnBuilder("") {
   // For dictionary encoding. NOTE: this set does NOT include empty value
   val stringSet = new collection.mutable.HashSet[String]

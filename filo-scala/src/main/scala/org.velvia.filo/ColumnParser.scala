@@ -75,10 +75,18 @@ object ColumnParser {
     }
   }
 
-  implicit object DoubleSimpleColumnMaker extends PrimitiveColumnMaker[Double] {
+  implicit object DoubleColumnMaker extends PrimitiveColumnMaker[Double] {
     def simpleVectPF(spv: SimplePrimitiveVector): NBitsToWrapper[Double] = {
       case (64, false) => new SimplePrimitiveWrapper[Double](spv) {
                             final def apply(i: Int): Double = reader.readDouble(i)
+                          }
+    }
+  }
+
+  implicit object FloatColumnMaker extends PrimitiveColumnMaker[Float] {
+    def simpleVectPF(spv: SimplePrimitiveVector): NBitsToWrapper[Float] = {
+      case (32, false) => new SimplePrimitiveWrapper[Float](spv) {
+                            final def apply(i: Int): Float = reader.readFloat(i)
                           }
     }
   }

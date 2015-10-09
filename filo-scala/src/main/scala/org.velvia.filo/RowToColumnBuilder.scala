@@ -81,6 +81,7 @@ class RowToColumnBuilder(schema: Seq[IngestColumn]) {
       case b: IntColumnBuilder    => BuilderEncoder.builderToBuffer(b, hint)
       case b: LongColumnBuilder   => BuilderEncoder.builderToBuffer(b, hint)
       case b: DoubleColumnBuilder => BuilderEncoder.builderToBuffer(b, hint)
+      case b: FloatColumnBuilder  => BuilderEncoder.builderToBuffer(b, hint)
       case b: StringColumnBuilder => BuilderEncoder.builderToBuffer(b, hint)
     }
     schema.zip(chunks).map { case (IngestColumn(colName, _), bytes) => (colName, bytes) }.toMap

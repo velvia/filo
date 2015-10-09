@@ -12,6 +12,7 @@ trait RowReader {
   def getInt(columnNo: Int): Int
   def getLong(columnNo: Int): Long
   def getDouble(columnNo: Int): Double
+  def getFloat(columnNo: Int): Float
   def getString(columnNo: Int): String
 }
 
@@ -33,6 +34,10 @@ case class TupleRowReader(tuple: Product) extends RowReader {
     case Some(x: Double) => x
   }
 
+  def getFloat(columnNo: Int): Float = tuple.productElement(columnNo) match {
+    case Some(x: Float) => x
+  }
+
   def getString(columnNo: Int): String = tuple.productElement(columnNo) match {
     case Some(x: String) => x
   }
@@ -48,6 +53,7 @@ case class ArrayStringRowReader(strings: Array[String]) extends RowReader {
   def getInt(columnNo: Int): Int = strings(columnNo).toInt
   def getLong(columnNo: Int): Long = strings(columnNo).toLong
   def getDouble(columnNo: Int): Double = strings(columnNo).toDouble
+  def getFloat(columnNo: Int): Float = strings(columnNo).toFloat
   def getString(columnNo: Int): String = strings(columnNo)
 }
 
@@ -67,6 +73,10 @@ object RowReader {
 
   implicit object DoubleFieldExtractor extends TypedFieldExtractor[Double] {
     final def getField(reader: RowReader, columnNo: Int): Double = reader.getDouble(columnNo)
+  }
+
+  implicit object FloatFieldExtractor extends TypedFieldExtractor[Float] {
+    final def getField(reader: RowReader, columnNo: Int): Float = reader.getFloat(columnNo)
   }
 
   implicit object StringFieldExtractor extends TypedFieldExtractor[String] {
@@ -90,6 +100,7 @@ abstract class FiloRowReader extends RowReader {
   final def getInt(columnNo: Int): Int = parsers(columnNo).asInstanceOf[ColumnWrapper[Int]](rowNo)
   final def getLong(columnNo: Int): Long = parsers(columnNo).asInstanceOf[ColumnWrapper[Long]](rowNo)
   final def getDouble(columnNo: Int): Double = parsers(columnNo).asInstanceOf[ColumnWrapper[Double]](rowNo)
+  final def getFloat(columnNo: Int): Float = parsers(columnNo).asInstanceOf[ColumnWrapper[Float]](rowNo)
   final def getString(columnNo: Int): String = parsers(columnNo).asInstanceOf[ColumnWrapper[String]](rowNo)
   final def getAny(columnNo: Int): Any = parsers(columnNo).boxed(rowNo)
 }
@@ -107,5 +118,6 @@ class FastFiloRowReader(chunks: Array[ByteBuffer], classes: Array[Class[_]]) ext
     case (chunk, Classes.Int) => parse[Int](chunk)
     case (chunk, Classes.Long) => parse[Long](chunk)
     case (chunk, Classes.Double) => parse[Double](chunk)
+    case (chunk, Classes.Float) => parse[Float](chunk)
   }
 }

@@ -64,4 +64,10 @@ object FPBuilders {
       doubleVect(fbb, data.size, data.reverseIterator)
     }
   }
+
+  implicit object FloatDataVectBuilder extends PrimitiveDataVectBuilder[Float] {
+    def build(fbb: FlatBufferBuilder, data: Seq[Float], min: Float, max: Float): (Int, Int) = {
+      floatVect(fbb, data.size, data.reverseIterator)
+    }
+  }
 }

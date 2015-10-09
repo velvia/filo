@@ -79,6 +79,9 @@ object Utils {
   def doubleVect(fbb: FlatBufferBuilder, len: Int, reverseElems: Iterator[Double]): (Int, Int) =
     makeByteVector(fbb, 64, len, 8) { fbb => reverseElems.foreach(fbb.addDouble) }
 
+  def floatVect(fbb: FlatBufferBuilder, len: Int, reverseElems: Iterator[Float]): (Int, Int) =
+    makeByteVector(fbb, 32, len, 4) { fbb => reverseElems.foreach(fbb.addFloat) }
+
   // stringVect is fed a Seq of strings in normal order
   // Only the offset is returned, nbits is not useful for [string]
   def stringVect(fbb: FlatBufferBuilder, data: Seq[String]): Int = {

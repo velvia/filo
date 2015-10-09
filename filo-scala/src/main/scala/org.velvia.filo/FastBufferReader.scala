@@ -37,6 +37,7 @@ trait FastBufferReader {
   def readInt(i: Int): Int
   def readLong(i: Int): Long
   def readDouble(i: Int): Double
+  def readFloat(i: Int): Float
 }
 
 import FastBufferReader._
@@ -49,4 +50,5 @@ class FastUnsafeArrayBufferReader(buf: ByteBuffer) extends FastBufferReader {
   final def readInt(i: Int): Int = unsafe.getInt(byteArray, (offset + i * 4).toLong)
   final def readLong(i: Int): Long = unsafe.getLong(byteArray, (offset + i * 8).toLong)
   final def readDouble(i: Int): Double = unsafe.getDouble(byteArray, (offset + i * 8).toLong)
+  final def readFloat(i: Int): Float = unsafe.getFloat(byteArray, (offset + i * 4).toLong)
 }

@@ -74,6 +74,16 @@ object BuilderEncoder {
     }
   }
 
+  implicit object FloatEncoder extends BuilderEncoder[Float] with MinMaxEncoder[Float] {
+    def getBuilder: ColumnBuilder[Float] = new FloatColumnBuilder
+    def encodeInner(builder: ColumnBuilder[Float], hint: EncodingHint): ByteBuffer = {
+      import FPBuilders._
+      val (min, max, _) = minMaxZero(builder)
+      SimpleEncoders.toPrimitiveVector(builder.data, builder.naMask.result,
+                                       min, max, false)
+    }
+  }
+
   implicit object StringEncoder extends BuilderEncoder[String] {
     def getBuilder: ColumnBuilder[String] = new StringColumnBuilder
     def encodeInner(builder: ColumnBuilder[String], hint: EncodingHint): ByteBuffer = {

@@ -38,6 +38,16 @@ class EncodingPropertiesTest extends FunSpec with Matchers with PropertyChecks {
     }
   }
 
+  it("Filo format float vectors should match length and sum") {
+    forAll { (s: List[Float]) =>
+      val buf = seqToBuffer(s, SimpleEncoding)
+      val binarySeq = ColumnParser.parse[Float](buf)
+
+      binarySeq.length should equal (s.length)
+      binarySeq.sum should equal (s.sum)
+    }
+  }
+
   import org.scalacheck._
   import Arbitrary.arbitrary
 
