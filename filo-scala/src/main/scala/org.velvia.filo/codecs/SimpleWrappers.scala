@@ -29,7 +29,11 @@ abstract class SimplePrimitiveWrapper[A](spv: SimplePrimitiveVector)
   final def length: Int = _len
 
   final def foreach[B](fn: A => B): Unit = {
-    for { i <- 0 until length optimized } { if (isAvailable(i)) fn(apply(i)) }
+    if (maskType == MaskType.AllZeroes) {   // every value available!
+      for { i <- 0 until length optimized } { fn(apply(i)) }
+    } else {
+      for { i <- 0 until length optimized } { if (isAvailable(i)) fn(apply(i)) }
+    }
   }
 }
 

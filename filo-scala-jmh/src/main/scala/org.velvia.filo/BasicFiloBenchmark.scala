@@ -24,19 +24,44 @@ class BasicFiloBenchmark {
   val numValues = 10000
 
   val randomInts = (0 until numValues).map(i => util.Random.nextInt)
-  val filoBuffer = BuilderEncoder.seqToBuffer(randomInts)
+  val randomIntsAray = randomInts.toArray
+  val filoBuffer = VectorBuilder(randomInts).toFiloBuffer
   val sc = FiloVector[Int](filoBuffer)
 
   // According to @ktosopl, be sure to return some value if possible so that JVM won't
   // optimize out the method body.  However JMH is apparently very good at avoiding this.
+  // fastest loop possible using FiloVectorApply method
   @Benchmark
   @BenchmarkMode(Array(Mode.AverageTime))
   @OutputTimeUnit(TimeUnit.MICROSECONDS)
-  def sumAllInts(): Int = {
+  def sumAllIntsFiloApply(): Int = {
     var total = 0
     for { i <- 0 until numValues optimized } {
       total += sc(i)
     }
     total
+  }
+
+  // sum which uses foreach from FiloVector
+  @Benchmark
+  @BenchmarkMode(Array(Mode.AverageTime))
+  @OutputTimeUnit(TimeUnit.MICROSECONDS)
+  def sumAllIntsFiloForeachFoldLeft(): Int = {
+    sc.foldLeft(0)(_ + _)
+  }
+
+  // Scala Seq sum
+  @Benchmark
+  @BenchmarkMode(Array(Mode.AverageTime))
+  @OutputTimeUnit(TimeUnit.MICROSECONDS)
+  def sumAllIntsScalaSeqFoldLeft(): Int = {
+    randomInts.foldLeft(0)(_ + _)
+  }
+
+  @Benchmark
+  @BenchmarkMode(Array(Mode.AverageTime))
+  @OutputTimeUnit(TimeUnit.MICROSECONDS)
+  def sumAllIntsScalaArrayFoldLeft(): Int = {
+    randomIntsAray.foldLeft(0)(_ + _)
   }
 }

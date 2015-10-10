@@ -36,14 +36,14 @@ class DictStringBenchmark {
     randString(minStringLength + nextInt(maxStringLength - minStringLength))
   }
   val randomStrings = (0 until numValues).map(i => uniqueStrings(nextInt(numUniqueStrings)))
-  val filoBufferNoNA = BuilderEncoder.seqToBuffer(randomStrings)
+  val filoBufferNoNA = VectorBuilder(randomStrings).toFiloBuffer
   val scNoNA = FiloVector[String](filoBufferNoNA)
 
   def shouldNA: Boolean = nextFloat < naChance
 
-  val filoBufferNA = BuilderEncoder.seqOptionToBuffer(
+  val filoBufferNA = VectorBuilder.fromOptions(
                        randomStrings.map(str => if (shouldNA) None else Some(str))
-                     )
+                     ).toFiloBuffer
   val scNA = FiloVector[String](filoBufferNA)
 
   @Benchmark
