@@ -130,6 +130,28 @@ class SimpleEncodingTest extends FunSpec with Matchers {
     }
   }
 
+  describe("Bool encoding") {
+    it("should encode and decode back a Seq[Boolean]") {
+      val orig = List(true, true, false, true, false, false, true, true,  // 0xcb
+                      false, true, true, true, false, true, true, true,   // 0xee
+                      false, false, true, true, true, true, false, true,  // 0xbc
+                      true, true, false, false, false, true, false, false,  // 0x23
+                      false, true, false, false, false, true, true, true, // 0xe2
+                      true, false, false, false, true, true, false, true, // 0xb1
+                      true, true, false, true, false, true, false, true,  // 0xab
+                      false, true, true, true, true, true, true, true,    // 0xfe
+                      // Notice how the 9th byte is all false.  Ensure there is a second long in bitmask.
+                      false, false, false, false)                         // 0x00
+      val buf = VectorBuilder(orig).toFiloBuffer
+      val binarySeq = FiloVector[Boolean](buf)
+
+      binarySeq.length should equal (orig.length)
+      val spw = binarySeq.asInstanceOf[SimplePrimitiveWrapper[Boolean]]
+      spw.maskType should equal (MaskType.AllZeroes)   // no NA bit set
+      binarySeq.filter(b => b).size should equal (orig.filter(b => b).size)
+    }
+  }
+
   describe("String Encoding") {
     it("should encode and decode back a Seq[String]") {
       val orig = Seq("apple", "banana")

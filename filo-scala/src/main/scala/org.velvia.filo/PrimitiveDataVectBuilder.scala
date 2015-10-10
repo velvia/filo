@@ -29,7 +29,7 @@ object PrimitiveUnsignedBuilders {
       for { i <- 0 until data.length optimized } {
         if (data(i)) bitset += i
       }
-      val mask = bitset.toBitMask
+      val mask = makeBitMask(bitset, data.length)
       longVect(fbb, mask.size, mask.reverseIterator)
     }
   }

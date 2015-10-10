@@ -18,6 +18,13 @@ object Utils {
   // Returns true if every element in the data to be encoded is marked as NA (mask is set)
   def isAllNA(mask: BitSet, dataLength: Int): Boolean = mask.size == dataLength
 
+  // Ensures that the resulting array(long) has at least as many bits as numBits
+  def makeBitMask(mask: BitSet, numBits: Int): Array[Long] = {
+    val initialBits = mask.toBitMask
+    val numLongs = roundUp(numBits, 64) / 64
+    initialBits ++ Array.fill(numLongs - initialBits.size)(0L)
+  }
+
   // @return offset of mask table
   def populateNaMask(fbb: FlatBufferBuilder, mask: BitSet, dataLen: Int): Int = {
     val empty = mask.size == 0
@@ -29,7 +36,7 @@ object Utils {
     // RoaringBitmap is really cool, but very space inefficient when you have less than 4096 integers
     //    it's much better when you have 100000 or more rows
     // NOTE: we cannot nest structure creation, so have to create bitmask vector first :(
-    if (!empty && !full) bitMaskOffset = NaMask.createBitMaskVector(fbb, mask.toBitMask)
+    if (!empty && !full) bitMaskOffset = NaMask.createBitMaskVector(fbb, makeBitMask(mask, dataLen))
 
     NaMask.startNaMask(fbb)
     NaMask.addMaskType(fbb, if (full)       { MaskType.AllOnes }
