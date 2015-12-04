@@ -18,10 +18,10 @@ The valid values of the vector type:
 | 0x00000002  | SimplePrimitiveVector | FlatBuffer Vector with fixed bit size per element |
 | 0x00000102  | SimpleStringVector | FlatBuffer Vector with variable-size string elements |
 | 0x00000202  | SimpleBinaryVector | FlatBuffer Vector with variable-size binary elements |
-| 0x00000302  | SimpleFixedStringVector | Actually a SimplePrimitiveVector for string vectors where max string len < 15 chars |
-| 0x00000402  | SimpleConstVector  | A SimplePrimitiveVector for representing primitives holding the same value for entire vector
+| 0x00000302  | SimpleFixedStringVector | Actually a SimplePrimitiveVector for string vectors where max string len < 32 bytes |
 | 0x00000103  | DictStringVector   | FlatBuffer Vector with dictionary-encoded strings |
-| 0x00000004  | RLEPrimitiveVector | FlatBuffer Run-Length-Encoded vector for primitives |
+| 0x00000004  | ConstPrimitiveVector  | A SimplePrimitiveVector for representing primitives holding the same value for entire vector
+| 0x00000104  | ConstStringVector     | A SimpleStringVector having the same string vector for entire vector |
 
 See `WireFormat.scala` for code definitions.
 

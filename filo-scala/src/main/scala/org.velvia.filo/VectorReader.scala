@@ -12,6 +12,9 @@ case class UnsupportedFiloType(vectType: Int, subType: Int) extends
 /**
  * VectorReader is a type class to help create FiloVector's from the raw Filo binary byte buffers --
  * mostly parsing the header bytes and ensuring the creation of the right FiloVector parsing class.
+ *
+ * NOTE: I KNOW there is LOTS of repetition here, but apply() method is the inner loop and must be
+ * super fast.  Traits would slow it WAY down.  Instead maybe we can use macros.
  */
 object VectorReader {
   import WireFormat._
@@ -29,6 +32,13 @@ object VectorReader {
           final def apply(i: Int): Boolean = ((reader.readByte(i >> 3) >> (i & 0x07)) & 0x01) != 0
         }
     }
+
+    def constVectPF(spv: SimplePrimitiveVector): NBitsToWrapper[Boolean] = {
+      case (64, false) =>
+        new SimplePrimitiveWrapper[Boolean](spv) {
+          final def apply(i: Int): Boolean = (reader.readByte(0) & 0x01) != 0
+        }
+    }
   }
 
   implicit object IntVectorReader extends PrimitiveVectorReader[Int] {
@@ -43,7 +53,19 @@ object VectorReader {
                             final def apply(i: Int): Int = (reader.readByte(i) & 0x00ff).toInt
                           }
     }
-  }
+
+    def constVectPF(spv: SimplePrimitiveVector): NBitsToWrapper[Int] = {
+      case (32, false) => new SimplePrimitiveWrapper[Int](spv) {
+                            final def apply(i: Int): Int = reader.readInt(0)
+                          }
+      case (16, false) => new SimplePrimitiveWrapper[Int](spv) {
+                            final def apply(i: Int): Int = (reader.readShort(0) & 0x0ffff).toInt
+                          }
+      case (8, false)  => new SimplePrimitiveWrapper[Int](spv) {
+                            final def apply(i: Int): Int = (reader.readByte(0) & 0x00ff).toInt
+                          }
+    }
+ }
 
   implicit object LongVectorReader extends PrimitiveVectorReader[Long] {
     def simpleVectPF(spv: SimplePrimitiveVector): NBitsToWrapper[Long] = {
@@ -60,6 +82,21 @@ object VectorReader {
                             final def apply(i: Int): Long = (reader.readByte(i) & 0x00ff).toLong
                           }
     }
+
+    def constVectPF(spv: SimplePrimitiveVector): NBitsToWrapper[Long] = {
+      case (64, false) => new SimplePrimitiveWrapper[Long](spv) {
+                            final def apply(i: Int): Long = reader.readLong(0)
+                          }
+      case (32, false) => new SimplePrimitiveWrapper[Long](spv) {
+                            final def apply(i: Int): Long = (reader.readInt(0) & 0x0ffffffffL).toLong
+                          }
+      case (16, false) => new SimplePrimitiveWrapper[Long](spv) {
+                            final def apply(i: Int): Long = (reader.readShort(0) & 0x0ffff).toLong
+                          }
+      case (8, false)  => new SimplePrimitiveWrapper[Long](spv) {
+                            final def apply(i: Int): Long = (reader.readByte(0) & 0x00ff).toLong
+                          }
+    }
   }
 
   implicit object DoubleVectorReader extends PrimitiveVectorReader[Double] {
@@ -68,12 +105,24 @@ object VectorReader {
                             final def apply(i: Int): Double = reader.readDouble(i)
                           }
     }
+
+    def constVectPF(spv: SimplePrimitiveVector): NBitsToWrapper[Double] = {
+      case (64, false) => new SimplePrimitiveWrapper[Double](spv) {
+                            final def apply(i: Int): Double = reader.readDouble(0)
+                          }
+    }
   }
 
   implicit object FloatVectorReader extends PrimitiveVectorReader[Float] {
     def simpleVectPF(spv: SimplePrimitiveVector): NBitsToWrapper[Float] = {
       case (32, false) => new SimplePrimitiveWrapper[Float](spv) {
                             final def apply(i: Int): Float = reader.readFloat(i)
+                          }
+    }
+
+    def constVectPF(spv: SimplePrimitiveVector): NBitsToWrapper[Float] = {
+      case (32, false) => new SimplePrimitiveWrapper[Float](spv) {
+                            final def apply(i: Int): Float = reader.readFloat(0)
                           }
     }
   }
@@ -129,9 +178,15 @@ trait PrimitiveVectorReader[A] extends VectorReader[A] {
       case (VECTORTYPE_SIMPLE, SUBTYPE_PRIMITIVE) =>
         val spv = SimplePrimitiveVector.getRootAsSimplePrimitiveVector(buf)
         (simpleVectPF(spv) orElse UnsupportedVectPF[A])((spv.info.nbits, spv.info.signed))
+
+      case (VECTORTYPE_CONST, SUBTYPE_PRIMITIVE) =>
+        val spv = SimplePrimitiveVector.getRootAsSimplePrimitiveVector(buf)
+        (constVectPF(spv) orElse UnsupportedVectPF[A])((spv.info.nbits, spv.info.signed))
+
       case (vectType, subType) => throw UnsupportedFiloType(vectType, subType)
     }
   }
 
   def simpleVectPF(spv: SimplePrimitiveVector): NBitsToWrapper[A]
+  def constVectPF(spv: SimplePrimitiveVector): NBitsToWrapper[A]
 }

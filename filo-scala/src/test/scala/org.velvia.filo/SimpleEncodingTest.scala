@@ -121,12 +121,28 @@ class SimpleEncodingTest extends FunSpec with Matchers {
 
   describe("Long encoding") {
     it("should encode and decode back a Seq[Long]") {
+      val orig = Seq(0L, 1L)
+      val buf = VectorBuilder(orig).toFiloBuffer
+      val binarySeq = FiloVector[Long](buf)
+
+      binarySeq.length should equal (orig.length)
+      binarySeq.sum should equal (orig.sum)
+    }
+
+    it("should encode and decode back a Seq[Long] with const values and NAs") {
       val orig = Seq(0L, 0L)
       val buf = VectorBuilder(orig).toFiloBuffer
       val binarySeq = FiloVector[Long](buf)
 
       binarySeq.length should equal (orig.length)
       binarySeq.sum should equal (orig.sum)
+
+      val orig2 = Seq(None, Some(1L), None, None, Some(1L))
+      val buf2 = VectorBuilder.fromOptions(orig2).toFiloBuffer
+      val binarySeq2 = FiloVector[Long](buf2)
+
+      binarySeq2.length should equal (orig2.length)
+      binarySeq2.optionIterator.toSeq should equal (orig2)
     }
   }
 

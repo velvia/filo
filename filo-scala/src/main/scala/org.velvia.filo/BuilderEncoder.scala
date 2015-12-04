@@ -30,12 +30,30 @@ trait IntegralEncoder[A] extends BuilderEncoder[A] with MinMaxEncoder[A] {
   def unsignedBuilder: PrimitiveDataVectBuilder[A]
   def encodeInner(builder: VectorBuilder[A], hint: BuilderEncoder.EncodingHint): ByteBuffer = {
     val (min, max, zero) = minMaxZero(builder)
-    // TODO: use signed typeclasses once they are done
-    SimpleEncoders.toPrimitiveVector(builder.data, builder.naMask.result,
-                                     min, max, false)(unsignedBuilder)
+    if (min == max) {
+      ConstEncoders.toPrimitiveVector(builder.data, builder.naMask.result,
+                                      min, max, false)(unsignedBuilder)
+    } else {
+      // TODO: use signed typeclasses once they are done
+      SimpleEncoders.toPrimitiveVector(builder.data, builder.naMask.result,
+                                       min, max, false)(unsignedBuilder)
+    }
   }
 }
 
+abstract class FloatDoubleEncoder[A: PrimitiveDataVectBuilder] extends
+BuilderEncoder[A] with MinMaxEncoder[A] {
+  def encodeInner(builder: VectorBuilder[A], hint: BuilderEncoder.EncodingHint): ByteBuffer = {
+    val (min, max, _) = minMaxZero(builder)
+    if (min == max) {
+      ConstEncoders.toPrimitiveVector(builder.data, builder.naMask.result,
+                                      min, max, false)
+    } else {
+      SimpleEncoders.toPrimitiveVector(builder.data, builder.naMask.result,
+                                       min, max, false)
+    }
+  }
+}
 /**
  * Classes to encode a Builder to a queryable binary Filo format.
  * Methods automatically detect the best encoding method to use, but hints are available
@@ -61,23 +79,9 @@ object BuilderEncoder {
     val unsignedBuilder = PrimitiveUnsignedBuilders.LongDataVectBuilder
   }
 
-  implicit object DoubleEncoder extends BuilderEncoder[Double] with MinMaxEncoder[Double] {
-    def encodeInner(builder: VectorBuilder[Double], hint: EncodingHint): ByteBuffer = {
-      import FPBuilders._
-      val (min, max, _) = minMaxZero(builder)
-      SimpleEncoders.toPrimitiveVector(builder.data, builder.naMask.result,
-                                       min, max, false)
-    }
-  }
-
-  implicit object FloatEncoder extends BuilderEncoder[Float] with MinMaxEncoder[Float] {
-    def encodeInner(builder: VectorBuilder[Float], hint: EncodingHint): ByteBuffer = {
-      import FPBuilders._
-      val (min, max, _) = minMaxZero(builder)
-      SimpleEncoders.toPrimitiveVector(builder.data, builder.naMask.result,
-                                       min, max, false)
-    }
-  }
+  import FPBuilders._
+  implicit object DoubleEncoder extends FloatDoubleEncoder[Double]
+  implicit object FloatEncoder extends FloatDoubleEncoder[Float]
 
   implicit object StringEncoder extends BuilderEncoder[String] {
     def encodeInner(builder: VectorBuilder[String], hint: EncodingHint): ByteBuffer = {
