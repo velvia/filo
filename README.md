@@ -1,13 +1,17 @@
 # filo
 ![filo](Filo.jpg)
 
-A thin layer of dough for baking fast, memory-efficient, minimal-deserialization, binary data vectors into your app.
+A thin layer of dough for baking ultra high performance, memory-efficient, minimal-deserialization, binary data vectors into your app.
 
 Think of it as the good parts of Parquet without the HDFS and file format cruft -- just the serdes and fast columnar storage.
 
 For Scala, you get `Seq[A]` or `Traversable[A]` APIs directly on top of binary vectors, with minimal/lazy deserialization.
 
 The Scala implementation IntColumns have been clocked at 2 billion integer reads per second per thread using JMH on my laptop.
+
+## What it is Not
+
+Filo is not a generic FlatBuffers wrapper for Scala.
 
 ## Properties
 
@@ -16,23 +20,13 @@ The Scala implementation IntColumns have been clocked at 2 billion integer reads
     - Numeric vectors compressed with minimal bits, differential encoding, other techniques
 * Random or linear access, no need to deserialize everything for random access
 * Support for missing / Not Available values, even for primitive vectors
-* Trade off between read speed and compactness -- Dictionary encoding, delta encoding, other techniques
 * Designed for long term persistence - based on Google [FlatBuffers](https://github.com/google/flatbuffers) which has schema evolution
-* Potentially cross-platform - once FlatBuffers and codecs are written
 
 Perfect for efficiently representing your data for storing in files, mmap, NoSQL or key-value stores, etc. etc.
 
 ## Current Status
 
 Wire format is stable; header bytes enable future expansion into even non-FlatBuffer based binary formats.
-
-## Getting Started
-
-1. Clone the Google Flatbuffers [repo](https://github.com/google/flatbuffers).
-1. Install cmake - on OSX: `brew install cmake`
-1. `cmake -G "Unix Makefiles"`
-2. Run `make` at the root of the flatbuffers dir
-3. Put the `flatc` compiler binary in your path
 
 ## Filo-Scala
 
@@ -89,7 +83,7 @@ also methods for accessing and iterating over all elements.
 
 ### Converting rows to Filo binary vectors
 
-Filo is designed to enable efficient conversion and composition between rows haing heterogeneous types and Filo vectors.
+Filo is designed to enable efficient conversion and composition between rows having heterogeneous types and Filo vectors.
 
 Please see `RowToVectorBuilder` and the `RowToVectorBuilderTest` for an example.
 There is a convenience function to convert a whole bunch of rows at once.
@@ -137,6 +131,16 @@ For help, do `sbt filoScalaJmh/run -h`.
 
 See this [gist](https://gist.github.com/velvia/213b837c6e02c4982a9a) for how I improved the `FiloVector.apply()` method performance by 50x.
  
+## Contributions
+
+Contributions are very welcome.  You might need to install FlatBuffers if you change the FBB schema:
+
+1. Clone the Google Flatbuffers [repo](https://github.com/google/flatbuffers).
+1. Install cmake - on OSX: `brew install cmake`
+1. `cmake -G "Unix Makefiles"`
+2. Run `make` at the root of the flatbuffers dir
+3. Put the `flatc` compiler binary in your path
+
 ## Future directions
 
 Cross-platform support - Go, C/C++, etc.

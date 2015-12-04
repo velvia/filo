@@ -124,7 +124,7 @@ object VectorBuilder {
    * Builds a VectorBuilder automatically from a scala collection.
    * All values will be marked available.
    */
-  def apply[A: ClassTag: BuilderEncoder](seq: collection.Seq[A]): VectorBuilderBase = {
+  def apply[A: ClassTag: BuilderEncoder](seq: collection.Seq[A]): VectorBuilder[A] = {
     val builder = apply[A](implicitly[ClassTag[A]].runtimeClass)
     seq.foreach(builder.addData)
     builder
@@ -134,7 +134,7 @@ object VectorBuilder {
    * Encodes a sequence of type Option[A] to a Filo format ByteBuffer.
    * Elements which are None will get encoded as NA bits.
    */
-  def fromOptions[A: ClassTag: BuilderEncoder](seq: collection.Seq[Option[A]]): VectorBuilderBase = {
+  def fromOptions[A: ClassTag: BuilderEncoder](seq: collection.Seq[Option[A]]): VectorBuilder[A] = {
     val builder = apply[A](implicitly[ClassTag[A]].runtimeClass)
     seq.foreach(builder.addOption)
     builder
