@@ -140,6 +140,7 @@ Contributions are very welcome.  You might need to install FlatBuffers if you ch
 1. `cmake -G "Unix Makefiles"`
 2. Run `make` at the root of the flatbuffers dir
 3. Put the `flatc` compiler binary in your path
+4. In SBT, run the command `compileJavaSchema`
 
 ## Future directions
 

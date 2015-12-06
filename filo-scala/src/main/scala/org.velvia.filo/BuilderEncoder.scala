@@ -101,6 +101,8 @@ object BuilderEncoder {
         }
       }
       (useDictEncoding, builder) match {
+        case (_, sb: StringVectorBuilder) if sb.stringSet.size == 1 =>
+          ConstEncoders.toStringVector(sb.stringSet.head, sb.data.length, sb.naMask.result)
         case (true, sb: StringVectorBuilder) =>
           DictEncodingEncoders.toStringVector(sb.data, sb.naMask.result, sb.stringSet)
         case x: Any =>

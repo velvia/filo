@@ -41,4 +41,16 @@ object ConstEncoders extends ThreadLocalBuffers {
     finishSimplePrimitiveVectorBuffer(fbb, endSimplePrimitiveVector(fbb))
     putHeaderAndGet(fbb, WireFormat.VECTORTYPE_CONST, WireFormat.SUBTYPE_PRIMITIVE)
   }
+
+  def toStringVector(str: String, len: Int, naMask: BitSet): ByteBuffer = {
+    import ConstStringVector._
+
+    count += 1
+    val fbb = new FlatBufferBuilder(getBuffer)
+    val naOffset = populateNaMask(fbb, naMask, len)
+    val strOffset = fbb.createString(str)
+    val offset = createConstStringVector(fbb, len, naOffset, strOffset)
+    finishConstStringVectorBuffer(fbb, offset)
+    putHeaderAndGet(fbb, WireFormat.VECTORTYPE_CONST, WireFormat.SUBTYPE_STRING)
+  }
 }

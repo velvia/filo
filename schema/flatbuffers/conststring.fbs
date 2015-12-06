@@ -1,0 +1,12 @@
+include "vector.fbs";
+
+namespace org.velvia.filo.vector;
+
+table ConstStringVector {
+  len: int;
+  naMask: NaMask;
+  str: string;
+}
+
+root_type ConstStringVector;
+

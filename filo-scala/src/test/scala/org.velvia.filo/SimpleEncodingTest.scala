@@ -177,5 +177,14 @@ class SimpleEncodingTest extends FunSpec with Matchers {
       binarySeq.length should equal (orig.length)
       binarySeq.toSeq should equal (orig)
     }
+
+    it("should encode and decode back const string with NAs") {
+      val orig = Seq(None, Some("apple"), Some("apple"), None)
+      val buf = VectorBuilder.fromOptions(orig).toFiloBuffer
+      val binarySeq = FiloVector[String](buf)
+
+      binarySeq.length should equal (orig.length)
+      binarySeq.optionIterator.toSeq should equal (orig)
+    }
   }
 }

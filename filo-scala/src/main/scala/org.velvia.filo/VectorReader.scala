@@ -133,6 +133,9 @@ object VectorReader {
         case (VECTORTYPE_SIMPLE, SUBTYPE_STRING) =>
           val ssv = SimpleStringVector.getRootAsSimpleStringVector(buf)
           new SimpleStringWrapper(ssv)
+        case (VECTORTYPE_CONST, SUBTYPE_STRING) =>
+          val csv = ConstStringVector.getRootAsConstStringVector(buf)
+          new ConstStringWrapper(csv)
         case (VECTORTYPE_DICT, SUBTYPE_STRING) =>
           val dsv = DictStringVector.getRootAsDictStringVector(buf)
           (dictStringVectPF(dsv) orElse UnsupportedVectPF)((dsv.info.nbits, dsv.info.signed))
