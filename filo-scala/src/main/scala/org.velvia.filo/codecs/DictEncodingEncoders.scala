@@ -2,7 +2,10 @@ package org.velvia.filo.codecs
 
 import com.google.flatbuffers.FlatBufferBuilder
 import java.nio.ByteBuffer
-import scala.collection.mutable.BitSet
+import java.util.HashMap
+import scala.collection.mutable.{ArrayBuffer, BitSet}
+import scala.language.postfixOps
+import scalaxy.loops._
 
 import org.velvia.filo._
 import org.velvia.filo.vector._
@@ -26,10 +29,19 @@ object DictEncodingEncoders extends ThreadLocalBuffers {
 
     // Convert the set of strings to an encoding
     val uniques = stringSet.toSeq
-    val strToCode = uniques.zipWithIndex.toMap
+    // NOTE: sorry but java's HashMap is just much faster (for the next step)
+    // This used to be `uniques.zipWithIndex.toMap`
+    val strToCode = new HashMap[String, Int]()
+    for { i <- 0 until uniques.length optimized } {
+      strToCode.put(uniques(i), i)
+    }
 
     // Encode each string to the code per the map above
-    val codes = data.zipWithIndex.map { case (s, i) => if (naMask(i)) 0 else strToCode(s) + 1 }
+    // Again we could have used data.zipWithIndex.map(....) but this is much faster.
+    val codes = ArrayBuffer.fill(data.length)(0)
+    for { i <- 0 until data.length optimized } {
+      if (!naMask(i)) codes(i) = strToCode.get(data(i)) + 1
+    }
 
     val fbb = new FlatBufferBuilder(getBuffer)
     val (dataOffset, nbits) = builder.build(fbb, codes, 0, stringSet.size + 1)
