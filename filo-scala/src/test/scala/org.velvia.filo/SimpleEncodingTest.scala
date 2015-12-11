@@ -88,6 +88,18 @@ class SimpleEncodingTest extends FunSpec with Matchers {
       spw.maskLen should equal (0)
     }
 
+    it("should encode and decode back different length Seq[Int]") {
+      // to test various byte alignments of byte-sized int vectors
+      for { len <- 4 to 7 } {
+        val orig = (0 until len).toSeq
+        val buf = VectorBuilder(orig).toFiloBuffer
+        val binarySeq = FiloVector[Int](buf)
+
+        binarySeq.length should equal (orig.length)
+        binarySeq.sum should equal (orig.sum)
+      }
+    }
+
     it("should handle NAs properly for Seq[Int] with more than 64 elements") {
       val orig: Seq[Option[Int]] = Seq(None, None) ++ (2 to 77).map(Some(_)) ++ Seq(None, None)
       val buf = VectorBuilder.fromOptions(orig).toFiloBuffer(SimpleEncoding)
