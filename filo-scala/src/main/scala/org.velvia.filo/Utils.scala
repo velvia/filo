@@ -72,22 +72,34 @@ object Utils {
   // Builds the FB [ubyte] vector for data of different types
   // They are all fed a reverse iterator of items
   def byteVect(fbb: FlatBufferBuilder, len: Int, reverseElems: Iterator[Byte]): (Int, Int) =
-    makeByteVector(fbb, 8, len, 1) { fbb => reverseElems.foreach(fbb.addByte) }
+    makeByteVector(fbb, 8, len, 1) { fbb =>
+      while (reverseElems.hasNext) { fbb.putByte(reverseElems.next) }
+    }
 
   def shortVect(fbb: FlatBufferBuilder, len: Int, reverseElems: Iterator[Short]): (Int, Int) =
-    makeByteVector(fbb, 16, len, 2) { fbb => reverseElems.foreach(fbb.addShort) }
+    makeByteVector(fbb, 16, len, 2) { fbb =>
+      while (reverseElems.hasNext) { fbb.putShort(reverseElems.next) }
+    }
 
   def intVect(fbb: FlatBufferBuilder, len: Int, reverseElems: Iterator[Int]): (Int, Int) =
-    makeByteVector(fbb, 32, len, 4) { fbb => reverseElems.foreach(fbb.addInt) }
+    makeByteVector(fbb, 32, len, 4) { fbb =>
+      while (reverseElems.hasNext) { fbb.putInt(reverseElems.next) }
+    }
 
   def longVect(fbb: FlatBufferBuilder, len: Int, reverseElems: Iterator[Long]): (Int, Int) =
-    makeByteVector(fbb, 64, len, 8) { fbb => reverseElems.foreach(fbb.addLong) }
+    makeByteVector(fbb, 64, len, 8) { fbb =>
+      while (reverseElems.hasNext) { fbb.putLong(reverseElems.next) }
+    }
 
   def doubleVect(fbb: FlatBufferBuilder, len: Int, reverseElems: Iterator[Double]): (Int, Int) =
-    makeByteVector(fbb, 64, len, 8) { fbb => reverseElems.foreach(fbb.addDouble) }
+    makeByteVector(fbb, 64, len, 8) { fbb =>
+      while (reverseElems.hasNext) { fbb.putDouble(reverseElems.next) }
+    }
 
   def floatVect(fbb: FlatBufferBuilder, len: Int, reverseElems: Iterator[Float]): (Int, Int) =
-    makeByteVector(fbb, 32, len, 4) { fbb => reverseElems.foreach(fbb.addFloat) }
+    makeByteVector(fbb, 32, len, 4) { fbb =>
+      while (reverseElems.hasNext) { fbb.putFloat(reverseElems.next) }
+    }
 
   // stringVect is fed a Seq of strings in normal order
   // Only the offset is returned, nbits is not useful for [string]
