@@ -23,8 +23,7 @@ object ConstEncoders extends ThreadLocalBuffers {
   def toPrimitiveVector[A: PrimitiveDataVectBuilder](data: Seq[A],
                                                      naMask: BitSet,
                                                      min: A,
-                                                     max: A,
-                                                     signed: Boolean): ByteBuffer = {
+                                                     max: A): ByteBuffer = {
     import SimplePrimitiveVector._
     require(min == max)
 
@@ -32,7 +31,7 @@ object ConstEncoders extends ThreadLocalBuffers {
     count += 1
     val fbb = new FlatBufferBuilder(getBuffer)
     val naOffset = populateNaMask(fbb, naMask, data.length)
-    val (dataOffset, nbits) = vectBuilder.build(fbb, Seq(min), min, max)
+    val ((dataOffset, nbits), signed) = vectBuilder.build(fbb, Seq(min), min, max)
     startSimplePrimitiveVector(fbb)
     addNaMask(fbb, naOffset)
     addLen(fbb, data.length)

@@ -24,15 +24,14 @@ object SimpleEncoders extends ThreadLocalBuffers {
   def toPrimitiveVector[A: PrimitiveDataVectBuilder](data: Seq[A],
                                                      naMask: BitSet,
                                                      min: A,
-                                                     max: A,
-                                                     signed: Boolean): ByteBuffer = {
+                                                     max: A): ByteBuffer = {
     import SimplePrimitiveVector._
 
     val vectBuilder = implicitly[PrimitiveDataVectBuilder[A]]
     count += 1
     val fbb = new FlatBufferBuilder(getBuffer)
     val naOffset = populateNaMask(fbb, naMask, data.length)
-    val (dataOffset, nbits) = vectBuilder.build(fbb, data, min, max)
+    val ((dataOffset, nbits), signed) = vectBuilder.build(fbb, data, min, max)
     startSimplePrimitiveVector(fbb)
     addNaMask(fbb, naOffset)
     addLen(fbb, data.length)

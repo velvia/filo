@@ -33,6 +33,12 @@ object TypedBufferReader {
       case (32, _)     => new TypedBufferReader[Int] {
                             final def read(i: Int): Int = reader.readInt(i)
                           }
+      case (16, true)  => new TypedBufferReader[Int] {
+                            final def read(i: Int): Int = reader.readShort(i).toInt
+                          }
+      case (8, true)   => new TypedBufferReader[Int] {
+                            final def read(i: Int): Int = reader.readByte(i).toInt
+                          }
       case (16, false) => new TypedBufferReader[Int] {
                             final def read(i: Int): Int = (reader.readShort(i) & 0x0ffff).toInt
                           }
@@ -46,6 +52,15 @@ object TypedBufferReader {
     def getReader(reader: FastBufferReader): NBitsToReader[Long] = {
       case (64, _)     => new TypedBufferReader[Long] {
                             final def read(i: Int): Long = reader.readLong(i)
+                          }
+      case (32, true)  => new TypedBufferReader[Long] {
+                            final def read(i: Int): Long = reader.readInt(i).toLong
+                          }
+      case (16, true)  => new TypedBufferReader[Long] {
+                            final def read(i: Int): Long = reader.readShort(i).toLong
+                          }
+      case (8, true)   => new TypedBufferReader[Long] {
+                            final def read(i: Int): Long = reader.readByte(i).toLong
                           }
       case (32, false) => new TypedBufferReader[Long] {
                             final def read(i: Int): Long = (reader.readInt(i) & 0x0ffffffffL).toLong

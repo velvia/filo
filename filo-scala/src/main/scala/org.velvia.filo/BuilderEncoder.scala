@@ -26,17 +26,14 @@ trait MinMaxEncoder[A] {
   }
 }
 
-trait IntegralEncoder[A] extends BuilderEncoder[A] with MinMaxEncoder[A] {
-  def unsignedBuilder: PrimitiveDataVectBuilder[A]
+abstract class IntegralEncoder[A: PrimitiveDataVectBuilder] extends BuilderEncoder[A] with MinMaxEncoder[A] {
   def encodeInner(builder: VectorBuilder[A], hint: BuilderEncoder.EncodingHint): ByteBuffer = {
     val (min, max, zero) = minMaxZero(builder)
     if (min == max) {
-      ConstEncoders.toPrimitiveVector(builder.data, builder.naMask.result,
-                                      min, max, false)(unsignedBuilder)
+      ConstEncoders.toPrimitiveVector(builder.data, builder.naMask.result, min, max)
     } else {
       // TODO: use signed typeclasses once they are done
-      SimpleEncoders.toPrimitiveVector(builder.data, builder.naMask.result,
-                                       min, max, false)(unsignedBuilder)
+      SimpleEncoders.toPrimitiveVector(builder.data, builder.naMask.result, min, max)
     }
   }
 }
@@ -46,11 +43,9 @@ BuilderEncoder[A] with MinMaxEncoder[A] {
   def encodeInner(builder: VectorBuilder[A], hint: BuilderEncoder.EncodingHint): ByteBuffer = {
     val (min, max, _) = minMaxZero(builder)
     if (min == max) {
-      ConstEncoders.toPrimitiveVector(builder.data, builder.naMask.result,
-                                      min, max, false)
+      ConstEncoders.toPrimitiveVector(builder.data, builder.naMask.result, min, max)
     } else {
-      SimpleEncoders.toPrimitiveVector(builder.data, builder.naMask.result,
-                                       min, max, false)
+      SimpleEncoders.toPrimitiveVector(builder.data, builder.naMask.result, min, max)
     }
   }
 }
@@ -67,17 +62,10 @@ object BuilderEncoder {
   case object SimpleEncoding extends EncodingHint
   case object DictionaryEncoding extends EncodingHint
 
-  implicit object BoolEncoder extends IntegralEncoder[Boolean] {
-    val unsignedBuilder = PrimitiveUnsignedBuilders.BoolDataVectBuilder
-  }
-
-  implicit object IntEncoder extends IntegralEncoder[Int] {
-    val unsignedBuilder = PrimitiveUnsignedBuilders.IntDataVectBuilder
-  }
-
-  implicit object LongEncoder extends IntegralEncoder[Long] {
-    val unsignedBuilder = PrimitiveUnsignedBuilders.LongDataVectBuilder
-  }
+  import AutoIntegralDVBuilders._
+  implicit object BoolEncoder extends IntegralEncoder[Boolean]
+  implicit object IntEncoder extends IntegralEncoder[Int]
+  implicit object LongEncoder extends IntegralEncoder[Long]
 
   import FPBuilders._
   implicit object DoubleEncoder extends FloatDoubleEncoder[Double]

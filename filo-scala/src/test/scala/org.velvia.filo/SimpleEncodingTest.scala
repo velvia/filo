@@ -87,6 +87,7 @@ class SimpleEncodingTest extends FunSpec with Matchers {
       val orig = Seq(1, 2, -5, 101)
       val buf = VectorBuilder(orig).toFiloBuffer
       checkVectorType(buf, WireFormat.VECTORTYPE_SIMPLE, WireFormat.SUBTYPE_PRIMITIVE)
+      buf.capacity should equal (64)    // should encode to signed bytes
       val binarySeq = FiloVector[Int](buf)
 
       binarySeq.length should equal (orig.length)

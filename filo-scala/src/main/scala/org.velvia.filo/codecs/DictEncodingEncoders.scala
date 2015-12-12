@@ -25,7 +25,7 @@ object DictEncodingEncoders extends ThreadLocalBuffers {
     import DictStringVector._
 
     count += 1
-    val builder = PrimitiveUnsignedBuilders.IntDataVectBuilder
+    val builder = AutoIntegralDVBuilders.IntDataVectBuilder
 
     // Convert the set of strings to an encoding
     val uniques = stringSet.toSeq
@@ -44,13 +44,13 @@ object DictEncodingEncoders extends ThreadLocalBuffers {
     }
 
     val fbb = new FlatBufferBuilder(getBuffer)
-    val (dataOffset, nbits) = builder.build(fbb, codes, 0, stringSet.size + 1)
+    val ((dataOffset, nbits), signed) = builder.build(fbb, codes, 0, stringSet.size + 1)
     val dictVect = stringVect(fbb, Seq(NaString) ++ uniques)
     startDictStringVector(fbb)
     addDictionary(fbb, dictVect)
     addLen(fbb, data.length)
     addCodes(fbb, dataOffset)
-    addInfo(fbb, DataInfo.createDataInfo(fbb, nbits, false))
+    addInfo(fbb, DataInfo.createDataInfo(fbb, nbits, signed))
     finishDictStringVectorBuffer(fbb, endDictStringVector(fbb))
     putHeaderAndGet(fbb, WireFormat.VECTORTYPE_DICT, WireFormat.SUBTYPE_STRING)
   }
