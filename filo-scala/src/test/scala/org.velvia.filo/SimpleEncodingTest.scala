@@ -156,6 +156,7 @@ class SimpleEncodingTest extends FunSpec with Matchers {
     it("should encode and decode back a Seq[Long] with const values and NAs") {
       val orig = Seq(0L, 0L)
       val buf = VectorBuilder(orig).toFiloBuffer
+      checkVectorType(buf, WireFormat.VECTORTYPE_CONST, WireFormat.SUBTYPE_PRIMITIVE)
       val binarySeq = FiloVector[Long](buf)
 
       binarySeq.length should equal (orig.length)
@@ -163,10 +164,35 @@ class SimpleEncodingTest extends FunSpec with Matchers {
 
       val orig2 = Seq(None, Some(1L), None, None, Some(1L))
       val buf2 = VectorBuilder.fromOptions(orig2).toFiloBuffer
+      checkVectorType(buf2, WireFormat.VECTORTYPE_CONST, WireFormat.SUBTYPE_PRIMITIVE)
       val binarySeq2 = FiloVector[Long](buf2)
 
       binarySeq2.length should equal (orig2.length)
       binarySeq2.optionIterator.toSeq should equal (orig2)
+    }
+
+    it("should encode and decode back appropriately short sequences") {
+      val shortSeqs = Seq(Seq(Short.MaxValue.toLong, Short.MinValue.toLong, 0),
+                          Seq(0, 65535L, 256L))
+      for { orig <- shortSeqs } {
+        val buf = VectorBuilder(orig).toFiloBuffer
+        buf.capacity should equal (68)
+        val binarySeq = FiloVector[Long](buf)
+
+        binarySeq.length should equal (orig.length)
+        binarySeq.sum should equal (orig.sum)
+      }
+
+      val intSeqs = Seq(Seq(Int.MaxValue.toLong, Int.MinValue.toLong, 0),
+                        Seq(0L, 65536L, 65536L * 65536L - 1L))
+      for { orig <- intSeqs } {
+        val buf = VectorBuilder(orig).toFiloBuffer
+        buf.capacity should equal (72)
+        val binarySeq = FiloVector[Long](buf)
+
+        binarySeq.length should equal (orig.length)
+        binarySeq.sum should equal (orig.sum)
+      }
     }
   }
 
