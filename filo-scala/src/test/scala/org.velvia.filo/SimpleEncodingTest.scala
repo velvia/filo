@@ -1,6 +1,6 @@
 package org.velvia.filo
 
-import java.nio.ByteOrder
+import java.nio.{ByteBuffer, ByteOrder}
 
 import org.velvia.filo.codecs.SimplePrimitiveWrapper
 import org.velvia.filo.vector._
@@ -12,7 +12,13 @@ class SimpleEncodingTest extends FunSpec with Matchers {
   import BuilderEncoder.SimpleEncoding
   import VectorReader._
 
-  describe("Int encoding") {
+  private def checkVectorType(bb: ByteBuffer, majorType: Int, minorType: Int): Unit = {
+    val headerBytes = bb.getInt(0)
+    WireFormat.majorVectorType(headerBytes) should equal (majorType)
+    WireFormat.vectorSubType(headerBytes) should equal (minorType)
+  }
+
+  describe("Simple Int encoding") {
     it("should encode an empty list and decode back to empty") {
       val cb = new IntVectorBuilder
       val buf = cb.toFiloBuffer(SimpleEncoding)
@@ -51,6 +57,7 @@ class SimpleEncodingTest extends FunSpec with Matchers {
       cb.addData(103)
       cb.addNA
       val buf = cb.toFiloBuffer(SimpleEncoding)
+      checkVectorType(buf, WireFormat.VECTORTYPE_SIMPLE, WireFormat.SUBTYPE_PRIMITIVE)
       val sc = FiloVector[Int](buf)
 
       sc.length should equal (5)
@@ -79,6 +86,7 @@ class SimpleEncodingTest extends FunSpec with Matchers {
     it("should encode and decode back a Seq[Int]") {
       val orig = Seq(1, 2, -5, 101)
       val buf = VectorBuilder(orig).toFiloBuffer
+      checkVectorType(buf, WireFormat.VECTORTYPE_SIMPLE, WireFormat.SUBTYPE_PRIMITIVE)
       val binarySeq = FiloVector[Int](buf)
 
       binarySeq.length should equal (orig.length)
@@ -93,6 +101,9 @@ class SimpleEncodingTest extends FunSpec with Matchers {
       for { len <- 4 to 7 } {
         val orig = (0 until len).toSeq
         val buf = VectorBuilder(orig).toFiloBuffer
+        checkVectorType(buf, WireFormat.VECTORTYPE_SIMPLE, WireFormat.SUBTYPE_PRIMITIVE)
+        val bufLen = if (len == 4) 64 else 68
+        buf.capacity should equal (bufLen)
         val binarySeq = FiloVector[Int](buf)
 
         binarySeq.length should equal (orig.length)
@@ -184,6 +195,7 @@ class SimpleEncodingTest extends FunSpec with Matchers {
     it("should encode and decode back a Seq[String]") {
       val orig = Seq("apple", "banana")
       val buf = VectorBuilder(orig).toFiloBuffer(SimpleEncoding)
+      checkVectorType(buf, WireFormat.VECTORTYPE_SIMPLE, WireFormat.SUBTYPE_STRING)
       val binarySeq = FiloVector[String](buf)
 
       binarySeq.length should equal (orig.length)
@@ -193,6 +205,7 @@ class SimpleEncodingTest extends FunSpec with Matchers {
     it("should encode and decode back const string with NAs") {
       val orig = Seq(None, Some("apple"), Some("apple"), None)
       val buf = VectorBuilder.fromOptions(orig).toFiloBuffer
+      checkVectorType(buf, WireFormat.VECTORTYPE_CONST, WireFormat.SUBTYPE_STRING)
       val binarySeq = FiloVector[String](buf)
 
       binarySeq.length should equal (orig.length)
