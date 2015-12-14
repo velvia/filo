@@ -27,12 +27,15 @@ trait MinMaxEncoder[A] {
 }
 
 abstract class IntegralEncoder[A: PrimitiveDataVectBuilder] extends BuilderEncoder[A] with MinMaxEncoder[A] {
+  val bufBuilder = implicitly[PrimitiveDataVectBuilder[A]]
   def encodeInner(builder: VectorBuilder[A], hint: BuilderEncoder.EncodingHint): ByteBuffer = {
     val (min, max, zero) = minMaxZero(builder)
     if (min == max) {
       ConstEncoders.toPrimitiveVector(builder.data, builder.naMask.result, min, max)
+    } else if ((hint == BuilderEncoder.AutoDetect || hint == BuilderEncoder.DiffEncoding) &&
+               bufBuilder.shouldBuildDeltas(min, max)) {
+      DiffEncoders.toPrimitiveVector(builder.data, builder.naMask.result, min, max)
     } else {
-      // TODO: use signed typeclasses once they are done
       SimpleEncoders.toPrimitiveVector(builder.data, builder.naMask.result, min, max)
     }
   }
@@ -61,6 +64,7 @@ object BuilderEncoder {
   case object AutoDetect extends EncodingHint
   case object SimpleEncoding extends EncodingHint
   case object DictionaryEncoding extends EncodingHint
+  case object DiffEncoding extends EncodingHint
 
   import AutoIntegralDVBuilders._
   implicit object BoolEncoder extends IntegralEncoder[Boolean]

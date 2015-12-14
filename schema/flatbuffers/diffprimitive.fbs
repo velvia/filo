@@ -1,0 +1,17 @@
+include "vector.fbs";
+
+namespace org.velvia.filo.vector;
+
+// Same as SimplePrimitiveVector but stores deltas from a base value for compactness.
+// NOTE: This is not the same as deltas from consequent values, as this design still allows
+// for random access.
+table DiffPrimitiveVector {
+  len: int;
+  naMask: NaMask;
+  baseInfo: DataInfo;
+  base: [ubyte];
+  info: DataInfo;
+  data: [ubyte];
+}
+
+root_type DiffPrimitiveVector;

@@ -21,8 +21,23 @@ object VectorReader {
   import TypedBufferReader._
 
   implicit object BoolVectorReader extends PrimitiveVectorReader[Boolean]
-  implicit object IntVectorReader extends PrimitiveVectorReader[Int]
-  implicit object LongVectorReader extends PrimitiveVectorReader[Long]
+
+  implicit object IntVectorReader extends PrimitiveVectorReader[Int] {
+    override def makeDiffVector(dpv: DiffPrimitiveVector): FiloVector[Int] = {
+      new DiffPrimitiveWrapper[Int](dpv) {
+        final def apply(i: Int): Int = base + dataReader.read(i)
+      }
+    }
+  }
+
+  implicit object LongVectorReader extends PrimitiveVectorReader[Long] {
+    override def makeDiffVector(dpv: DiffPrimitiveVector): FiloVector[Long] = {
+      new DiffPrimitiveWrapper[Long](dpv) {
+        final def apply(i: Int): Long = base + dataReader.read(i)
+      }
+    }
+  }
+
   implicit object DoubleVectorReader extends PrimitiveVectorReader[Double]
   implicit object FloatVectorReader extends PrimitiveVectorReader[Float]
 
@@ -85,7 +100,13 @@ class PrimitiveVectorReader[A: TypedReaderProvider] extends VectorReader[A] {
           final def apply(i: Int): A = typedReader.read(0)
         }
 
+      case (VECTORTYPE_DIFF, SUBTYPE_PRIMITIVE) =>
+        val dpv = DiffPrimitiveVector.getRootAsDiffPrimitiveVector(buf)
+        makeDiffVector(dpv)
+
       case (vectType, subType) => throw UnsupportedFiloType(vectType, subType)
     }
   }
+
+  def makeDiffVector(dpv: DiffPrimitiveVector): FiloVector[A] = ???
 }

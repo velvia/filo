@@ -16,6 +16,14 @@ trait PrimitiveDataVectBuilder[A] {
    * @return ((offset, nbits), signed)
    */
   def build(fbb: FlatBufferBuilder, data: Seq[A], min: A, max: A): ((Int, Int), Boolean)
+
+  def shouldBuildDeltas(min: A, max: A): Boolean = false
+
+  /**
+   * Like build, but works on deltas of the sequence from the min value (the "base").
+   * This often allows for smaller representations.
+   */
+  def buildDeltas(fbb: FlatBufferBuilder, data: Seq[A], min: A, max: A): ((Int, Int), Boolean) = ???
 }
 
 /**
@@ -41,7 +49,7 @@ object AutoIntegralDVBuilders {
   implicit object ShortDataVectBuilder extends PrimitiveDataVectBuilder[Short] {
     def build(fbb: FlatBufferBuilder, data: Seq[Short], min: Short, max: Short): ((Int, Int), Boolean) = {
       // TODO: Add support for stuff below byte level
-      if (min >= Byte.MinValue && max <= Byte.MaxValue) {
+      if (min >= Byte.MinValue.toShort && max <= Byte.MaxValue.toShort) {
         (byteVect(fbb, data.size, data.reverseIterator.map(_.toByte)), true)
       } else if (min >= 0 && max < 256) {
         (byteVect(fbb, data.size, data.reverseIterator.map(_.toByte)), false)
@@ -49,6 +57,19 @@ object AutoIntegralDVBuilders {
         (shortVect(fbb, data.size, data.reverseIterator), true)
       }
     }
+
+    override def shouldBuildDeltas(min: Short, max: Short): Boolean = {
+      val diff = max - min
+      diff > 0 &&
+      (if (min >= 0) {
+        (diff < 256 && max >= 256)
+      } else {
+        (diff < 256 && (min < Byte.MinValue || max > Byte.MaxValue))
+      })
+    }
+
+    override def buildDeltas(fbb: FlatBufferBuilder, data: Seq[Short], min: Short, max: Short):
+        ((Int, Int), Boolean) = build(fbb, data.map(x => (x - min).toShort), 0, (max - min).toShort)
   }
 
   implicit object IntDataVectBuilder extends PrimitiveDataVectBuilder[Int] {
@@ -66,6 +87,21 @@ object AutoIntegralDVBuilders {
         (intVect(fbb, data.size, data.reverseIterator), true)
       }
     }
+
+    override def shouldBuildDeltas(min: Int, max: Int): Boolean = {
+      val diff = max - min
+      diff > 0 &&
+      (if (min >= 0) {
+        (diff < 256 && max >= 256) ||
+        (diff < 65536 && max >= 65536)
+      } else {
+        (diff < 256 && (min < Byte.MinValue || max > Byte.MaxValue)) ||
+        (diff < 65536 && (min < Short.MinValue || max > Short.MaxValue))
+      })
+    }
+
+    override def buildDeltas(fbb: FlatBufferBuilder, data: Seq[Int], min: Int, max: Int):
+        ((Int, Int), Boolean) = build(fbb, data.map(_ - min), 0, max - min)
   }
 
   implicit object LongDataVectBuilder extends PrimitiveDataVectBuilder[Long] {
@@ -87,6 +123,23 @@ object AutoIntegralDVBuilders {
         (longVect(fbb, data.size, data.reverseIterator), false)
       }
     }
+
+    override def shouldBuildDeltas(min: Long, max: Long): Boolean = {
+      val diff = max - min
+      diff > 0 &&
+      (if (min >= 0) {
+        (diff < 256L && max >= 256L) ||
+        (diff < 65536L && max >= 65536L) ||
+        (diff < maxUInt && max >= maxUInt)
+      } else {
+        (diff < 256L && (min < Byte.MinValue || max > Byte.MaxValue)) ||
+        (diff < 65536L && (min < Short.MinValue || max > Short.MaxValue)) ||
+        (diff < maxUInt && (min < Int.MinValue || max > Int.MaxValue))
+      })
+    }
+
+    override def buildDeltas(fbb: FlatBufferBuilder, data: Seq[Long], min: Long, max: Long):
+        ((Int, Int), Boolean) = build(fbb, data.map(_ - min), 0, max - min)
   }
 }
 

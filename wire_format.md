@@ -21,7 +21,8 @@ The valid values of the vector type:
 | 0x00000302  | SimpleFixedStringVector | Actually a SimplePrimitiveVector for string vectors where max string len < 32 bytes |
 | 0x00000103  | DictStringVector   | FlatBuffer Vector with dictionary-encoded strings |
 | 0x00000004  | ConstPrimitiveVector  | A SimplePrimitiveVector for representing primitives holding the same value for entire vector
-| 0x00000104  | ConstStringVector     | A SimpleStringVector having the same string vector for entire vector |
+| 0x00000104  | ConstStringVector     | Same string vector for entire vector |
+| 0x00000005  | DiffPrimitiveVector   | Stores base + deltas for primitives for more compact representation |
 
 See `WireFormat.scala` for code definitions.
 

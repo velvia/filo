@@ -85,7 +85,7 @@ class SimpleEncodingTest extends FunSpec with Matchers {
 
     it("should encode and decode back a Seq[Int]") {
       val orig = Seq(1, 2, -5, 101)
-      val buf = VectorBuilder(orig).toFiloBuffer
+      val buf = VectorBuilder(orig).toFiloBuffer(SimpleEncoding)
       checkVectorType(buf, WireFormat.VECTORTYPE_SIMPLE, WireFormat.SUBTYPE_PRIMITIVE)
       buf.capacity should equal (64)    // should encode to signed bytes
       val binarySeq = FiloVector[Int](buf)
@@ -101,7 +101,7 @@ class SimpleEncodingTest extends FunSpec with Matchers {
       // to test various byte alignments of byte-sized int vectors
       for { len <- 4 to 7 } {
         val orig = (0 until len).toSeq
-        val buf = VectorBuilder(orig).toFiloBuffer
+        val buf = VectorBuilder(orig).toFiloBuffer(SimpleEncoding)
         checkVectorType(buf, WireFormat.VECTORTYPE_SIMPLE, WireFormat.SUBTYPE_PRIMITIVE)
         val bufLen = if (len == 4) 64 else 68
         buf.capacity should equal (bufLen)
@@ -175,7 +175,7 @@ class SimpleEncodingTest extends FunSpec with Matchers {
       val shortSeqs = Seq(Seq(Short.MaxValue.toLong, Short.MinValue.toLong, 0),
                           Seq(0, 65535L, 256L))
       for { orig <- shortSeqs } {
-        val buf = VectorBuilder(orig).toFiloBuffer
+        val buf = VectorBuilder(orig).toFiloBuffer(SimpleEncoding)
         buf.capacity should equal (68)
         val binarySeq = FiloVector[Long](buf)
 
@@ -186,7 +186,7 @@ class SimpleEncodingTest extends FunSpec with Matchers {
       val intSeqs = Seq(Seq(Int.MaxValue.toLong, Int.MinValue.toLong, 0),
                         Seq(0L, 65536L, 65536L * 65536L - 1L))
       for { orig <- intSeqs } {
-        val buf = VectorBuilder(orig).toFiloBuffer
+        val buf = VectorBuilder(orig).toFiloBuffer(SimpleEncoding)
         buf.capacity should equal (72)
         val binarySeq = FiloVector[Long](buf)
 

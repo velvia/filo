@@ -9,6 +9,7 @@ object WireFormat {
   val VECTORTYPE_SIMPLE = 0x02
   val VECTORTYPE_DICT = 0x03
   val VECTORTYPE_CONST = 0x04
+  val VECTORTYPE_DIFF = 0x05
 
   def majorVectorType(headerBytes: Int): Int = headerBytes & 0x00ff
   def emptyVectorLen(headerBytes: Int): Int = {
