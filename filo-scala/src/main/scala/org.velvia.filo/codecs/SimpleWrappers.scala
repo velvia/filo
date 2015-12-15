@@ -19,7 +19,7 @@ class EmptyFiloVector[A](len: Int) extends FiloVector[A] {
   final def length: Int = len
 }
 
-abstract class SimplePrimitiveWrapper[A](spv: SimplePrimitiveVector)
+abstract class SimplePrimitiveWrapper[@specialized A](spv: SimplePrimitiveVector)
     extends FiloVector[A] with NaMaskAvailable {
   val naMask = spv.naMask
   val info = spv.info

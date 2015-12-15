@@ -79,8 +79,8 @@ trait VectorReader[A] {
   def makeVector(buf: ByteBuffer, headerBytes: Int): FiloVector[A]
 }
 
-// TODO: Move this somewhere else
-class PrimitiveVectorReader[A: TypedReaderProvider] extends VectorReader[A] {
+// NOTE: we MUST @specialize here so that the apply method below will not create boxing
+class PrimitiveVectorReader[@specialized A: TypedReaderProvider] extends VectorReader[A] {
   import VectorReader._
   import WireFormat._
 
