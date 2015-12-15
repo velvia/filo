@@ -12,6 +12,8 @@ import java.util.concurrent.TimeUnit
 /**
  * Measures basic read benchmark with no NAs for an IntColumn.
  * Just raw read speed basically.
+ * Measures read speed of different encodings (int, byte, diff) as well as
+ * different read methods.
  *
  * For a description of the JMH measurement modes, see
  * https://github.com/ktoso/sbt-jmh/blob/master/src/sbt-test/sbt-jmh/jmh-run/src/main/scala/org/openjdk/jmh/samples/JMHSample_02_BenchmarkModes.scala
@@ -28,6 +30,12 @@ class BasicFiloBenchmark {
   val filoBuffer = VectorBuilder(randomInts).toFiloBuffer
   val sc = FiloVector[Int](filoBuffer)
 
+  val byteFiloBuf = VectorBuilder(randomInts.map(_ % 128)).toFiloBuffer
+  val byteVect = FiloVector[Int](byteFiloBuf)
+
+  val diffFiloBuf = VectorBuilder(randomInts.map(10000 + _ % 128)).toFiloBuffer
+  val diffVect = FiloVector[Int](diffFiloBuf)
+
   // According to @ktosopl, be sure to return some value if possible so that JVM won't
   // optimize out the method body.  However JMH is apparently very good at avoiding this.
   // fastest loop possible using FiloVectorApply method
@@ -42,26 +50,33 @@ class BasicFiloBenchmark {
     total
   }
 
+  @Benchmark
+  @BenchmarkMode(Array(Mode.AverageTime))
+  @OutputTimeUnit(TimeUnit.MICROSECONDS)
+  def sumAllIntsFiloByteApply(): Int = {
+    var total = 0
+    for { i <- 0 until numValues optimized } {
+      total += byteVect(i)
+    }
+    total
+  }
+
+  @Benchmark
+  @BenchmarkMode(Array(Mode.AverageTime))
+  @OutputTimeUnit(TimeUnit.MICROSECONDS)
+  def sumAllIntsFiloDiffApply(): Int = {
+    var total = 0
+    for { i <- 0 until numValues optimized } {
+      total += diffVect(i)
+    }
+    total
+  }
+
   // sum which uses foreach from FiloVector
   @Benchmark
   @BenchmarkMode(Array(Mode.AverageTime))
   @OutputTimeUnit(TimeUnit.MICROSECONDS)
   def sumAllIntsFiloForeachFoldLeft(): Int = {
     sc.foldLeft(0)(_ + _)
-  }
-
-  // Scala Seq sum
-  @Benchmark
-  @BenchmarkMode(Array(Mode.AverageTime))
-  @OutputTimeUnit(TimeUnit.MICROSECONDS)
-  def sumAllIntsScalaSeqFoldLeft(): Int = {
-    randomInts.foldLeft(0)(_ + _)
-  }
-
-  @Benchmark
-  @BenchmarkMode(Array(Mode.AverageTime))
-  @OutputTimeUnit(TimeUnit.MICROSECONDS)
-  def sumAllIntsScalaArrayFoldLeft(): Int = {
-    randomIntsAray.foldLeft(0)(_ + _)
   }
 }
