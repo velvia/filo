@@ -25,6 +25,7 @@ object VectorReader {
   implicit object IntVectorReader extends PrimitiveVectorReader[Int] {
     override def makeDiffVector(dpv: DiffPrimitiveVector): FiloVector[Int] = {
       new DiffPrimitiveWrapper[Int](dpv) {
+        val base = baseReader.readInt(0)
         final def apply(i: Int): Int = base + dataReader.read(i)
       }
     }
@@ -33,6 +34,7 @@ object VectorReader {
   implicit object LongVectorReader extends PrimitiveVectorReader[Long] {
     override def makeDiffVector(dpv: DiffPrimitiveVector): FiloVector[Long] = {
       new DiffPrimitiveWrapper[Long](dpv) {
+        val base = baseReader.readLong(0)
         final def apply(i: Int): Long = base + dataReader.read(i)
       }
     }

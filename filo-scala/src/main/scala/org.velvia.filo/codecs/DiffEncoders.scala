@@ -31,15 +31,13 @@ object DiffEncoders extends ThreadLocalBuffers {
     val fbb = new FlatBufferBuilder(getBuffer)
     val naOffset = populateNaMask(fbb, naMask, data.length)
 
-    val ((baseOffset, bnbits), bsigned) = vectBuilder.build(fbb, Seq(min), min, min)
     val ((dataOffset, dnbits), dsigned) = vectBuilder.buildDeltas(fbb, data, min, max)
     startDiffPrimitiveVector(fbb)
     addNaMask(fbb, naOffset)
     addLen(fbb, data.length)
     addData(fbb, dataOffset)
     addInfo(fbb, DataInfo.createDataInfo(fbb, dnbits, dsigned))
-    addBase(fbb, baseOffset)
-    addBaseInfo(fbb, DataInfo.createDataInfo(fbb, bnbits, bsigned))
+    addBase(fbb, vectBuilder.toLong(min))
     finishDiffPrimitiveVectorBuffer(fbb, endDiffPrimitiveVector(fbb))
     putHeaderAndGet(fbb, WireFormat.VECTORTYPE_DIFF, WireFormat.SUBTYPE_PRIMITIVE)
   }

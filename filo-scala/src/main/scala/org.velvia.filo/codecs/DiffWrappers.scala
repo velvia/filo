@@ -13,9 +13,7 @@ abstract class DiffPrimitiveWrapper[A: TypedReaderProvider](dpv: DiffPrimitiveVe
   val _len = dpv.len
   val dataReader = TypedBufferReader[A](FastBufferReader(dpv.dataAsByteBuffer()),
                                         info.nbits, info.signed)
-  val baseReader = TypedBufferReader[A](FastBufferReader(dpv.baseAsByteBuffer()),
-                                        dpv.baseInfo.nbits, dpv.baseInfo.signed)
-  val base = baseReader.read(0)
+  val baseReader = FastBufferReader(dpv.base)
 
   final def length: Int = _len
 

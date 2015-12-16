@@ -29,6 +29,8 @@ object FastBufferReader {
     if (buf.hasArray) { new FastUnsafeArrayBufferReader(buf) }
     else              { throw new RuntimeException("Cannot support this ByteBuffer") }
   }
+
+  def apply(long: Long): FastBufferReader = new FastLongBufferReader(long)
 }
 
 trait FastBufferReader {
@@ -51,4 +53,13 @@ class FastUnsafeArrayBufferReader(buf: ByteBuffer) extends FastBufferReader {
   final def readLong(i: Int): Long = unsafe.getLong(byteArray, (offset + i * 8).toLong)
   final def readDouble(i: Int): Double = unsafe.getDouble(byteArray, (offset + i * 8).toLong)
   final def readFloat(i: Int): Float = unsafe.getFloat(byteArray, (offset + i * 4).toLong)
+}
+
+class FastLongBufferReader(long: Long) extends FastBufferReader {
+  def readByte(i: Int): Byte = (long >> (8 * i)).toByte
+  def readShort(i: Int): Short = (long >> (16 * i)).toShort
+  def readInt(i: Int): Int = (long >> (32 * i)).toInt
+  def readLong(i: Int): Long = long
+  def readDouble(i: Int): Double = ???
+  def readFloat(i: Int): Float = ???
 }

@@ -24,6 +24,9 @@ trait PrimitiveDataVectBuilder[A] {
    * This often allows for smaller representations.
    */
   def buildDeltas(fbb: FlatBufferBuilder, data: Seq[A], min: A, max: A): ((Int, Int), Boolean) = ???
+
+  // Converts the primitive A to a Long.  If shouldBuildDeltas might be true, this should be defined.
+  def toLong(item: A): Long = ???
 }
 
 /**
@@ -68,6 +71,8 @@ object AutoIntegralDVBuilders {
       })
     }
 
+    override def toLong(item: Short): Long = item.toLong
+
     override def buildDeltas(fbb: FlatBufferBuilder, data: Seq[Short], min: Short, max: Short):
         ((Int, Int), Boolean) = build(fbb, data.map(x => (x - min).toShort), 0, (max - min).toShort)
   }
@@ -99,6 +104,8 @@ object AutoIntegralDVBuilders {
         (diff < 65536 && (min < Short.MinValue || max > Short.MaxValue))
       })
     }
+
+    override def toLong(item: Int): Long = item.toLong
 
     override def buildDeltas(fbb: FlatBufferBuilder, data: Seq[Int], min: Int, max: Int):
         ((Int, Int), Boolean) = build(fbb, data.map(_ - min), 0, max - min)
@@ -137,6 +144,8 @@ object AutoIntegralDVBuilders {
         (diff < maxUInt && (min < Int.MinValue || max > Int.MaxValue))
       })
     }
+
+    override def toLong(item: Long): Long = item
 
     override def buildDeltas(fbb: FlatBufferBuilder, data: Seq[Long], min: Long, max: Long):
         ((Int, Int), Boolean) = build(fbb, data.map(_ - min), 0, max - min)

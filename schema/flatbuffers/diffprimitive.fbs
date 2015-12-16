@@ -8,8 +8,7 @@ namespace org.velvia.filo.vector;
 table DiffPrimitiveVector {
   len: int;
   naMask: NaMask;
-  baseInfo: DataInfo;
-  base: [ubyte];
+  base: long;
   info: DataInfo;
   data: [ubyte];
 }

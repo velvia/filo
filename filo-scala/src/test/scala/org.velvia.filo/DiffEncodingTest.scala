@@ -49,7 +49,7 @@ class DiffEncodingTest extends FunSpec with Matchers {
   it("should correctly diff encode int and long sequences that fit criteria") {
     val seq1 = Seq(500, 254, 257)
     val buf1 = VectorBuilder(seq1).toFiloBuffer(DiffEncoding)
-    buf1.capacity should equal (84)
+    buf1.capacity should equal (76)
     checkVectorType(buf1, WireFormat.VECTORTYPE_DIFF, WireFormat.SUBTYPE_PRIMITIVE)
     val binarySeq1 = FiloVector[Int](buf1)
 
@@ -59,6 +59,7 @@ class DiffEncodingTest extends FunSpec with Matchers {
     val maxUInt = 65536L * 65536L
     val seq2 = Seq(maxUInt + 1, maxUInt, maxUInt + 255, maxUInt + 3)
     val buf2 = VectorBuilder(seq2).toFiloBuffer(DiffEncoding)
+    buf2.capacity should equal (76)
     checkVectorType(buf2, WireFormat.VECTORTYPE_DIFF, WireFormat.SUBTYPE_PRIMITIVE)
     val binarySeq2 = FiloVector[Long](buf2)
 
