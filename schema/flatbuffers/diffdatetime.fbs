@@ -1,0 +1,25 @@
+include "vector.fbs";
+
+namespace org.velvia.filo.vector;
+
+// A vector designed to store DateTime values, including a default time zone and other things
+// For now, chronologies are ignored (only ISOChronology, which is with rare exceptions what is used)
+// If tzLength() == 0, then baseTz is used for the time zone for all values.
+table DiffDateTimeVector {
+  naMask: NaMask;
+  vars: DDTVars;
+  millisInfo: DataInfo;
+  millis: [ubyte];
+  tzInfo: DataInfo;
+  tz: [ubyte];
+}
+
+// NOTE: using a struct here saves us 2 vtable entries or 4 bytes
+// These are always required anyways
+struct DDTVars {
+  len: int;
+  baseTz: byte;
+  baseMillis: long;
+}
+
+root_type DiffDateTimeVector;

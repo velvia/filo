@@ -1,6 +1,7 @@
 package org.velvia.filo
 
 import java.nio.ByteBuffer
+import org.joda.time.DateTime
 
 /**
  * A generic trait for reading typed values out of a row of data.
@@ -15,6 +16,7 @@ trait RowReader {
   def getDouble(columnNo: Int): Double
   def getFloat(columnNo: Int): Float
   def getString(columnNo: Int): String
+  def getDateTime(columnNo: Int): DateTime
 }
 
 /**
@@ -47,6 +49,10 @@ case class TupleRowReader(tuple: Product) extends RowReader {
   def getString(columnNo: Int): String = tuple.productElement(columnNo) match {
     case Some(x: String) => x
   }
+
+  def getDateTime(columnNo: Int): DateTime = tuple.productElement(columnNo) match {
+    case Some(x: DateTime) => x
+  }
 }
 
 /**
@@ -62,6 +68,7 @@ case class ArrayStringRowReader(strings: Array[String]) extends RowReader {
   def getDouble(columnNo: Int): Double = strings(columnNo).toDouble
   def getFloat(columnNo: Int): Float = strings(columnNo).toFloat
   def getString(columnNo: Int): String = strings(columnNo)
+  def getDateTime(columnNo: Int): DateTime = new DateTime(strings(columnNo))
 }
 
 object RowReader {
@@ -93,6 +100,10 @@ object RowReader {
   implicit object StringFieldExtractor extends TypedFieldExtractor[String] {
     final def getField(reader: RowReader, columnNo: Int): String = reader.getString(columnNo)
   }
+
+  implicit object DateTimeFieldExtractor extends TypedFieldExtractor[DateTime] {
+    final def getField(reader: RowReader, columnNo: Int): DateTime = reader.getDateTime(columnNo)
+  }
 }
 
 /**
@@ -114,6 +125,7 @@ abstract class FiloRowReader extends RowReader {
   final def getDouble(columnNo: Int): Double = parsers(columnNo).asInstanceOf[FiloVector[Double]](rowNo)
   final def getFloat(columnNo: Int): Float = parsers(columnNo).asInstanceOf[FiloVector[Float]](rowNo)
   final def getString(columnNo: Int): String = parsers(columnNo).asInstanceOf[FiloVector[String]](rowNo)
+  final def getDateTime(columnNo: Int): DateTime = parsers(columnNo).asInstanceOf[FiloVector[DateTime]](rowNo)
   final def getAny(columnNo: Int): Any = parsers(columnNo).boxed(rowNo)
 }
 
@@ -132,5 +144,6 @@ class FastFiloRowReader(chunks: Array[ByteBuffer], classes: Array[Class[_]]) ext
     case (chunk, Classes.Long) => FiloVector[Long](chunk)
     case (chunk, Classes.Double) => FiloVector[Double](chunk)
     case (chunk, Classes.Float) => FiloVector[Float](chunk)
+    case (chunk, Classes.DateTime) => FiloVector[DateTime](chunk)
   }
 }

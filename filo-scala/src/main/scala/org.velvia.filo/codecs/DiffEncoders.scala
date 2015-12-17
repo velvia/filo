@@ -2,6 +2,7 @@ package org.velvia.filo.codecs
 
 import com.google.flatbuffers.FlatBufferBuilder
 import java.nio.{ByteBuffer, ByteOrder}
+import org.joda.time.DateTime
 import scala.collection.mutable.BitSet
 
 import org.velvia.filo._
@@ -40,5 +41,38 @@ object DiffEncoders extends ThreadLocalBuffers {
     addBase(fbb, vectBuilder.toLong(min))
     finishDiffPrimitiveVectorBuffer(fbb, endDiffPrimitiveVector(fbb))
     putHeaderAndGet(fbb, WireFormat.VECTORTYPE_DIFF, WireFormat.SUBTYPE_PRIMITIVE)
+  }
+
+  def toDateTimeVector(millis: LongVectorBuilder,
+                       tz: IntVectorBuilder,
+                       naMask: BitSet): ByteBuffer = {
+    import DiffDateTimeVector._
+
+    val intVectBuilder = AutoIntegralDVBuilders.IntDataVectBuilder
+    val longVectBuilder = AutoIntegralDVBuilders.LongDataVectBuilder
+    count += 1
+    val fbb = new FlatBufferBuilder(getBuffer)
+    val naOffset = populateNaMask(fbb, naMask, millis.length)
+
+    val ((mOffset, mnbits), msigned) = longVectBuilder.buildDeltas(fbb, millis.data,
+                                                               millis.min, millis.max)
+    // Only build timezone vector if they are different.  Most DateTime's have same TZ
+    val ((tOffset, tnbits), tsigned) = if (tz.min != tz.max) {
+      intVectBuilder.buildDeltas(fbb, tz.data, tz.min, tz.max)
+    } else {
+      ((-1, -1), false)
+    }
+
+    startDiffDateTimeVector(fbb)
+    addNaMask(fbb, naOffset)
+    addVars(fbb, DDTVars.createDDTVars(fbb, millis.length, tz.min.toByte, millis.min))
+    addMillisInfo(fbb, DataInfo.createDataInfo(fbb, mnbits, msigned))
+    addMillis(fbb, mOffset)
+    if (tOffset >= 0) {
+      addTzInfo(fbb, DataInfo.createDataInfo(fbb, tnbits, tsigned))
+      addTz(fbb, tOffset)
+    }
+    finishDiffDateTimeVectorBuffer(fbb, endDiffDateTimeVector(fbb))
+    putHeaderAndGet(fbb, WireFormat.VECTORTYPE_DIFF, WireFormat.SUBTYPE_DATETIME)
   }
 }

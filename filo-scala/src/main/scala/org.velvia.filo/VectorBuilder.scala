@@ -2,6 +2,7 @@ package org.velvia.filo
 
 import com.google.flatbuffers.FlatBufferBuilder
 import java.nio.ByteBuffer
+import org.joda.time.DateTime
 import scala.collection.mutable.BitSet
 import scala.reflect.ClassTag
 
@@ -109,23 +110,26 @@ object VectorBuilder {
    * Creates a VectorBuilder dynamically based on a passed in class.
    * Please add your builder here when you add a type
    */
-  def apply[A](dataType: Class[_]): VectorBuilder[A] = dataType match {
-    case Classes.Boolean => (new BoolVectorBuilder).asInstanceOf[VectorBuilder[A]]
-    case Classes.Int    => (new IntVectorBuilder).asInstanceOf[VectorBuilder[A]]
-    case Classes.Long   => (new LongVectorBuilder).asInstanceOf[VectorBuilder[A]]
-    case Classes.Double => (new DoubleVectorBuilder).asInstanceOf[VectorBuilder[A]]
-    case Classes.Float  => (new FloatVectorBuilder).asInstanceOf[VectorBuilder[A]]
-    case Classes.String => (new StringVectorBuilder).asInstanceOf[VectorBuilder[A]]
+  def apply(dataType: Class[_]): VectorBuilderBase = dataType match {
+    case Classes.Boolean  => new BoolVectorBuilder
+    case Classes.Int      => new IntVectorBuilder
+    case Classes.Long     => new LongVectorBuilder
+    case Classes.Double   => new DoubleVectorBuilder
+    case Classes.Float    => new FloatVectorBuilder
+    case Classes.String   => new StringVectorBuilder
+    case Classes.DateTime => new DateTimeVectorBuilder
   }
 
   import BuilderEncoder._
+
+  val FifteenMinMillis = 15 * org.joda.time.DateTimeConstants.MILLIS_PER_MINUTE
 
   /**
    * Builds a VectorBuilder automatically from a scala collection.
    * All values will be marked available.
    */
-  def apply[A: ClassTag: BuilderEncoder](seq: collection.Seq[A]): VectorBuilder[A] = {
-    val builder = apply[A](implicitly[ClassTag[A]].runtimeClass)
+  def apply[A: ClassTag: BuilderEncoder](seq: collection.Seq[A]): VectorBuilderBase = {
+    val builder = apply(implicitly[ClassTag[A]].runtimeClass).asInstanceOf[VectorBuilderBase { type T = A}]
     seq.foreach(builder.addData)
     builder
   }
@@ -134,8 +138,8 @@ object VectorBuilder {
    * Encodes a sequence of type Option[A] to a Filo format ByteBuffer.
    * Elements which are None will get encoded as NA bits.
    */
-  def fromOptions[A: ClassTag: BuilderEncoder](seq: collection.Seq[Option[A]]): VectorBuilder[A] = {
-    val builder = apply[A](implicitly[ClassTag[A]].runtimeClass)
+  def fromOptions[A: ClassTag: BuilderEncoder](seq: collection.Seq[Option[A]]): VectorBuilderBase = {
+    val builder = apply(implicitly[ClassTag[A]].runtimeClass).asInstanceOf[VectorBuilderBase { type T = A}]
     seq.foreach(builder.addOption)
     builder
   }
@@ -162,4 +166,31 @@ class StringVectorBuilder extends TypedVectorBuilder("") {
     stringSet.clear
     super.reset()
   }
+}
+
+class DateTimeVectorBuilder extends VectorBuilderBase {
+  type T = DateTime
+  implicit val builder = BuilderEncoder.DateTimeEncoder
+  implicit val extractor = RowReader.DateTimeFieldExtractor
+
+  val millisBuilder = new LongVectorBuilder
+  val tzBuilder = new IntVectorBuilder
+
+  def addData(value: DateTime): Unit = {
+    millisBuilder.addData(value.getMillis)
+    tzBuilder.addData(value.getZone.getOffset(0) / VectorBuilder.FifteenMinMillis)
+  }
+
+  def addNA(): Unit = {
+    millisBuilder.addNA()
+    tzBuilder.addNA()
+  }
+
+  def reset(): Unit = {
+    millisBuilder.reset()
+    tzBuilder.reset()
+  }
+
+  def length: Int = millisBuilder.length
+  def isAllNA: Boolean = millisBuilder.isAllNA
 }

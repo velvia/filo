@@ -19,6 +19,7 @@ private object Classes {
   val Float = java.lang.Float.TYPE
   val Double = java.lang.Double.TYPE
   val String = classOf[String]
+  val DateTime = classOf[org.joda.time.DateTime]
 }
 
 object RowToVectorBuilder {

@@ -33,6 +33,8 @@ publish := {}   // should only affect the root project.  Don't want publish to e
 
 lazy val deps = Seq(
   "com.nativelibs4java"    %% "scalaxy-loops" % "0.3.3" % "provided",
+  "joda-time"               % "joda-time"     % "2.2"   % "provided",
+  "org.joda"                % "joda-convert"  % "1.2"   % "provided",
   "org.scalatest"          %% "scalatest"     % "2.1.0" % "test",
   "org.scalacheck"         %% "scalacheck"    % "1.11.0" % "test")
 

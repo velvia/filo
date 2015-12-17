@@ -1,6 +1,7 @@
 package org.velvia.filo
 
 import java.nio.ByteBuffer
+import org.joda.time.DateTime
 import scala.reflect.ClassTag
 
 import org.velvia.filo.codecs._
@@ -9,18 +10,18 @@ import org.velvia.filo.codecs._
  * Type class for encoding a VectorBuilder to queryable binary Filo format
  */
 trait BuilderEncoder[A] {
-  def encodeInner(builder: VectorBuilder[A], hint: BuilderEncoder.EncodingHint): ByteBuffer
+  def encodeInner(builder: VectorBuilderBase, hint: BuilderEncoder.EncodingHint): ByteBuffer
   def encode(builder: VectorBuilderBase, hint: BuilderEncoder.EncodingHint): ByteBuffer = {
     if (builder.isAllNA && builder.length <= WireFormat.MaxEmptyVectorLen) {
       SimpleEncoders.toEmptyVector(builder.length)
     } else {
-      encodeInner(builder.asInstanceOf[VectorBuilder[A]], hint)
+      encodeInner(builder.asInstanceOf[VectorBuilderBase], hint)
     }
   }
 }
 
 trait MinMaxEncoder[A] {
-  def minMaxZero(builder: VectorBuilder[A]): (A, A, A) = {
+  def minMaxZero(builder: VectorBuilderBase): (A, A, A) = {
     val minMaxBuilder = builder.asInstanceOf[MinMaxVectorBuilder[A]]
     (minMaxBuilder.min, minMaxBuilder.max, minMaxBuilder.zero)
   }
@@ -28,8 +29,9 @@ trait MinMaxEncoder[A] {
 
 abstract class IntegralEncoder[A: PrimitiveDataVectBuilder] extends BuilderEncoder[A] with MinMaxEncoder[A] {
   val bufBuilder = implicitly[PrimitiveDataVectBuilder[A]]
-  def encodeInner(builder: VectorBuilder[A], hint: BuilderEncoder.EncodingHint): ByteBuffer = {
-    val (min, max, zero) = minMaxZero(builder)
+  def encodeInner(vBuilder: VectorBuilderBase, hint: BuilderEncoder.EncodingHint): ByteBuffer = {
+    val (min, max, zero) = minMaxZero(vBuilder)
+    val builder = vBuilder.asInstanceOf[VectorBuilder[A]]
     if (min == max) {
       ConstEncoders.toPrimitiveVector(builder.data, builder.naMask.result, min, max)
     } else if ((hint == BuilderEncoder.AutoDetect || hint == BuilderEncoder.DiffEncoding) &&
@@ -43,8 +45,9 @@ abstract class IntegralEncoder[A: PrimitiveDataVectBuilder] extends BuilderEncod
 
 abstract class FloatDoubleEncoder[A: PrimitiveDataVectBuilder] extends
 BuilderEncoder[A] with MinMaxEncoder[A] {
-  def encodeInner(builder: VectorBuilder[A], hint: BuilderEncoder.EncodingHint): ByteBuffer = {
-    val (min, max, _) = minMaxZero(builder)
+  def encodeInner(vBuilder: VectorBuilderBase, hint: BuilderEncoder.EncodingHint): ByteBuffer = {
+    val (min, max, _) = minMaxZero(vBuilder)
+    val builder = vBuilder.asInstanceOf[VectorBuilder[A]]
     if (min == max) {
       ConstEncoders.toPrimitiveVector(builder.data, builder.naMask.result, min, max)
     } else {
@@ -76,7 +79,7 @@ object BuilderEncoder {
   implicit object FloatEncoder extends FloatDoubleEncoder[Float]
 
   implicit object StringEncoder extends BuilderEncoder[String] {
-    def encodeInner(builder: VectorBuilder[String], hint: EncodingHint): ByteBuffer = {
+    def encodeInner(builder: VectorBuilderBase, hint: EncodingHint): ByteBuffer = {
       val useDictEncoding = hint match {
         case DictionaryEncoding => true
         case SimpleEncoding     => false
@@ -87,9 +90,8 @@ object BuilderEncoder {
             // Empty/missing elements do not count towards cardinality, so columns with
             // many NA values will get dict encoded, which saves space
             sb.stringSet.size <= (sb.data.size / 2)
-          // case x: Any =>  // Someone used something other than our own builder. Oh well. TODO: log
-          //   false
-          // NOTE: above is commented out for now because VectorBuilder is sealed. May change in future.
+          case x: Any =>  // Someone used something other than our own builder. Oh well. TODO: log
+            false
         }
       }
       (useDictEncoding, builder) match {
@@ -98,7 +100,19 @@ object BuilderEncoder {
         case (true, sb: StringVectorBuilder) =>
           DictEncodingEncoders.toStringVector(sb.data, sb.naMask.result, sb.stringSet)
         case x: Any =>
-          SimpleEncoders.toStringVector(builder.data, builder.naMask.result)
+          val bldr = builder.asInstanceOf[VectorBuilder[String]]
+          SimpleEncoders.toStringVector(bldr.data, bldr.naMask.result)
+      }
+    }
+  }
+
+  implicit object DateTimeEncoder extends BuilderEncoder[DateTime] {
+    def encodeInner(builder: VectorBuilderBase, hint: EncodingHint): ByteBuffer = {
+      builder match {
+        case b: DateTimeVectorBuilder =>
+          DiffEncoders.toDateTimeVector(b.millisBuilder, b.tzBuilder, b.millisBuilder.naMask.result)
+        case x: Any                   =>
+          throw new RuntimeException("Must use a DateTimeVectorBuilder")
       }
     }
   }

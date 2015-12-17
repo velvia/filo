@@ -23,6 +23,7 @@ The valid values of the vector type:
 | 0x00000004  | ConstPrimitiveVector  | A SimplePrimitiveVector for representing primitives holding the same value for entire vector
 | 0x00000104  | ConstStringVector     | Same string vector for entire vector |
 | 0x00000005  | DiffPrimitiveVector   | Stores base + deltas for primitives for more compact representation |
+| 0x00000405  | DiffDateTimeVector   | Delta-encoded timestamp with TZ info for joda.time.DateTime |
 
 See `WireFormat.scala` for code definitions.
 
@@ -80,7 +81,13 @@ There are two inner vectors within DictStringVector:
 * codes - represents the UTF8 string for each dictionary code.  The code 0 is reserved for null or NA, and represented with the empty string, so the code vector looks like this: `["", "firstUnique", ...]`
 * data - represents the code for each string in the vector
 
+## Diff*Vector
+
+Stores the base value as a separate single element vector, and all other elements as a vector of deltas from the base value.
+
+DiffDateTimeVector is similar, storing the millis since Epoch as the data vector with a base value (since many timestamp vectors contains values relatively close together), with an optional TZ vector if the DateTimes differ in timezone.  Timezones are encoded as integer increments of 15 minute offsets from UTC (eg, UTC+1hr = 4).
+
 ## Future Formats
 
-* Diff-based for integer and double values, if there is a tight range between min and max.
+* Diff-based for double values, if there is a tight range between min and max.
 * Sparse element storage.  Store only the index and value, not every element.

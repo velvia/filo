@@ -2,6 +2,7 @@ package org.velvia.filo
 
 import com.google.flatbuffers.Table
 import java.nio.ByteBuffer
+import org.joda.time.DateTime
 
 import org.velvia.filo.codecs._
 import org.velvia.filo.vector._
@@ -59,6 +60,22 @@ object VectorReader {
           new DictStringWrapper(dsv) {
             val intReader = TypedBufferReader[Int](reader, dsv.info.nbits, dsv.info.signed)
             final def getCode(i: Int): Int = intReader.read(i)
+          }
+
+        case (vectType, subType) => throw UnsupportedFiloType(vectType, subType)
+      }
+    }
+  }
+
+  implicit object DateTimeVectorReader extends VectorReader[DateTime] {
+    def makeVector(buf: ByteBuffer, headerBytes: Int): FiloVector[DateTime] = {
+      (majorVectorType(headerBytes), vectorSubType(headerBytes)) match {
+        case (VECTORTYPE_DIFF, SUBTYPE_DATETIME) =>
+          val ddtv = DiffDateTimeVector.getRootAsDiffDateTimeVector(buf)
+          if (ddtv.tzLength == 0) {
+            new DiffDateTimeWrapper(ddtv)
+          } else {
+            new DiffDateTimeWithTZWrapper(ddtv)
           }
 
         case (vectType, subType) => throw UnsupportedFiloType(vectType, subType)

@@ -21,6 +21,7 @@ object WireFormat {
   val SUBTYPE_STRING = 0x01
   val SUBTYPE_BINARY = 0x02
   val SUBTYPE_FIXEDSTRING = 0x03
+  val SUBTYPE_DATETIME = 0x04
 
   def vectorSubType(headerBytes: Int): Int = (headerBytes & 0x00ff00) >> 8
 
