@@ -39,6 +39,9 @@ class SimpleEncodingTest extends FunSpec with Matchers {
       val cb = new IntVectorBuilder
       cb.addNA
       val buf = cb.toFiloBuffer(SimpleEncoding)
+      val headerBytes = buf.getInt(0)
+      WireFormat.majorVectorType(headerBytes) should equal (WireFormat.VECTORTYPE_EMPTY)
+      buf.capacity should equal (4)
       val sc = FiloVector[Int](buf)
 
       sc.length should equal (1)
