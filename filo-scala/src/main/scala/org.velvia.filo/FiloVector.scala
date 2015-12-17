@@ -68,8 +68,12 @@ trait FiloVector[@specialized(Int, Double, Long, Float, Boolean) A] extends Trav
 
   /**
    * Same as apply(), but returns Any, forcing to be an object.
+   * Returns null if item not available.
+   * Used mostly for APIs like Spark that require a boxed output. This will be slow.
    */
-  def boxed(index: Int): Any = apply(index).asInstanceOf[Any]
+  def boxed(index: Int): Any =
+    if (isAvailable(index)) { apply(index).asInstanceOf[Any] }
+    else                    { null }
 
   /**
    * Returns the number of elements in the column.
