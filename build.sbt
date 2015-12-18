@@ -22,6 +22,7 @@ lazy val filoScalaJmh = (project in file("filo-scala-jmh")).dependsOn(filoScala)
                         .settings(mySettings:_*)
                         .settings(name := "filo-scala-jmh")
                         .settings(libraryDependencies ++= deps)
+                        .settings(libraryDependencies ++= Seq(jodaTime, jodaConvert))
                         .settings(jmhSettings:_*)
 
 
@@ -31,10 +32,13 @@ releaseSettings ++ publishSettings
 
 publish := {}   // should only affect the root project.  Don't want publish to error out.
 
+val jodaTime = "joda-time"               % "joda-time"     % "2.2"
+val jodaConvert = "org.joda"                % "joda-convert"  % "1.2"
+
 lazy val deps = Seq(
   "com.nativelibs4java"    %% "scalaxy-loops" % "0.3.3" % "provided",
-  "joda-time"               % "joda-time"     % "2.2"   % "provided",
-  "org.joda"                % "joda-convert"  % "1.2"   % "provided",
+  jodaTime % "provided",
+  jodaConvert % "provided",
   "org.scalatest"          %% "scalatest"     % "2.1.0" % "test",
   "org.scalacheck"         %% "scalacheck"    % "1.11.0" % "test")
 
