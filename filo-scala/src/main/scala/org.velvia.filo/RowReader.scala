@@ -112,11 +112,10 @@ object RowReader {
  * An Iterator[RowReader] sets the rowNo and returns this RowReader, and
  * the application is responsible for calling the right method to extract each value.
  * For example, a Spark Row can inherit from RowReader.
- * Thus, this is not appropriate for Seq[RowReader].
  */
 abstract class FiloRowReader extends RowReader {
   def parsers: Array[FiloVector[_]]
-  var rowNo: Int = -1
+  def rowNo: Int
 
   final def notNull(columnNo: Int): Boolean = parsers(columnNo).isAvailable(rowNo)
   final def getBoolean(columnNo: Int): Boolean = parsers(columnNo).asInstanceOf[FiloVector[Boolean]](rowNo)
@@ -131,12 +130,15 @@ abstract class FiloRowReader extends RowReader {
 
 /**
  * Just a concrete implementation.
+ * Designed to minimize allocation by having iterator repeatedly set/update rowNo.
+ * Thus, this is not appropriate for Seq[RowReader] or conversion to Seq.
  */
 class FastFiloRowReader(chunks: Array[ByteBuffer], classes: Array[Class[_]]) extends FiloRowReader {
   import VectorReader._
 
   require(chunks.size == classes.size, "chunks must be same length as classes")
 
+  var rowNo: Int = -1
   val parsers: Array[FiloVector[_]] = chunks.zip(classes).map {
     case (chunk, Classes.Boolean) => FiloVector[Boolean](chunk)
     case (chunk, Classes.String) => FiloVector[String](chunk)
