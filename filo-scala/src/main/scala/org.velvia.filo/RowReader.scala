@@ -133,19 +133,21 @@ abstract class FiloRowReader extends RowReader {
  * Designed to minimize allocation by having iterator repeatedly set/update rowNo.
  * Thus, this is not appropriate for Seq[RowReader] or conversion to Seq.
  */
-class FastFiloRowReader(chunks: Array[ByteBuffer], classes: Array[Class[_]]) extends FiloRowReader {
+class FastFiloRowReader(chunks: Array[ByteBuffer],
+                        classes: Array[Class[_]],
+                        emptyLen: Int = 0) extends FiloRowReader {
   import VectorReader._
 
   require(chunks.size == classes.size, "chunks must be same length as classes")
 
   var rowNo: Int = -1
   val parsers: Array[FiloVector[_]] = chunks.zip(classes).map {
-    case (chunk, Classes.Boolean) => FiloVector[Boolean](chunk)
-    case (chunk, Classes.String) => FiloVector[String](chunk)
-    case (chunk, Classes.Int) => FiloVector[Int](chunk)
-    case (chunk, Classes.Long) => FiloVector[Long](chunk)
-    case (chunk, Classes.Double) => FiloVector[Double](chunk)
-    case (chunk, Classes.Float) => FiloVector[Float](chunk)
-    case (chunk, Classes.DateTime) => FiloVector[DateTime](chunk)
+    case (chunk, Classes.Boolean) => FiloVector[Boolean](chunk, emptyLen)
+    case (chunk, Classes.String) => FiloVector[String](chunk, emptyLen)
+    case (chunk, Classes.Int) => FiloVector[Int](chunk, emptyLen)
+    case (chunk, Classes.Long) => FiloVector[Long](chunk, emptyLen)
+    case (chunk, Classes.Double) => FiloVector[Double](chunk, emptyLen)
+    case (chunk, Classes.Float) => FiloVector[Float](chunk, emptyLen)
+    case (chunk, Classes.DateTime) => FiloVector[DateTime](chunk, emptyLen)
   }
 }

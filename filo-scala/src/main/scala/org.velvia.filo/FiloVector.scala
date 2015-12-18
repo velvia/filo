@@ -22,8 +22,8 @@ object FiloVector {
    * @param buf the ByteBuffer with the columnar chunk at the current position.  After apply returns, the
    *            position will be restored to its original value, but it may change in the meantime.
    */
-  def apply[A](buf: ByteBuffer)(implicit cm: VectorReader[A]): FiloVector[A] = {
-    if (buf == null) return new EmptyFiloVector[A](0)
+  def apply[A](buf: ByteBuffer, emptyLen: Int = 0)(implicit cm: VectorReader[A]): FiloVector[A] = {
+    if (buf == null) return new EmptyFiloVector[A](emptyLen)
     val origPos = buf.position
     buf.order(ByteOrder.LITTLE_ENDIAN)
     val headerBytes = buf.getInt()
