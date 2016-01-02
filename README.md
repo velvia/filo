@@ -34,7 +34,7 @@ Get it here:
 
     resolvers += "Velvia Bintray" at "https://dl.bintray.com/velvia/maven"
 
-    libraryDependencies += "org.velvia.filo" %% "filo-scala" % "0.2.0"
+    libraryDependencies += "org.velvia.filo" %% "filo-scala" % "0.2.2"
 
 Using a `VectorBuilder` to progressively build a column:
 
