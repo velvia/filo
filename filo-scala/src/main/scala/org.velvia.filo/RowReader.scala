@@ -113,9 +113,47 @@ object RowReader {
  * the application is responsible for calling the right method to extract each value.
  * For example, a Spark Row can inherit from RowReader.
  */
-abstract class FiloRowReader extends RowReader {
+trait FiloRowReader extends RowReader {
   def parsers: Array[FiloVector[_]]
   def rowNo: Int
+  def setRowNo(newRowNo: Int)
+}
+
+/**
+ * A helper trait to create an array of FiloVectors given chunks of ByteBuffers.
+ * emptyLen is used to properly populate an empty FiloVector of length N if the
+ * chunk ends up being null.
+ */
+trait ParsersFromChunks {
+  import VectorReader._
+
+  def chunks: Array[ByteBuffer]
+  def classes: Array[Class[_]]
+  def emptyLen: Int
+
+  require(chunks.size == classes.size, "chunks must be same length as classes")
+
+  val parsers: Array[FiloVector[_]] = chunks.zip(classes).map {
+    case (chunk, Classes.Boolean) => FiloVector[Boolean](chunk, emptyLen)
+    case (chunk, Classes.String) => FiloVector[String](chunk, emptyLen)
+    case (chunk, Classes.Int) => FiloVector[Int](chunk, emptyLen)
+    case (chunk, Classes.Long) => FiloVector[Long](chunk, emptyLen)
+    case (chunk, Classes.Double) => FiloVector[Double](chunk, emptyLen)
+    case (chunk, Classes.Float) => FiloVector[Float](chunk, emptyLen)
+    case (chunk, Classes.DateTime) => FiloVector[DateTime](chunk, emptyLen)
+  }
+}
+
+/**
+ * Just a concrete implementation.
+ * Designed to minimize allocation by having iterator repeatedly set/update rowNo.
+ * Thus, this is not appropriate for Seq[RowReader] or conversion to Seq.
+ */
+class FastFiloRowReader(val chunks: Array[ByteBuffer],
+                        val classes: Array[Class[_]],
+                        val emptyLen: Int = 0) extends FiloRowReader with ParsersFromChunks {
+  var rowNo: Int = -1
+  def setRowNo(newRowNo: Int): Unit = { rowNo = newRowNo }
 
   final def notNull(columnNo: Int): Boolean = parsers(columnNo).isAvailable(rowNo)
   final def getBoolean(columnNo: Int): Boolean = parsers(columnNo).asInstanceOf[FiloVector[Boolean]](rowNo)
@@ -126,28 +164,4 @@ abstract class FiloRowReader extends RowReader {
   final def getString(columnNo: Int): String = parsers(columnNo).asInstanceOf[FiloVector[String]](rowNo)
   final def getDateTime(columnNo: Int): DateTime = parsers(columnNo).asInstanceOf[FiloVector[DateTime]](rowNo)
   final def getAny(columnNo: Int): Any = parsers(columnNo).boxed(rowNo)
-}
-
-/**
- * Just a concrete implementation.
- * Designed to minimize allocation by having iterator repeatedly set/update rowNo.
- * Thus, this is not appropriate for Seq[RowReader] or conversion to Seq.
- */
-class FastFiloRowReader(chunks: Array[ByteBuffer],
-                        classes: Array[Class[_]],
-                        emptyLen: Int = 0) extends FiloRowReader {
-  import VectorReader._
-
-  require(chunks.size == classes.size, "chunks must be same length as classes")
-
-  var rowNo: Int = -1
-  val parsers: Array[FiloVector[_]] = chunks.zip(classes).map {
-    case (chunk, Classes.Boolean) => FiloVector[Boolean](chunk, emptyLen)
-    case (chunk, Classes.String) => FiloVector[String](chunk, emptyLen)
-    case (chunk, Classes.Int) => FiloVector[Int](chunk, emptyLen)
-    case (chunk, Classes.Long) => FiloVector[Long](chunk, emptyLen)
-    case (chunk, Classes.Double) => FiloVector[Double](chunk, emptyLen)
-    case (chunk, Classes.Float) => FiloVector[Float](chunk, emptyLen)
-    case (chunk, Classes.DateTime) => FiloVector[DateTime](chunk, emptyLen)
-  }
 }
