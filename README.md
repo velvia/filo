@@ -150,7 +150,6 @@ Cross-platform support - Go, C/C++, etc.
 
 Still random:
 * A much more compact encoding for sparse values
-* Delta encoding - but to allow for random, set central value to average or first value
 * Combo delta + pack into float for double vector compression
 * Use [JavaEWAH](https://github.com/lemire/javaewah) `ImmutableBitSet` for efficient compressed bit vectors / NA masks
 * Encode a set or a hash, perhaps using Murmur3 hash for keys with an open hash design
