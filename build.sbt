@@ -12,6 +12,7 @@ lazy val flatbuffers = (project in file("flatbuffers"))
                          .settings(mySettings:_*)
                          .settings(version := "0.2.0")
                          .settings(publish := {})   // flatbuffers never changes
+                         .disablePlugins(BintrayPlugin)
 
 lazy val filoScala = (project in file("filo-scala")).dependsOn(schema, flatbuffers)
                         .settings(mySettings:_*)
@@ -73,6 +74,6 @@ lazy val styleSettings = Seq(
   (Keys.`package` in Compile) <<= (Keys.`package` in Compile) dependsOn compileScalastyle
 )
 
-lazy val publishSettings = bintray.Plugin.bintrayPublishSettings ++ Seq(
+lazy val publishSettings = Seq(
   licenses += ("Apache-2.0", url("http://choosealicense.com/licenses/apache/"))
 )
