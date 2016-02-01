@@ -81,9 +81,10 @@ case class ArrayStringRowReader(strings: Array[String]) extends RowReader {
   def getAny(columnNo: Int): Any = strings(columnNo)
 
   override def as[T: ClassTag](columnNo: Int): T = {
-    implicitly[ClassTag[T]].runtimeClass match {
-      case Classes.DateTime => new DateTime(strings(columnNo)).asInstanceOf[T]
-    }
+    (implicitly[ClassTag[T]].runtimeClass match {
+      case Classes.DateTime => new DateTime(strings(columnNo))
+      case Classes.SqlTimestamp => new Timestamp(DateTime.parse(strings(columnNo)).getMillis)
+    }).asInstanceOf[T]
   }
 }
 
