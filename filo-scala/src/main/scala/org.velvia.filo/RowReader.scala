@@ -161,6 +161,7 @@ trait ParsersFromChunks {
     case (chunk, Classes.Double) => FiloVector[Double](chunk, emptyLen)
     case (chunk, Classes.Float) => FiloVector[Float](chunk, emptyLen)
     case (chunk, Classes.DateTime) => FiloVector[DateTime](chunk, emptyLen)
+    case (chunk, Classes.SqlTimestamp) => FiloVector[Timestamp](chunk, emptyLen)
   }
 }
 
