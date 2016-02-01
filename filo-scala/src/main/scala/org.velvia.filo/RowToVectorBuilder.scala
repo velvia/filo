@@ -42,12 +42,14 @@ object RowToVectorBuilder {
 
 /**
  * Class to help transpose a set of rows to Filo binary vectors.
- * @param schema a Seq of VectorInfo describing the data type used for each column
+ * @param schema a Seq of VectorInfo describing the data type used for each vector
+ * @param builderMap pass in a custom BuilderMap to extend the supported vector types
  *
  * TODO: Add stats about # of rows, chunks/buffers encoded, bytes encoded, # NA's etc.
  */
-class RowToVectorBuilder(schema: Seq[VectorInfo]) {
-  val builders = schema.map { case VectorInfo(_, dataType) => VectorBuilder(dataType) }
+class RowToVectorBuilder(schema: Seq[VectorInfo],
+                         builderMap: VectorBuilder.BuilderMap = VectorBuilder.defaultBuilderMap) {
+  val builders = schema.map { case VectorInfo(_, dataType) => VectorBuilder(dataType, builderMap) }
   val numColumns = schema.length
 
   /**

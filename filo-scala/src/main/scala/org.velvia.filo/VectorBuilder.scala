@@ -107,20 +107,27 @@ extends VectorBuilder(zero) {
 }
 
 object VectorBuilder {
+  type BuilderMap = Map[Class[_], () => VectorBuilderBase]
   /**
    * Creates a VectorBuilder dynamically based on a passed in class.
-   * Please add your builder here when you add a type
+   * @param builderMap the map of classes to Builders.  Being able to pass one in
+   *                   allows for customization.
    */
-  def apply(dataType: Class[_]): VectorBuilderBase = dataType match {
-    case Classes.Boolean  => new BoolVectorBuilder
-    case Classes.Int      => new IntVectorBuilder
-    case Classes.Long     => new LongVectorBuilder
-    case Classes.Double   => new DoubleVectorBuilder
-    case Classes.Float    => new FloatVectorBuilder
-    case Classes.String   => new StringVectorBuilder
-    case Classes.DateTime => new DateTimeVectorBuilder
-    case Classes.SqlTimestamp => new SqlTimestampVectorBuilder
-  }
+  def apply(dataType: Class[_],
+            builderMap: BuilderMap = defaultBuilderMap): VectorBuilderBase =
+    builderMap(dataType)()
+
+  // Please add your builder here when you add a type
+  val defaultBuilderMap = Map[Class[_], () => VectorBuilderBase](
+    Classes.Boolean      -> (() => new BoolVectorBuilder),
+    Classes.Int          -> (() => new IntVectorBuilder),
+    Classes.Long         -> (() => new LongVectorBuilder),
+    Classes.Double       -> (() => new DoubleVectorBuilder),
+    Classes.Float        -> (() => new FloatVectorBuilder),
+    Classes.String       -> (() => new StringVectorBuilder),
+    Classes.DateTime     -> (() => new DateTimeVectorBuilder),
+    Classes.SqlTimestamp -> (() => new SqlTimestampVectorBuilder)
+  )
 
   import BuilderEncoder._
 
