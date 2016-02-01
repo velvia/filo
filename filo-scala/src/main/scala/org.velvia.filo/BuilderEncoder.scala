@@ -1,6 +1,7 @@
 package org.velvia.filo
 
 import java.nio.ByteBuffer
+import java.sql.Timestamp
 import org.joda.time.DateTime
 import scala.reflect.ClassTag
 
@@ -24,6 +25,18 @@ trait MinMaxEncoder[A] {
   def minMaxZero(builder: VectorBuilderBase): (A, A, A) = {
     val minMaxBuilder = builder.asInstanceOf[MinMaxVectorBuilder[A]]
     (minMaxBuilder.min, minMaxBuilder.max, minMaxBuilder.zero)
+  }
+}
+
+trait SingleMethodEncoder[A] extends BuilderEncoder[A] {
+  val encodingPF: BuilderEncoder.EncodingPF
+  val default: BuilderEncoder.EncodingPF = {
+    case x: Any                   =>
+      throw new RuntimeException("Unsupported VectorBuilder")
+  }
+
+  def encodeInner(builder: VectorBuilderBase, hint: BuilderEncoder.EncodingHint): ByteBuffer = {
+    (encodingPF orElse default)((builder, hint))
   }
 }
 
@@ -69,6 +82,8 @@ object BuilderEncoder {
   case object DictionaryEncoding extends EncodingHint
   case object DiffEncoding extends EncodingHint
 
+  type EncodingPF = PartialFunction[(VectorBuilderBase, EncodingHint), ByteBuffer]
+
   import AutoIntegralDVBuilders._
   implicit object BoolEncoder extends IntegralEncoder[Boolean]
   implicit object IntEncoder extends IntegralEncoder[Int]
@@ -106,14 +121,18 @@ object BuilderEncoder {
     }
   }
 
-  implicit object DateTimeEncoder extends BuilderEncoder[DateTime] {
-    def encodeInner(builder: VectorBuilderBase, hint: EncodingHint): ByteBuffer = {
-      builder match {
-        case b: DateTimeVectorBuilder =>
-          DiffEncoders.toDateTimeVector(b.millisBuilder, b.tzBuilder, b.millisBuilder.naMask.result)
-        case x: Any                   =>
-          throw new RuntimeException("Must use a DateTimeVectorBuilder")
-      }
+  implicit object DateTimeEncoder extends SingleMethodEncoder[DateTime] {
+    val encodingPF: EncodingPF = {
+      case (b: DateTimeVectorBuilder, _) =>
+        DiffEncoders.toDateTimeVector(b.millisBuilder, b.tzBuilder, b.millisBuilder.naMask.result)
+    }
+  }
+
+  implicit object SqlTimestampEncoder extends SingleMethodEncoder[Timestamp] with MinMaxEncoder[Long] {
+    val encodingPF: EncodingPF = {
+      case (b: SqlTimestampVectorBuilder, _) =>
+        val (min, max, zero) = minMaxZero(b.millisBuilder)
+        DiffEncoders.toPrimitiveVector(b.millisBuilder.data, b.millisBuilder.naMask.result, min, max)
     }
   }
 }

@@ -2,6 +2,7 @@ package org.velvia.filo
 
 import com.google.flatbuffers.Table
 import java.nio.ByteBuffer
+import java.sql.Timestamp
 import org.joda.time.DateTime
 
 import org.velvia.filo.codecs._
@@ -25,7 +26,7 @@ object VectorReader {
 
   implicit object IntVectorReader extends PrimitiveVectorReader[Int] {
     override def makeDiffVector(dpv: DiffPrimitiveVector): FiloVector[Int] = {
-      new DiffPrimitiveWrapper[Int](dpv) {
+      new DiffPrimitiveWrapper[Int, Int](dpv) {
         val base = baseReader.readInt(0)
         final def apply(i: Int): Int = base + dataReader.read(i)
       }
@@ -34,7 +35,7 @@ object VectorReader {
 
   implicit object LongVectorReader extends PrimitiveVectorReader[Long] {
     override def makeDiffVector(dpv: DiffPrimitiveVector): FiloVector[Long] = {
-      new DiffPrimitiveWrapper[Long](dpv) {
+      new DiffPrimitiveWrapper[Long, Long](dpv) {
         val base = baseReader.readLong(0)
         final def apply(i: Int): Long = base + dataReader.read(i)
       }
@@ -76,6 +77,21 @@ object VectorReader {
             new DiffDateTimeWrapper(ddtv)
           } else {
             new DiffDateTimeWithTZWrapper(ddtv)
+          }
+
+        case (vectType, subType) => throw UnsupportedFiloType(vectType, subType)
+      }
+    }
+  }
+
+  implicit object TimestampVectorReader extends VectorReader[Timestamp] {
+    def makeVector(buf: ByteBuffer, headerBytes: Int): FiloVector[Timestamp] = {
+      (majorVectorType(headerBytes), vectorSubType(headerBytes)) match {
+        case (VECTORTYPE_DIFF, SUBTYPE_PRIMITIVE) =>
+          val dpv = DiffPrimitiveVector.getRootAsDiffPrimitiveVector(buf)
+          new DiffPrimitiveWrapper[Long, Timestamp](dpv) {
+            val base = baseReader.readLong(0)
+            final def apply(i: Int): Timestamp = new Timestamp(base + dataReader.read(i))
           }
 
         case (vectType, subType) => throw UnsupportedFiloType(vectType, subType)

@@ -20,6 +20,7 @@ private object Classes {
   val Double = java.lang.Double.TYPE
   val String = classOf[String]
   val DateTime = classOf[org.joda.time.DateTime]
+  val SqlTimestamp = classOf[java.sql.Timestamp]
 }
 
 object RowToVectorBuilder {

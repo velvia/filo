@@ -1,6 +1,7 @@
 package org.velvia.filo
 
 import java.nio.{ByteBuffer, ByteOrder}
+import java.sql.Timestamp
 import org.joda.time.{DateTime, DateTimeZone}
 
 import org.scalatest.FunSpec
@@ -71,6 +72,7 @@ class DiffEncodingTest extends FunSpec with Matchers {
   val behindGmtZone = DateTimeZone.forOffsetHours(-5)
   val aheadGmtZone = DateTimeZone.forOffsetHours(4)
   val dt1 = new DateTime("2012-01-12T03:45Z", behindGmtZone)
+  val ts1 = dt1.getMillis
 
   it("should correctly encode DateTime sequences in same time zone") {
     val seq1 = Seq(dt1, dt1.plusMillis(1), dt1.plusSeconds(2))
@@ -107,6 +109,16 @@ class DiffEncodingTest extends FunSpec with Matchers {
 
     binarySeq2.length should equal (seq2.length)
     binarySeq2.optionIterator.toSeq should equal (seq2)
+  }
+
+  it("should correctly encode Timestamp sequences with mixed NAs") {
+    val seq1 = Seq(None, Some(new Timestamp(ts1)), None, Some(new Timestamp(ts1 + 15000L)))
+    val buf1 = VectorBuilder.fromOptions(seq1).toFiloBuffer
+    checkVectorType(buf1, WireFormat.VECTORTYPE_DIFF, WireFormat.SUBTYPE_PRIMITIVE)
+    val binarySeq1 = FiloVector[Timestamp](buf1)
+
+    binarySeq1.length should equal (seq1.length)
+    binarySeq1.optionIterator.toSeq should equal (seq1)
   }
 
   it("should correctly encode DateTime sequences with different time zones") {

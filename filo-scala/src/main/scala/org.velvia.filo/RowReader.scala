@@ -1,6 +1,7 @@
 package org.velvia.filo
 
 import java.nio.ByteBuffer
+import java.sql.Timestamp
 import org.joda.time.DateTime
 import scala.reflect.ClassTag
 
@@ -118,6 +119,10 @@ object RowReader {
 
   implicit object DateTimeFieldExtractor extends TypedFieldExtractor[DateTime] {
     final def getField(reader: RowReader, columnNo: Int): DateTime = reader.as[DateTime](columnNo)
+  }
+
+  implicit object TimestampFieldExtractor extends TypedFieldExtractor[Timestamp] {
+    final def getField(reader: RowReader, columnNo: Int): Timestamp = reader.as[Timestamp](columnNo)
   }
 }
 

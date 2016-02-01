@@ -7,8 +7,8 @@ import scalaxy.loops._
 import org.velvia.filo._
 import org.velvia.filo.vector._
 
-abstract class DiffPrimitiveWrapper[A: TypedReaderProvider](dpv: DiffPrimitiveVector)
-    extends FiloVector[A] with NaMaskAvailable {
+abstract class DiffPrimitiveWrapper[A: TypedReaderProvider, P](dpv: DiffPrimitiveVector)
+    extends FiloVector[P] with NaMaskAvailable {
   val naMask = dpv.naMask
   val info = dpv.info
   val _len = dpv.len
@@ -18,7 +18,7 @@ abstract class DiffPrimitiveWrapper[A: TypedReaderProvider](dpv: DiffPrimitiveVe
 
   final def length: Int = _len
 
-  final def foreach[B](fn: A => B): Unit = {
+  final def foreach[B](fn: P => B): Unit = {
     if (maskType == MaskType.AllZeroes) {   // every value available!
       for { i <- 0 until length optimized } { fn(apply(i)) }
     } else {

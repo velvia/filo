@@ -2,6 +2,7 @@ package org.velvia.filo
 
 import com.google.flatbuffers.FlatBufferBuilder
 import java.nio.ByteBuffer
+import java.sql.Timestamp
 import org.joda.time.DateTime
 import scala.collection.mutable.BitSet
 import scala.reflect.ClassTag
@@ -118,6 +119,7 @@ object VectorBuilder {
     case Classes.Float    => new FloatVectorBuilder
     case Classes.String   => new StringVectorBuilder
     case Classes.DateTime => new DateTimeVectorBuilder
+    case Classes.SqlTimestamp => new SqlTimestampVectorBuilder
   }
 
   import BuilderEncoder._
@@ -168,12 +170,21 @@ class StringVectorBuilder extends TypedVectorBuilder("") {
   }
 }
 
-class DateTimeVectorBuilder extends VectorBuilderBase {
-  type T = DateTime
-  implicit val builder = BuilderEncoder.DateTimeEncoder
-  implicit val extractor = RowReader.DateTimeFieldExtractor
+abstract class NestedVectorBuilder[A, I](val innerBuilder: VectorBuilderBase { type T = I })
+                                        (implicit val extractor: TypedFieldExtractor[A],
+                                         implicit val builder: BuilderEncoder[A]) extends VectorBuilderBase {
+  type T = A
 
-  val millisBuilder = new LongVectorBuilder
+  def addNA(): Unit = innerBuilder.addNA()
+
+  def reset(): Unit = innerBuilder.reset()
+
+  def length: Int = innerBuilder.length
+  def isAllNA: Boolean = innerBuilder.isAllNA
+}
+
+class DateTimeVectorBuilder extends NestedVectorBuilder[DateTime, Long](new LongVectorBuilder) {
+  val millisBuilder = innerBuilder.asInstanceOf[LongVectorBuilder]
   val tzBuilder = new IntVectorBuilder
 
   def addData(value: DateTime): Unit = {
@@ -181,16 +192,18 @@ class DateTimeVectorBuilder extends VectorBuilderBase {
     tzBuilder.addData(value.getZone.getOffset(0) / VectorBuilder.FifteenMinMillis)
   }
 
-  def addNA(): Unit = {
+  override def addNA(): Unit = {
     millisBuilder.addNA()
     tzBuilder.addNA()
   }
 
-  def reset(): Unit = {
+  override def reset(): Unit = {
     millisBuilder.reset()
     tzBuilder.reset()
   }
+}
 
-  def length: Int = millisBuilder.length
-  def isAllNA: Boolean = millisBuilder.isAllNA
+class SqlTimestampVectorBuilder extends NestedVectorBuilder[Timestamp, Long](new LongVectorBuilder) {
+  val millisBuilder = innerBuilder.asInstanceOf[LongVectorBuilder]
+  def addData(value: Timestamp): Unit = innerBuilder.addData(value.getTime)
 }
