@@ -2,6 +2,7 @@ package org.velvia.filo
 
 import java.nio.ByteBuffer
 import org.joda.time.DateTime
+import scala.reflect.ClassTag
 
 /**
  * A generic trait for reading typed values out of a row of data.
@@ -16,7 +17,16 @@ trait RowReader {
   def getDouble(columnNo: Int): Double
   def getFloat(columnNo: Int): Float
   def getString(columnNo: Int): String
-  def getDateTime(columnNo: Int): DateTime
+  def getAny(columnNo: Int): Any
+
+  /**
+   * This method serves two purposes.
+   * For RowReaders that need to parse from some input source, such as CSV,
+   * the ClassTag gives a way for per-type parsing for non-primitive types.
+   * For RowReaders for fast reading paths, such as Spark, the default
+   * implementation serves as a fast way to read from objects.
+   */
+  def as[T: ClassTag](columnNo: Int): T = getAny(columnNo).asInstanceOf[T]
 }
 
 /**
@@ -50,9 +60,8 @@ case class TupleRowReader(tuple: Product) extends RowReader {
     case Some(x: String) => x
   }
 
-  def getDateTime(columnNo: Int): DateTime = tuple.productElement(columnNo) match {
-    case Some(x: DateTime) => x
-  }
+  def getAny(columnNo: Int): Any =
+    tuple.productElement(columnNo).asInstanceOf[Option[Any]].getOrElse(null)
 }
 
 /**
@@ -68,7 +77,13 @@ case class ArrayStringRowReader(strings: Array[String]) extends RowReader {
   def getDouble(columnNo: Int): Double = strings(columnNo).toDouble
   def getFloat(columnNo: Int): Float = strings(columnNo).toFloat
   def getString(columnNo: Int): String = strings(columnNo)
-  def getDateTime(columnNo: Int): DateTime = new DateTime(strings(columnNo))
+  def getAny(columnNo: Int): Any = strings(columnNo)
+
+  override def as[T: ClassTag](columnNo: Int): T = {
+    implicitly[ClassTag[T]].runtimeClass match {
+      case Classes.DateTime => new DateTime(strings(columnNo)).asInstanceOf[T]
+    }
+  }
 }
 
 object RowReader {
@@ -102,7 +117,7 @@ object RowReader {
   }
 
   implicit object DateTimeFieldExtractor extends TypedFieldExtractor[DateTime] {
-    final def getField(reader: RowReader, columnNo: Int): DateTime = reader.getDateTime(columnNo)
+    final def getField(reader: RowReader, columnNo: Int): DateTime = reader.as[DateTime](columnNo)
   }
 }
 
@@ -162,6 +177,5 @@ class FastFiloRowReader(val chunks: Array[ByteBuffer],
   final def getDouble(columnNo: Int): Double = parsers(columnNo).asInstanceOf[FiloVector[Double]](rowNo)
   final def getFloat(columnNo: Int): Float = parsers(columnNo).asInstanceOf[FiloVector[Float]](rowNo)
   final def getString(columnNo: Int): String = parsers(columnNo).asInstanceOf[FiloVector[String]](rowNo)
-  final def getDateTime(columnNo: Int): DateTime = parsers(columnNo).asInstanceOf[FiloVector[DateTime]](rowNo)
   final def getAny(columnNo: Int): Any = parsers(columnNo).boxed(rowNo)
 }
