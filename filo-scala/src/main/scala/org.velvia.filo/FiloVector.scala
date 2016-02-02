@@ -61,7 +61,7 @@ object FiloVector {
            clazz: Class[_],
            emptyLen: Int = 0,
            vectorMaker: VectorMaker = defaultVectorMaker): FiloVector[_] =
-    defaultVectorMaker(clazz)(buf, emptyLen)
+    vectorMaker(clazz)(buf, emptyLen)
 
   /**
    * Creates multiple FiloVectors from raw ByteBuffers and an array of their classes
