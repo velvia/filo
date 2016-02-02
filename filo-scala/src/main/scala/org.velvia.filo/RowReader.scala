@@ -3,9 +3,7 @@ package org.velvia.filo
 import java.nio.ByteBuffer
 import java.sql.Timestamp
 import org.joda.time.DateTime
-import scala.language.postfixOps
 import scala.reflect.ClassTag
-import scalaxy.loops._
 
 /**
  * A generic trait for reading typed values out of a row of data.
@@ -143,53 +141,17 @@ trait FiloRowReader extends RowReader {
 }
 
 /**
- * A helper trait to create an array of FiloVectors given chunks of ByteBuffers.
- * emptyLen is used to properly populate an empty FiloVector of length N if the
- * chunk ends up being null.
- */
-trait ParsersFromChunks {
-  import VectorReader._
-
-  def chunks: Array[ByteBuffer]
-  def classes: Array[Class[_]]
-  def emptyLen: Int
-
-  require(chunks.size == classes.size, "chunks must be same length as classes")
-
-  type VectorMaker = PartialFunction[Class[_], ByteBuffer => FiloVector[_]]
-
-  val defaultVectorMaker: VectorMaker = {
-    case Classes.Boolean => ((b: ByteBuffer) => FiloVector[Boolean](b, emptyLen))
-    case Classes.String  => ((b: ByteBuffer) => FiloVector[String](b, emptyLen))
-    case Classes.Int     => ((b: ByteBuffer) => FiloVector[Int](b, emptyLen))
-    case Classes.Long    => ((b: ByteBuffer) => FiloVector[Long](b, emptyLen))
-    case Classes.Double  => ((b: ByteBuffer) => FiloVector[Double](b, emptyLen))
-    case Classes.Float   => ((b: ByteBuffer) => FiloVector[Float](b, emptyLen))
-    case Classes.DateTime => ((b: ByteBuffer) => FiloVector[DateTime](b, emptyLen))
-    case Classes.SqlTimestamp => ((b: ByteBuffer) => FiloVector[Timestamp](b, emptyLen))
-  }
-
-  def getParsers(vectorMaker: VectorMaker = defaultVectorMaker): Array[FiloVector[_]] = {
-    val aray = new Array[FiloVector[_]](chunks.size)
-    for { i <- 0 until chunks.size optimized } {
-      aray(i) = vectorMaker(classes(i))(chunks(i))
-    }
-    aray
-  }
-}
-
-/**
  * Just a concrete implementation.
  * Designed to minimize allocation by having iterator repeatedly set/update rowNo.
  * Thus, this is not appropriate for Seq[RowReader] or conversion to Seq.
  */
-class FastFiloRowReader(val chunks: Array[ByteBuffer],
-                        val classes: Array[Class[_]],
-                        val emptyLen: Int = 0) extends FiloRowReader with ParsersFromChunks {
+class FastFiloRowReader(chunks: Array[ByteBuffer],
+                        classes: Array[Class[_]],
+                        emptyLen: Int = 0) extends FiloRowReader {
   var rowNo: Int = -1
   def setRowNo(newRowNo: Int): Unit = { rowNo = newRowNo }
 
-  val parsers = getParsers()
+  val parsers = FiloVector.makeVectors(chunks, classes, emptyLen)
 
   final def notNull(columnNo: Int): Boolean = parsers(columnNo).isAvailable(rowNo)
   final def getBoolean(columnNo: Int): Boolean = parsers(columnNo).asInstanceOf[FiloVector[Boolean]](rowNo)

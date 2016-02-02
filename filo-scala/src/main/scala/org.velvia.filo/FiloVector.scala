@@ -1,6 +1,8 @@
 package org.velvia.filo
 
 import java.nio.{ByteBuffer, ByteOrder}
+import java.sql.Timestamp
+import org.joda.time.DateTime
 import scala.collection.Traversable
 import scala.language.postfixOps
 import scalaxy.loops._
@@ -35,6 +37,45 @@ object FiloVector {
     }
     buf.position(origPos)
     vector
+  }
+
+  type VectorMaker = PartialFunction[Class[_], (ByteBuffer, Int) => FiloVector[_]]
+
+  import VectorReader._
+
+  val defaultVectorMaker: VectorMaker = {
+    case Classes.Boolean => ((b: ByteBuffer, len: Int) => FiloVector[Boolean](b, len))
+    case Classes.String  => ((b: ByteBuffer, len: Int) => FiloVector[String](b, len))
+    case Classes.Int     => ((b: ByteBuffer, len: Int) => FiloVector[Int](b, len))
+    case Classes.Long    => ((b: ByteBuffer, len: Int) => FiloVector[Long](b, len))
+    case Classes.Double  => ((b: ByteBuffer, len: Int) => FiloVector[Double](b, len))
+    case Classes.Float   => ((b: ByteBuffer, len: Int) => FiloVector[Float](b, len))
+    case Classes.DateTime => ((b: ByteBuffer, len: Int) => FiloVector[DateTime](b, len))
+    case Classes.SqlTimestamp => ((b: ByteBuffer, len: Int) => FiloVector[Timestamp](b, len))
+  }
+
+  /**
+   * Creates a FiloVector using a dynamically supplied class type and a pluggable VectorMaker.
+   */
+  def make(buf: ByteBuffer,
+           clazz: Class[_],
+           emptyLen: Int = 0,
+           vectorMaker: VectorMaker = defaultVectorMaker): FiloVector[_] =
+    defaultVectorMaker(clazz)(buf, emptyLen)
+
+  /**
+   * Creates multiple FiloVectors from raw ByteBuffers and an array of their classes
+   */
+  def makeVectors(chunks: Array[ByteBuffer],
+                  classes: Array[Class[_]],
+                  emptyLen: Int = 0,
+                  vectorMaker: VectorMaker = defaultVectorMaker): Array[FiloVector[_]] = {
+    require(chunks.size == classes.size, "chunks must be same length as classes")
+    val aray = new Array[FiloVector[_]](chunks.size)
+    for { i <- 0 until chunks.size optimized } {
+      aray(i) = make(chunks(i), classes(i), emptyLen, vectorMaker)
+    }
+    aray
   }
 }
 
