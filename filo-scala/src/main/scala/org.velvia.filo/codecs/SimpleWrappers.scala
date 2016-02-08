@@ -20,8 +20,7 @@ class EmptyFiloVector[A](len: Int) extends FiloVector[A] {
 }
 
 abstract class SimplePrimitiveWrapper[@specialized A](spv: SimplePrimitiveVector)
-    extends FiloVector[A] with NaMaskAvailable {
-  val naMask = spv.naMask
+extends NaMaskAvailable[A](spv.naMask) {
   val info = spv.info
   val _len = spv.len
   val reader = FastBufferReader(spv.dataAsByteBuffer())
@@ -29,7 +28,7 @@ abstract class SimplePrimitiveWrapper[@specialized A](spv: SimplePrimitiveVector
   final def length: Int = _len
 
   final def foreach[B](fn: A => B): Unit = {
-    if (maskType == MaskType.AllZeroes) {   // every value available!
+    if (isEmptyMask) {   // every value available!
       for { i <- 0 until length optimized } { fn(apply(i)) }
     } else {
       for { i <- 0 until length optimized } { if (isAvailable(i)) fn(apply(i)) }
@@ -38,8 +37,8 @@ abstract class SimplePrimitiveWrapper[@specialized A](spv: SimplePrimitiveVector
 }
 
 // TODO: ditch naMask
-class SimpleStringWrapper(ssv: SimpleStringVector) extends FiloVector[String] with NaMaskAvailable {
-  val naMask = ssv.naMask
+class SimpleStringWrapper(ssv: SimpleStringVector)
+extends NaMaskAvailable[String](ssv.naMask) {
   val _len = ssv.dataLength
 
   final def length: Int = _len

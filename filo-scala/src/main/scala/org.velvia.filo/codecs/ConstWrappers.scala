@@ -6,8 +6,8 @@ import scalaxy.loops._
 import org.velvia.filo._
 import org.velvia.filo.vector._
 
-class ConstStringWrapper(csv: ConstStringVector) extends FiloVector[String] with NaMaskAvailable {
-  val naMask = csv.naMask
+class ConstStringWrapper(csv: ConstStringVector)
+extends NaMaskAvailable[String](csv.naMask) {
   val _len = csv.len
   val _str = csv.str
 

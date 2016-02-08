@@ -96,8 +96,8 @@ class SimpleEncodingTest extends FunSpec with Matchers {
       binarySeq.length should equal (orig.length)
       binarySeq.sum should equal (orig.sum)
       val spw = binarySeq.asInstanceOf[SimplePrimitiveWrapper[Int]]
-      spw.maskType should equal (MaskType.AllZeroes)   // no NA bit set
-      spw.maskLen should equal (0)
+      spw.isEmptyMask should equal (true)
+      (0 to 3).foreach { i => spw.isAvailable(i) should equal (true) }   // no NA bit set
     }
 
     it("should encode and decode back different length Seq[Int]") {
@@ -216,7 +216,7 @@ class SimpleEncodingTest extends FunSpec with Matchers {
 
       binarySeq.length should equal (orig.length)
       val spw = binarySeq.asInstanceOf[SimplePrimitiveWrapper[Boolean]]
-      spw.maskType should equal (MaskType.AllZeroes)   // no NA bit set
+      spw.isEmptyMask should equal (true)   // no NA bit set
       binarySeq.filter(b => b).size should equal (orig.filter(b => b).size)
     }
   }

@@ -143,25 +143,35 @@ trait FiloVector[@specialized(Int, Double, Long, Float, Boolean) A] extends Trav
     for { index <- (0 until length).toIterator } yield { get(index) }
 }
 
-// TODO: separate this out into traits for AllZeroes vs mixed ones for speed, no need to do
-// if sc.naMask.maskType lookup every time
-// TODO: wrap bitMask with FastBufferReader for speed
-trait NaMaskAvailable {
-  val naMask: NaMask
-  lazy val maskLen = naMask.bitMaskLength()
-  lazy val maskReader = FastBufferReader(naMask.bitMaskAsByteBuffer)
-  lazy val maskType = naMask.maskType
+trait NaMaskReader {
+  def isAvailable(index: Int): Boolean
+}
+
+object NaMaskReader {
+  def apply(naMask: NaMask): NaMaskReader = {
+    if (naMask.maskType == MaskType.AllZeroes) { ZeroesMaskReader }
+    else { new RegularMaskReader(naMask) }
+  }
+}
+
+object ZeroesMaskReader extends NaMaskReader {
+  final def isAvailable(index: Int): Boolean = true
+}
+
+class RegularMaskReader(naMask: NaMask) extends NaMaskReader {
+  val maskLen = naMask.bitMaskLength()
+  private val maskReader = FastBufferReader(naMask.bitMaskAsByteBuffer)
 
   final def isAvailable(index: Int): Boolean = {
-    if (maskType == MaskType.AllZeroes) {
-      true
-    } else if (maskType == MaskType.AllOnes) {
-      false
-    } else {
-      // NOTE: length of bitMask may be less than (length / 64) longwords.
-      val maskIndex = index >> 6
-      val maskVal = if (maskIndex < maskLen) maskReader.readLong(maskIndex) else 0L
-      (maskVal & (1L << (index & 63))) == 0
-    }
+    // NOTE: length of bitMask may be less than (length / 64) longwords.
+    val maskIndex = index >> 6
+    val maskVal = if (maskIndex < maskLen) maskReader.readLong(maskIndex) else 0L
+    (maskVal & (1L << (index & 63))) == 0
   }
+}
+
+abstract class NaMaskAvailable[A](naMask: NaMask) extends FiloVector[A] {
+  private def maskReader = NaMaskReader(naMask)
+  final def isAvailable(index: Int): Boolean = maskReader.isAvailable(index)
+  final def isEmptyMask: Boolean = naMask.maskType == MaskType.AllZeroes
 }

@@ -8,8 +8,7 @@ import org.velvia.filo._
 import org.velvia.filo.vector._
 
 abstract class DiffPrimitiveWrapper[A: TypedReaderProvider, P](dpv: DiffPrimitiveVector)
-    extends FiloVector[P] with NaMaskAvailable {
-  val naMask = dpv.naMask
+extends NaMaskAvailable[P](dpv.naMask) {
   val info = dpv.info
   val _len = dpv.len
   val dataReader = TypedBufferReader[A](FastBufferReader(dpv.dataAsByteBuffer()),
@@ -19,7 +18,7 @@ abstract class DiffPrimitiveWrapper[A: TypedReaderProvider, P](dpv: DiffPrimitiv
   final def length: Int = _len
 
   final def foreach[B](fn: P => B): Unit = {
-    if (maskType == MaskType.AllZeroes) {   // every value available!
+    if (isEmptyMask) {   // every value available!
       for { i <- 0 until length optimized } { fn(apply(i)) }
     } else {
       for { i <- 0 until length optimized } { if (isAvailable(i)) fn(apply(i)) }
@@ -32,10 +31,9 @@ abstract class DiffPrimitiveWrapper[A: TypedReaderProvider, P](dpv: DiffPrimitiv
  * and a differentially encoded millis vector
  */
 abstract class DiffDateTimeWrapperBase(ddtv: DiffDateTimeVector)
-extends FiloVector[DateTime] with NaMaskAvailable {
+extends NaMaskAvailable[DateTime](ddtv.naMask) {
   import TypedBufferReader._
 
-  val naMask = ddtv.naMask
   val _len = ddtv.vars.len
   val millisBase: Long = ddtv.vars.baseMillis
   val millisReader = TypedBufferReader[Long](FastBufferReader(ddtv.millisAsByteBuffer),
@@ -44,7 +42,7 @@ extends FiloVector[DateTime] with NaMaskAvailable {
   final def length: Int = _len
 
   final def foreach[B](fn: DateTime => B): Unit = {
-    if (maskType == MaskType.AllZeroes) {   // every value available!
+    if (isEmptyMask) {   // every value available!
       for { i <- 0 until length optimized } { fn(apply(i)) }
     } else {
       for { i <- 0 until length optimized } { if (isAvailable(i)) fn(apply(i)) }

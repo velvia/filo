@@ -72,6 +72,17 @@ class BasicFiloBenchmark {
     total
   }
 
+  @Benchmark
+  @BenchmarkMode(Array(Mode.AverageTime))
+  @OutputTimeUnit(TimeUnit.MICROSECONDS)
+  def sumAllNotNullIntsFiloApply(): Int = {
+    var total = 0
+    for { i <- 0 until numValues optimized } {
+      if (sc.isAvailable(i)) total += sc(i)
+    }
+    total
+  }
+
   // sum which uses foreach from FiloVector
   @Benchmark
   @BenchmarkMode(Array(Mode.AverageTime))
