@@ -171,7 +171,8 @@ class RegularMaskReader(naMask: NaMask) extends NaMaskReader {
 }
 
 abstract class NaMaskAvailable[A](naMask: NaMask) extends FiloVector[A] {
-  private def maskReader = NaMaskReader(naMask)
+  // Must use private[this] to make a val a class field
+  private[this] final val maskReader = NaMaskReader(naMask)
   final def isAvailable(index: Int): Boolean = maskReader.isAvailable(index)
   final def isEmptyMask: Boolean = naMask.maskType == MaskType.AllZeroes
 }
