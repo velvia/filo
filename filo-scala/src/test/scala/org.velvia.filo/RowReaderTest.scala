@@ -64,4 +64,12 @@ class RowReaderTest extends FunSpec with Matchers {
     reader.notNull(1) should equal (false)
     reader.as[Timestamp](2) should equal (new Timestamp(DateTime.parse("1970-07-08").getMillis))
   }
+
+  import RowReader._
+  it("should compare RowReaders using TypedFieldExtractor") {
+    val readers = rows.map(TupleRowReader)
+    StringFieldExtractor.compare(readers(1), readers(2), 0) should be > (0)
+    IntFieldExtractor.compare(readers(0), readers(2), 1) should be < (0)
+    TimestampFieldExtractor.compare(readers(0), readers(3), 2) should equal (0)
+  }
 }

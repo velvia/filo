@@ -89,41 +89,60 @@ case class ArrayStringRowReader(strings: Array[String]) extends RowReader {
 }
 
 object RowReader {
-  // Type class for extracting a field of a specific type
+  // Type class for extracting a field of a specific type .. and comparing a field from two RowReaders
   trait TypedFieldExtractor[F] {
     def getField(reader: RowReader, columnNo: Int): F
+    def compare(reader: RowReader, other: RowReader, columnNo: Int): Int
   }
 
   implicit object BooleanFieldExtractor extends TypedFieldExtractor[Boolean] {
     final def getField(reader: RowReader, columnNo: Int): Boolean = reader.getBoolean(columnNo)
+    final def compare(reader: RowReader, other: RowReader, columnNo: Int): Int =
+      java.lang.Boolean.compare(getField(reader, columnNo), getField(other, columnNo))
   }
 
   implicit object LongFieldExtractor extends TypedFieldExtractor[Long] {
     final def getField(reader: RowReader, columnNo: Int): Long = reader.getLong(columnNo)
+    final def compare(reader: RowReader, other: RowReader, columnNo: Int): Int =
+      java.lang.Long.compare(getField(reader, columnNo), getField(other, columnNo))
   }
 
   implicit object IntFieldExtractor extends TypedFieldExtractor[Int] {
     final def getField(reader: RowReader, columnNo: Int): Int = reader.getInt(columnNo)
+    final def compare(reader: RowReader, other: RowReader, columnNo: Int): Int =
+      java.lang.Integer.compare(getField(reader, columnNo), getField(other, columnNo))
   }
 
   implicit object DoubleFieldExtractor extends TypedFieldExtractor[Double] {
     final def getField(reader: RowReader, columnNo: Int): Double = reader.getDouble(columnNo)
+    final def compare(reader: RowReader, other: RowReader, columnNo: Int): Int =
+      java.lang.Double.compare(getField(reader, columnNo), getField(other, columnNo))
   }
 
   implicit object FloatFieldExtractor extends TypedFieldExtractor[Float] {
     final def getField(reader: RowReader, columnNo: Int): Float = reader.getFloat(columnNo)
+    final def compare(reader: RowReader, other: RowReader, columnNo: Int): Int =
+      java.lang.Float.compare(getField(reader, columnNo), getField(other, columnNo))
   }
 
   implicit object StringFieldExtractor extends TypedFieldExtractor[String] {
     final def getField(reader: RowReader, columnNo: Int): String = reader.getString(columnNo)
+    // TODO: do UTF8 comparison so we can avoid having to deserialize
+    final def compare(reader: RowReader, other: RowReader, columnNo: Int): Int =
+      getField(reader, columnNo).compareTo(getField(other, columnNo))
   }
 
   implicit object DateTimeFieldExtractor extends TypedFieldExtractor[DateTime] {
     final def getField(reader: RowReader, columnNo: Int): DateTime = reader.as[DateTime](columnNo)
+    final def compare(reader: RowReader, other: RowReader, columnNo: Int): Int =
+      getField(reader, columnNo).compareTo(getField(other, columnNo))
   }
 
   implicit object TimestampFieldExtractor extends TypedFieldExtractor[Timestamp] {
     final def getField(reader: RowReader, columnNo: Int): Timestamp = reader.as[Timestamp](columnNo)
+    // TODO: compare the Long, instead of deserializing and comparing Timestamp object
+    final def compare(reader: RowReader, other: RowReader, columnNo: Int): Int =
+      getField(reader, columnNo).compareTo(getField(other, columnNo))
   }
 }
 
