@@ -88,6 +88,23 @@ case class ArrayStringRowReader(strings: Array[String]) extends RowReader {
   }
 }
 
+/**
+ * A RowReader that changes the column numbers around of an original RowReader.  It could be used to
+ * present a subset of the original columns, for example.
+ * @param columnRoutes an array of original column numbers for the column in question.  For example:
+ *                     Array(0, 2, 5) means an getInt(1) would map to a getInt(2) for the original RowReader
+ */
+case class RoutingRowReader(origReader: RowReader, columnRoutes: Array[Int]) extends RowReader {
+  def notNull(columnNo: Int): Boolean    = origReader.notNull(columnRoutes(columnNo))
+  def getBoolean(columnNo: Int): Boolean = origReader.getBoolean(columnRoutes(columnNo))
+  def getInt(columnNo: Int): Int         = origReader.getInt(columnRoutes(columnNo))
+  def getLong(columnNo: Int): Long       = origReader.getLong(columnRoutes(columnNo))
+  def getDouble(columnNo: Int): Double   = origReader.getDouble(columnRoutes(columnNo))
+  def getFloat(columnNo: Int): Float     = origReader.getFloat(columnRoutes(columnNo))
+  def getString(columnNo: Int): String   = origReader.getString(columnRoutes(columnNo))
+  def getAny(columnNo: Int): Any         = origReader.getAny(columnRoutes(columnNo))
+}
+
 object RowReader {
   // Type class for extracting a field of a specific type .. and comparing a field from two RowReaders
   trait TypedFieldExtractor[F] {
@@ -144,40 +161,4 @@ object RowReader {
     final def compare(reader: RowReader, other: RowReader, columnNo: Int): Int =
       getField(reader, columnNo).compareTo(getField(other, columnNo))
   }
-}
-
-/**
- * A RowReader designed for iteration over rows of multiple Filo vectors, ideally all
- * with the same length.
- * An Iterator[RowReader] sets the rowNo and returns this RowReader, and
- * the application is responsible for calling the right method to extract each value.
- * For example, a Spark Row can inherit from RowReader.
- */
-trait FiloRowReader extends RowReader {
-  def parsers: Array[FiloVector[_]]
-  def rowNo: Int
-  def setRowNo(newRowNo: Int)
-}
-
-/**
- * Just a concrete implementation.
- * Designed to minimize allocation by having iterator repeatedly set/update rowNo.
- * Thus, this is not appropriate for Seq[RowReader] or conversion to Seq.
- */
-class FastFiloRowReader(chunks: Array[ByteBuffer],
-                        classes: Array[Class[_]],
-                        emptyLen: Int = 0) extends FiloRowReader {
-  var rowNo: Int = -1
-  def setRowNo(newRowNo: Int): Unit = { rowNo = newRowNo }
-
-  val parsers = FiloVector.makeVectors(chunks, classes, emptyLen)
-
-  final def notNull(columnNo: Int): Boolean = parsers(columnNo).isAvailable(rowNo)
-  final def getBoolean(columnNo: Int): Boolean = parsers(columnNo).asInstanceOf[FiloVector[Boolean]](rowNo)
-  final def getInt(columnNo: Int): Int = parsers(columnNo).asInstanceOf[FiloVector[Int]](rowNo)
-  final def getLong(columnNo: Int): Long = parsers(columnNo).asInstanceOf[FiloVector[Long]](rowNo)
-  final def getDouble(columnNo: Int): Double = parsers(columnNo).asInstanceOf[FiloVector[Double]](rowNo)
-  final def getFloat(columnNo: Int): Float = parsers(columnNo).asInstanceOf[FiloVector[Float]](rowNo)
-  final def getString(columnNo: Int): String = parsers(columnNo).asInstanceOf[FiloVector[String]](rowNo)
-  final def getAny(columnNo: Int): Any = parsers(columnNo).boxed(rowNo)
 }
