@@ -11,8 +11,8 @@ import scala.language.postfixOps
 import java.util.concurrent.TimeUnit
 
 /**
- * Measures the speed of creating a FastFiloRowReader, and especially parsing the
- * chunks into FiloVectors.
+ * Measures the speed of creating a FastFiloRowReader,
+ * parsing the chunks into FiloVectors, and iterating through rows and reading values.
  *
  * For a description of the JMH measurement modes, see
  * https://github.com/ktoso/sbt-jmh/blob/master/src/sbt-test/sbt-jmh/jmh-run/src/main/scala/org/openjdk/jmh/samples/JMHSample_02_BenchmarkModes.scala
@@ -41,5 +41,15 @@ class FastFiloRowReaderBenchmark {
   @OutputTimeUnit(TimeUnit.MICROSECONDS)
   def createFastFiloRowReader(): RowReader = {
     new FastFiloRowReader(chunks, clazzes)
+  }
+
+  val fastReader = new FastFiloRowReader(chunks, clazzes)
+
+  @Benchmark
+  @BenchmarkMode(Array(Mode.Throughput))
+  @OutputTimeUnit(TimeUnit.SECONDS)
+  def fastFiloRowReaderReadOne(): Int = {
+    fastReader.setRowNo(0)
+    if (fastReader.notNull(0)) fastReader.getInt(0) + 1 else 0
   }
 }

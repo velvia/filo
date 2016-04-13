@@ -68,12 +68,4 @@ class DictStringBenchmark {
     scNA.foreach { str => totalLen += str.length }
     totalLen
   }
-
-  @Benchmark
-  @BenchmarkMode(Array(Mode.AverageTime))
-  @OutputTimeUnit(TimeUnit.MICROSECONDS)
-  // Measures encoding speed
-  def encoding(): Unit = {
-    VectorBuilder(randomStrings).toFiloBuffer
-  }
 }
