@@ -103,6 +103,12 @@ case class RoutingRowReader(origReader: RowReader, columnRoutes: Array[Int]) ext
   def getFloat(columnNo: Int): Float     = origReader.getFloat(columnRoutes(columnNo))
   def getString(columnNo: Int): String   = origReader.getString(columnRoutes(columnNo))
   def getAny(columnNo: Int): Any         = origReader.getAny(columnRoutes(columnNo))
+
+  override def equals(other: Any): Boolean = other match {
+    case RoutingRowReader(orig, _) => orig.equals(origReader)
+    case r: RowReader              => r.equals(origReader)
+    case other: Any                => false
+  }
 }
 
 object RowReader {

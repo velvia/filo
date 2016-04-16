@@ -154,13 +154,15 @@ object VectorBuilder {
   }
 }
 
-class BoolVectorBuilder extends MinMaxVectorBuilder(false, true, false)
-class IntVectorBuilder extends MinMaxVectorBuilder(Int.MinValue, Int.MaxValue, 0)
-class LongVectorBuilder extends MinMaxVectorBuilder(Long.MinValue, Long.MaxValue, 0L)
-class DoubleVectorBuilder extends MinMaxVectorBuilder(Double.MinValue, Double.MaxValue, 0.0)
-class FloatVectorBuilder extends MinMaxVectorBuilder(Float.MinValue, Float.MaxValue, 0.0F)
+import DefaultValues._
 
-class StringVectorBuilder extends TypedVectorBuilder("") {
+class BoolVectorBuilder extends MinMaxVectorBuilder(false, true, DefaultBool)
+class IntVectorBuilder extends MinMaxVectorBuilder(Int.MinValue, Int.MaxValue, DefaultInt)
+class LongVectorBuilder extends MinMaxVectorBuilder(Long.MinValue, Long.MaxValue, DefaultLong)
+class DoubleVectorBuilder extends MinMaxVectorBuilder(Double.MinValue, Double.MaxValue, DefaultDouble)
+class FloatVectorBuilder extends MinMaxVectorBuilder(Float.MinValue, Float.MaxValue, DefaultFloat)
+
+class StringVectorBuilder extends TypedVectorBuilder(DefaultString) {
   // For dictionary encoding. NOTE: this set does NOT include empty value
   val stringSet = new collection.mutable.HashSet[String]
 

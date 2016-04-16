@@ -9,9 +9,7 @@ import java.nio.ByteBuffer
  * of fixed size.
  */
 object FastBufferReader {
-  val field = classOf[Unsafe].getDeclaredField("theUnsafe")
-  field.setAccessible(true)
-  val unsafe = field.get(null).asInstanceOf[Unsafe]
+  val unsafe = scala.concurrent.util.Unsafe.instance
 
   val arayOffset = unsafe.arrayBaseOffset(classOf[Array[Byte]])
 
