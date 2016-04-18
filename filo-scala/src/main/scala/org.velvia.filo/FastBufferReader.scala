@@ -29,6 +29,15 @@ object FastBufferReader {
   }
 
   def apply(long: Long): FastBufferReader = new FastLongBufferReader(long)
+
+  /**
+   * Generic methods to read and write data to any offset from a base object location.  Be careful, this
+   * can easily crash the system!
+   */
+  final def getByte(obj: Any, offset: Long): Byte = unsafe.getByte(obj, offset)
+  final def getShort(obj: Any, offset: Long): Short = unsafe.getShort(obj, offset)
+  final def getInt(obj: Any, offset: Long): Int = unsafe.getInt(obj, offset)
+  final def getLong(obj: Any, offset: Long): Long = unsafe.getLong(obj, offset)
 }
 
 trait FastBufferReader {
