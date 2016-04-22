@@ -9,10 +9,6 @@ import java.nio.ByteBuffer
  * of fixed size.
  */
 object FastBufferReader {
-  val unsafe = scala.concurrent.util.Unsafe.instance
-
-  val arayOffset = unsafe.arrayBaseOffset(classOf[Array[Byte]])
-
   /**
    * Instantiates the correct BufferReader implementation:
    * - FastUnsafeArrayBufferReader is used if the ByteBuffer is backed by an array
@@ -29,6 +25,12 @@ object FastBufferReader {
   }
 
   def apply(long: Long): FastBufferReader = new FastLongBufferReader(long)
+}
+
+object UnsafeUtils {
+  val unsafe = scala.concurrent.util.Unsafe.instance
+
+  val arayOffset = unsafe.arrayBaseOffset(classOf[Array[Byte]])
 
   /**
    * Generic methods to read and write data to any offset from a base object location.  Be careful, this
@@ -38,6 +40,15 @@ object FastBufferReader {
   final def getShort(obj: Any, offset: Long): Short = unsafe.getShort(obj, offset)
   final def getInt(obj: Any, offset: Long): Int = unsafe.getInt(obj, offset)
   final def getLong(obj: Any, offset: Long): Long = unsafe.getLong(obj, offset)
+  final def getDouble(obj: Any, offset: Long): Double = unsafe.getDouble(obj, offset)
+  final def getFloat(obj: Any, offset: Long): Double = unsafe.getFloat(obj, offset)
+
+  final def setByte(obj: Any, offset: Long, byt: Byte): Unit = unsafe.putByte(obj, offset, byt)
+  final def setShort(obj: Any, offset: Long, s: Short): Unit = unsafe.putShort(obj, offset, s)
+  final def setInt(obj: Any, offset: Long, i: Int): Unit = unsafe.putInt(obj, offset, i)
+  final def setLong(obj: Any, offset: Long, l: Long): Unit = unsafe.putLong(obj, offset, l)
+  final def setDouble(obj: Any, offset: Long, d: Double): Unit = unsafe.putDouble(obj, offset, d)
+  final def setFloat(obj: Any, offset: Long, f: Float): Unit = unsafe.putFloat(obj, offset, f)
 }
 
 trait FastBufferReader {
@@ -49,7 +60,7 @@ trait FastBufferReader {
   def readFloat(i: Int): Float
 }
 
-import FastBufferReader._
+import UnsafeUtils._
 
 class FastUnsafeArrayBufferReader(buf: ByteBuffer) extends FastBufferReader {
   val offset = arayOffset + buf.arrayOffset + buf.position

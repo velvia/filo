@@ -26,19 +26,19 @@ trait ZeroCopyBinary extends Ordered[ZeroCopyBinary] {
     val minLen = Math.min(numBytes, other.numBytes)
     // TODO: compare 4 bytes at a time, or even 8
     for { i <- 0 until minLen optimized } {
-      val res = (FastBufferReader.getByte(base, offset + i) & 0xFF) -
-                (FastBufferReader.getByte(other.base, other.offset + i) & 0xFF)
+      val res = (UnsafeUtils.getByte(base, offset + i) & 0xFF) -
+                (UnsafeUtils.getByte(other.base, other.offset + i) & 0xFF)
       if (res != 0) return res
     }
     return numBytes - other.numBytes
   }
 
   def copyTo(dest: Any, destOffset: Long): Unit =
-    FastBufferReader.unsafe.copyMemory(base, offset, dest, destOffset, numBytes)
+    UnsafeUtils.unsafe.copyMemory(base, offset, dest, destOffset, numBytes)
 
   def asNewByteArray: Array[Byte] = {
     val newArray = new Array[Byte](numBytes)
-    copyTo(newArray, FastBufferReader.arayOffset)
+    copyTo(newArray, UnsafeUtils.arayOffset)
     newArray
   }
 
@@ -49,7 +49,7 @@ trait ZeroCopyBinary extends Ordered[ZeroCopyBinary] {
   // Ideally, hash without copying to another byte array, esp if the base storage is a byte array already
   private def computeHash32(): Int = {
     base match {
-      case a: Array[Byte] => hasher32.hash(a, offset.toInt - FastBufferReader.arayOffset, numBytes, Seed)
+      case a: Array[Byte] => hasher32.hash(a, offset.toInt - UnsafeUtils.arayOffset, numBytes, Seed)
       case o: Any         => hasher32.hash(asNewByteArray, 0, numBytes, Seed)
     }
   }
@@ -76,11 +76,11 @@ extends ZeroCopyBinary {
 
 object ZeroCopyUTF8String {
   def apply(bytes: Array[Byte]): ZeroCopyUTF8String =
-    new ZeroCopyUTF8String(bytes, FastBufferReader.arayOffset, bytes.size)
+    new ZeroCopyUTF8String(bytes, UnsafeUtils.arayOffset, bytes.size)
 
   def apply(bytes: Array[Byte], offset: Int, len: Int): ZeroCopyUTF8String = {
     require(offset + len <= bytes.size, s"offset + len ($offset + $len) exceeds size ${bytes.size}")
-    new ZeroCopyUTF8String(bytes, FastBufferReader.arayOffset + offset, len)
+    new ZeroCopyUTF8String(bytes, UnsafeUtils.arayOffset + offset, len)
   }
 
   def apply(str: String): ZeroCopyUTF8String = apply(str.getBytes("UTF-8"))
