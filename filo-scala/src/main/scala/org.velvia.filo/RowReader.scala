@@ -114,6 +114,28 @@ case class RoutingRowReader(origReader: RowReader, columnRoutes: Array[Int]) ext
   }
 }
 
+case class SingleValueRowReader(value: Any) extends RowReader {
+  def notNull(columnNo: Int): Boolean = Option(value).isDefined
+  def getBoolean(columnNo: Int): Boolean = value.asInstanceOf[Boolean]
+  def getInt(columnNo: Int): Int = value.asInstanceOf[Int]
+  def getLong(columnNo: Int): Long = value.asInstanceOf[Long]
+  def getDouble(columnNo: Int): Double = value.asInstanceOf[Double]
+  def getFloat(columnNo: Int): Float = value.asInstanceOf[Float]
+  def getString(columnNo: Int): String = value.asInstanceOf[String]
+  def getAny(columnNo: Int): Any = value
+}
+
+case class SeqRowReader(sequence: Seq[Any]) extends RowReader {
+  def notNull(columnNo: Int): Boolean = true
+  def getBoolean(columnNo: Int): Boolean = sequence(columnNo).asInstanceOf[Boolean]
+  def getInt(columnNo: Int): Int = sequence(columnNo).asInstanceOf[Int]
+  def getLong(columnNo: Int): Long = sequence(columnNo).asInstanceOf[Long]
+  def getDouble(columnNo: Int): Double = sequence(columnNo).asInstanceOf[Double]
+  def getFloat(columnNo: Int): Float = sequence(columnNo).asInstanceOf[Float]
+  def getString(columnNo: Int): String = sequence(columnNo).asInstanceOf[String]
+  def getAny(columnNo: Int): Any = sequence(columnNo)
+}
+
 object RowReader {
   // Type class for extracting a field of a specific type .. and comparing a field from two RowReaders
   trait TypedFieldExtractor[@specialized F] {
