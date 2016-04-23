@@ -20,6 +20,9 @@ trait RowReader {
   def getString(columnNo: Int): String
   def getAny(columnNo: Int): Any
 
+  // Please override final def if your RowReader has a faster implementation
+  def getUTF8String(columnNo: Int): ZeroCopyUTF8String = ZeroCopyUTF8String(getString(columnNo))
+
   /**
    * This method serves two purposes.
    * For RowReaders that need to parse from some input source, such as CSV,
@@ -113,7 +116,7 @@ case class RoutingRowReader(origReader: RowReader, columnRoutes: Array[Int]) ext
 
 object RowReader {
   // Type class for extracting a field of a specific type .. and comparing a field from two RowReaders
-  trait TypedFieldExtractor[F] {
+  trait TypedFieldExtractor[@specialized F] {
     def getField(reader: RowReader, columnNo: Int): F
     def compare(reader: RowReader, other: RowReader, columnNo: Int): Int
   }
@@ -150,6 +153,13 @@ object RowReader {
 
   implicit object StringFieldExtractor extends TypedFieldExtractor[String] {
     final def getField(reader: RowReader, columnNo: Int): String = reader.getString(columnNo)
+    final def compare(reader: RowReader, other: RowReader, columnNo: Int): Int =
+      getField(reader, columnNo).compareTo(getField(other, columnNo))
+  }
+
+  implicit object UTF8StringFieldExtractor extends TypedFieldExtractor[ZeroCopyUTF8String] {
+    final def getField(reader: RowReader, columnNo: Int): ZeroCopyUTF8String =
+      reader.getUTF8String(columnNo)
     // TODO: do UTF8 comparison so we can avoid having to deserialize
     final def compare(reader: RowReader, other: RowReader, columnNo: Int): Int =
       getField(reader, columnNo).compareTo(getField(other, columnNo))
