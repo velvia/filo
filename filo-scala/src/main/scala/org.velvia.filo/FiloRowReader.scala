@@ -35,7 +35,7 @@ class FastFiloRowReader(chunks: Array[ByteBuffer],
   final def getDouble(columnNo: Int): Double = parsers(columnNo).asInstanceOf[FiloVector[Double]](rowNo)
   final def getFloat(columnNo: Int): Float = parsers(columnNo).asInstanceOf[FiloVector[Float]](rowNo)
   final def getString(columnNo: Int): String = parsers(columnNo).asInstanceOf[FiloVector[String]](rowNo)
-  override final def getUTF8String(columnNo: Int): ZeroCopyUTF8String = ???
+  override final def filoUTF8String(columnNo: Int): ZeroCopyUTF8String = ???
   final def getAny(columnNo: Int): Any = parsers(columnNo).boxed(rowNo)
 }
 
@@ -51,7 +51,7 @@ case class SafeFiloRowReader(reader: FiloRowReader, rowNo: Int) extends FiloRowR
   final def getDouble(columnNo: Int): Double = parsers(columnNo).asInstanceOf[FiloVector[Double]](rowNo)
   final def getFloat(columnNo: Int): Float = parsers(columnNo).asInstanceOf[FiloVector[Float]](rowNo)
   final def getString(columnNo: Int): String = parsers(columnNo).asInstanceOf[FiloVector[String]](rowNo)
-  override final def getUTF8String(columnNo: Int): ZeroCopyUTF8String = ???
+  override final def filoUTF8String(columnNo: Int): ZeroCopyUTF8String = ???
   final def getAny(columnNo: Int): Any = parsers(columnNo).boxed(rowNo)
 }
 

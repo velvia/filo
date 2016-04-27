@@ -21,7 +21,7 @@ trait RowReader {
   def getAny(columnNo: Int): Any
 
   // Please override final def if your RowReader has a faster implementation
-  def getUTF8String(columnNo: Int): ZeroCopyUTF8String = ZeroCopyUTF8String(getString(columnNo))
+  def filoUTF8String(columnNo: Int): ZeroCopyUTF8String = ZeroCopyUTF8String(getString(columnNo))
 
   /**
    * This method serves two purposes.
@@ -181,7 +181,7 @@ object RowReader {
 
   implicit object UTF8StringFieldExtractor extends TypedFieldExtractor[ZeroCopyUTF8String] {
     final def getField(reader: RowReader, columnNo: Int): ZeroCopyUTF8String =
-      reader.getUTF8String(columnNo)
+      reader.filoUTF8String(columnNo)
     // TODO: do UTF8 comparison so we can avoid having to deserialize
     final def compare(reader: RowReader, other: RowReader, columnNo: Int): Int =
       getField(reader, columnNo).compareTo(getField(other, columnNo))
