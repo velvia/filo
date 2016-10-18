@@ -31,6 +31,8 @@ class DictEncodingTest extends FunSpec with Matchers {
     binarySeq.length should equal (orig.length)
     binarySeq.toSeq should equal (Seq("apple", "banana"))
     binarySeq.optionIterator.toSeq should equal (orig)
+    binarySeq(0) should equal ("apple")
+    binarySeq(1) should equal ("")
   }
 
   it("should encode and decode back a sequence starting with NAs") {

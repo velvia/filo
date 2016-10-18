@@ -241,5 +241,14 @@ class SimpleEncodingTest extends FunSpec with Matchers {
       binarySeq.length should equal (orig.length)
       binarySeq.optionIterator.toSeq should equal (orig)
     }
+
+    it("should read back strings in NA spots with default value") {
+      val orig = Seq(None, Some("apple"), Some("banana"), None)
+      val buf = VectorBuilder.fromOptions(orig).toFiloBuffer
+      val binarySeq = FiloVector[String](buf)
+
+      binarySeq(1) should equal ("apple")
+      binarySeq(0) should equal ("")
+    }
   }
 }
