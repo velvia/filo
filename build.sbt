@@ -1,6 +1,8 @@
 val mySettings = Seq(organization := "org.velvia.filo",
-                     scalaVersion := "2.10.4") ++
+                     scalaVersion := "2.10.6") ++
                  universalSettings
+
+crossScalaVersions := Seq("2.10.6", "2.11.8")
 
 lazy val schema = (project in file("schema")).dependsOn(flatbuffers)
                     .settings(mySettings:_*)
@@ -41,7 +43,7 @@ lazy val deps = Seq(
   "com.nativelibs4java"    %% "scalaxy-loops" % "0.3.3" % "provided",
   jodaTime % "provided",
   jodaConvert % "provided",
-  "org.scalatest"          %% "scalatest"     % "2.1.0" % "test",
+  "org.scalatest"          %% "scalatest"     % "2.2.6" % "test",
   "org.scalacheck"         %% "scalacheck"    % "1.11.0" % "test")
 
 lazy val compileJavaSchema = taskKey[Unit]("Run flatc compiler to generate Java classes for schema")
