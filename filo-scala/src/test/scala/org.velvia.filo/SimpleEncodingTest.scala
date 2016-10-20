@@ -234,7 +234,7 @@ class SimpleEncodingTest extends FunSpec with Matchers {
 
     it("should encode and decode back const string with NAs") {
       val orig = Seq(None, Some("apple"), Some("apple"), None)
-      val buf = VectorBuilder.fromOptions(orig).toFiloBuffer
+      val buf = VectorBuilder.fromOptions(orig).toFiloBuffer(SimpleEncoding)
       checkVectorType(buf, WireFormat.VECTORTYPE_CONST, WireFormat.SUBTYPE_STRING)
       val binarySeq = FiloVector[String](buf)
 
@@ -244,11 +244,21 @@ class SimpleEncodingTest extends FunSpec with Matchers {
 
     it("should read back strings in NA spots with default value") {
       val orig = Seq(None, Some("apple"), Some("banana"), None)
-      val buf = VectorBuilder.fromOptions(orig).toFiloBuffer
+      val buf = VectorBuilder.fromOptions(orig).toFiloBuffer(SimpleEncoding)
       val binarySeq = FiloVector[String](buf)
 
       binarySeq(1) should equal ("apple")
       binarySeq(0) should equal ("")
+    }
+
+    it("should encode nulls as NAs") {
+      val orig = Seq("apple", "banana", null)
+      val buf = VectorBuilder(orig).toFiloBuffer(SimpleEncoding)
+      val binarySeq = FiloVector[String](buf)
+
+      binarySeq.length should equal (orig.length)
+      binarySeq.isAvailable(2) should equal (false)
+      binarySeq(2) should equal ("")
     }
   }
 }

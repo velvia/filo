@@ -169,8 +169,12 @@ class StringVectorBuilder extends TypedVectorBuilder(DefaultString) {
   final def fromReader(row: RowReader, colNo: Int): String = row.getString(colNo)
 
   override def addData(value: String): Unit = {
-    stringSet += value
-    super.addData(value)
+    if (value == null) {
+      addNA()
+    } else {
+      stringSet += value
+      super.addData(value)
+    }
   }
 
   override def reset(): Unit = {

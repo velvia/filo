@@ -7,4 +7,7 @@ object DefaultValues {
   val DefaultDouble = 0.0
   val DefaultBool = false
   val DefaultString = ""
+  val DefaultTimestamp = new java.sql.Timestamp(0L)
+  val DefaultDateTime = new org.joda.time.DateTime(0L)
+  val DefaultUTF8String = ZeroCopyUTF8String("")
 }

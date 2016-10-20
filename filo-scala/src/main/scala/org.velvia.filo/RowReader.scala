@@ -42,26 +42,32 @@ case class TupleRowReader(tuple: Product) extends RowReader {
 
   def getBoolean(columnNo: Int): Boolean = tuple.productElement(columnNo) match {
     case Some(x: Boolean) => x
+    case None => false
   }
 
   def getInt(columnNo: Int): Int = tuple.productElement(columnNo) match {
     case Some(x: Int) => x
+    case None => 0
   }
 
   def getLong(columnNo: Int): Long = tuple.productElement(columnNo) match {
     case Some(x: Long) => x
+    case None => 0L
   }
 
   def getDouble(columnNo: Int): Double = tuple.productElement(columnNo) match {
     case Some(x: Double) => x
+    case None => 0.0
   }
 
   def getFloat(columnNo: Int): Float = tuple.productElement(columnNo) match {
     case Some(x: Float) => x
+    case None => 0.0F
   }
 
   def getString(columnNo: Int): String = tuple.productElement(columnNo) match {
     case Some(x: String) => x
+    case None => null
   }
 
   def getAny(columnNo: Int): Any =
@@ -137,46 +143,53 @@ case class SeqRowReader(sequence: Seq[Any]) extends RowReader {
 }
 
 object RowReader {
+  import DefaultValues._
+
   // Type class for extracting a field of a specific type .. and comparing a field from two RowReaders
   trait TypedFieldExtractor[@specialized F] {
     def getField(reader: RowReader, columnNo: Int): F
+    def getFieldOrDefault(reader: RowReader, columnNo: Int): F = getField(reader, columnNo)
     def compare(reader: RowReader, other: RowReader, columnNo: Int): Int
   }
 
   implicit object BooleanFieldExtractor extends TypedFieldExtractor[Boolean] {
     final def getField(reader: RowReader, columnNo: Int): Boolean = reader.getBoolean(columnNo)
     final def compare(reader: RowReader, other: RowReader, columnNo: Int): Int =
-      java.lang.Boolean.compare(getField(reader, columnNo), getField(other, columnNo))
+      java.lang.Boolean.compare(getFieldOrDefault(reader, columnNo), getFieldOrDefault(other, columnNo))
   }
 
   implicit object LongFieldExtractor extends TypedFieldExtractor[Long] {
     final def getField(reader: RowReader, columnNo: Int): Long = reader.getLong(columnNo)
     final def compare(reader: RowReader, other: RowReader, columnNo: Int): Int =
-      java.lang.Long.compare(getField(reader, columnNo), getField(other, columnNo))
+      java.lang.Long.compare(getFieldOrDefault(reader, columnNo), getFieldOrDefault(other, columnNo))
   }
 
   implicit object IntFieldExtractor extends TypedFieldExtractor[Int] {
     final def getField(reader: RowReader, columnNo: Int): Int = reader.getInt(columnNo)
     final def compare(reader: RowReader, other: RowReader, columnNo: Int): Int =
-      java.lang.Integer.compare(getField(reader, columnNo), getField(other, columnNo))
+      java.lang.Integer.compare(getFieldOrDefault(reader, columnNo), getFieldOrDefault(other, columnNo))
   }
 
   implicit object DoubleFieldExtractor extends TypedFieldExtractor[Double] {
     final def getField(reader: RowReader, columnNo: Int): Double = reader.getDouble(columnNo)
     final def compare(reader: RowReader, other: RowReader, columnNo: Int): Int =
-      java.lang.Double.compare(getField(reader, columnNo), getField(other, columnNo))
+      java.lang.Double.compare(getFieldOrDefault(reader, columnNo), getFieldOrDefault(other, columnNo))
   }
 
   implicit object FloatFieldExtractor extends TypedFieldExtractor[Float] {
     final def getField(reader: RowReader, columnNo: Int): Float = reader.getFloat(columnNo)
     final def compare(reader: RowReader, other: RowReader, columnNo: Int): Int =
-      java.lang.Float.compare(getField(reader, columnNo), getField(other, columnNo))
+      java.lang.Float.compare(getFieldOrDefault(reader, columnNo), getFieldOrDefault(other, columnNo))
   }
 
   implicit object StringFieldExtractor extends TypedFieldExtractor[String] {
     final def getField(reader: RowReader, columnNo: Int): String = reader.getString(columnNo)
+    override final def getFieldOrDefault(reader: RowReader, columnNo: Int): String = {
+      val str = reader.getString(columnNo)
+      if (str == null) DefaultString else str
+    }
     final def compare(reader: RowReader, other: RowReader, columnNo: Int): Int =
-      getField(reader, columnNo).compareTo(getField(other, columnNo))
+      getFieldOrDefault(reader, columnNo).compareTo(getFieldOrDefault(other, columnNo))
   }
 
   implicit object UTF8StringFieldExtractor extends TypedFieldExtractor[ZeroCopyUTF8String] {
@@ -184,19 +197,27 @@ object RowReader {
       reader.filoUTF8String(columnNo)
     // TODO: do UTF8 comparison so we can avoid having to deserialize
     final def compare(reader: RowReader, other: RowReader, columnNo: Int): Int =
-      getField(reader, columnNo).compareTo(getField(other, columnNo))
+      getFieldOrDefault(reader, columnNo).compareTo(getFieldOrDefault(other, columnNo))
   }
 
   implicit object DateTimeFieldExtractor extends TypedFieldExtractor[DateTime] {
     final def getField(reader: RowReader, columnNo: Int): DateTime = reader.as[DateTime](columnNo)
+    override final def getFieldOrDefault(reader: RowReader, columnNo: Int): DateTime = {
+      val dt = reader.as[DateTime](columnNo)
+      if (dt == null) DefaultDateTime else dt
+    }
     final def compare(reader: RowReader, other: RowReader, columnNo: Int): Int =
-      getField(reader, columnNo).compareTo(getField(other, columnNo))
+      getFieldOrDefault(reader, columnNo).compareTo(getFieldOrDefault(other, columnNo))
   }
 
   implicit object TimestampFieldExtractor extends TypedFieldExtractor[Timestamp] {
     final def getField(reader: RowReader, columnNo: Int): Timestamp = reader.as[Timestamp](columnNo)
+    override final def getFieldOrDefault(reader: RowReader, columnNo: Int): Timestamp = {
+      val ts = reader.as[Timestamp](columnNo)
+      if (ts == null) DefaultTimestamp else ts
+    }
     // TODO: compare the Long, instead of deserializing and comparing Timestamp object
     final def compare(reader: RowReader, other: RowReader, columnNo: Int): Int =
-      getField(reader, columnNo).compareTo(getField(other, columnNo))
+      getFieldOrDefault(reader, columnNo).compareTo(getFieldOrDefault(other, columnNo))
   }
 }

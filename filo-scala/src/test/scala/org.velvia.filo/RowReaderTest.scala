@@ -71,5 +71,8 @@ class RowReaderTest extends FunSpec with Matchers {
     StringFieldExtractor.compare(readers(1), readers(2), 0) should be > (0)
     IntFieldExtractor.compare(readers(0), readers(2), 1) should be < (0)
     TimestampFieldExtractor.compare(readers(0), readers(3), 2) should equal (0)
+
+    // Ok, we should be able to compare the reader with the NA / None too
+    IntFieldExtractor.compare(readers(1), readers(2), 1) should be < (0)
   }
 }
