@@ -25,6 +25,11 @@ class ZeroCopyBinaryTest extends FunSpec with Matchers {
       ZeroCopyUTF8String("dictionary") should be > (ZeroCopyUTF8String("dictionaries"))
     }
 
+    it("should get bytes back and convert back to instance, and compare equally") {
+      val origUTF8Str = ZeroCopyUTF8String("dictionary")
+      ZeroCopyUTF8String(origUTF8Str.bytes) should equal (origUTF8Str)
+    }
+
     it("should generate same hashcode for same content") {
       ZeroCopyUTF8String("bobcat").hashCode should equal (ZeroCopyUTF8String("bobcat").hashCode)
       ZeroCopyUTF8String("bobcat").hashCode should not equal (ZeroCopyUTF8String("bob").hashCode)

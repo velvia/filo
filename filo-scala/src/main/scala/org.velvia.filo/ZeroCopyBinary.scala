@@ -42,6 +42,21 @@ trait ZeroCopyBinary extends Ordered[ZeroCopyBinary] {
     newArray
   }
 
+  /**
+   * Returns an array of bytes.  If this ZeroCopyBinary is already a byte array
+   * with exactly numBytes bytes, then just return that, to avoid another copy.
+   * Otherwise, call asNewByteArray to return a copy.
+   */
+  def bytes: Array[Byte] = {
+    //scalastyle:off
+    if (base != null && base.isInstanceOf[Array[Byte]] && offset == UnsafeUtils.arayOffset) {
+      //scalastyle:on
+      base.asInstanceOf[Array[Byte]]
+    } else {
+      asNewByteArray
+    }
+  }
+
   override def equals(other: Any): Boolean = other match {
     case z: ZeroCopyBinary => compare(z) == 0
   }
@@ -72,6 +87,7 @@ object ZeroCopyBinary {
 final class ZeroCopyUTF8String(val base: Any, val offset: Long, val numBytes: Int)
 extends ZeroCopyBinary {
   def asNewString: String = new String(asNewByteArray)
+  override def toString: String = asNewString
 }
 
 object ZeroCopyUTF8String {
