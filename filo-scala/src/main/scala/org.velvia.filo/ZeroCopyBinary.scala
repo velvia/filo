@@ -62,20 +62,29 @@ trait ZeroCopyBinary extends Ordered[ZeroCopyBinary] {
   }
 
   // Ideally, hash without copying to another byte array, esp if the base storage is a byte array already
-  private def computeHash32(): Int = {
+  lazy val cachedHash32: Int = {
     base match {
       case a: Array[Byte] => hasher32.hash(a, offset.toInt - UnsafeUtils.arayOffset, numBytes, Seed)
       case o: Any         => hasher32.hash(asNewByteArray, 0, numBytes, Seed)
     }
   }
 
-  // TODO(velvia): cache the hashcode if it really helps performance
-  override def hashCode: Int = computeHash32()
+  // Also, for why using lazy val is not that bad: https://dzone.com/articles/cost-laziness
+  // The cost of computing the hash (and say using it in a bloom filter) is much higher.
+  lazy val cachedHash64: Long = {
+    base match {
+      case a: Array[Byte] => hasher64.hash(a, offset.toInt - UnsafeUtils.arayOffset, numBytes, Seed)
+      case o: Any         => hasher64.hash(asNewByteArray, 0, numBytes, Seed)
+    }
+  }
+
+  override def hashCode: Int = cachedHash32
 }
 
 object ZeroCopyBinary {
   val xxhashFactory = XXHashFactory.fastestInstance
   val hasher32 = xxhashFactory.hash32
+  val hasher64 = xxhashFactory.hash64
   val Seed = 0x9747b28c
 }
 

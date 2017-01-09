@@ -33,6 +33,9 @@ class ZeroCopyBinaryTest extends FunSpec with Matchers {
     it("should generate same hashcode for same content") {
       ZeroCopyUTF8String("bobcat").hashCode should equal (ZeroCopyUTF8String("bobcat").hashCode)
       ZeroCopyUTF8String("bobcat").hashCode should not equal (ZeroCopyUTF8String("bob").hashCode)
+
+      ZeroCopyUTF8String("bobcat").cachedHash64 should equal (ZeroCopyUTF8String("bobcat").cachedHash64)
+      ZeroCopyUTF8String("bobcat").cachedHash64 should not equal (ZeroCopyUTF8String("bob").cachedHash64)
     }
   }
 }
