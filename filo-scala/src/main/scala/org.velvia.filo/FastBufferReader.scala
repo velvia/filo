@@ -49,6 +49,22 @@ object UnsafeUtils {
   final def setLong(obj: Any, offset: Long, l: Long): Unit = unsafe.putLong(obj, offset, l)
   final def setDouble(obj: Any, offset: Long, d: Double): Unit = unsafe.putDouble(obj, offset, d)
   final def setFloat(obj: Any, offset: Long, f: Float): Unit = unsafe.putFloat(obj, offset, f)
+
+  /**
+   * Compares two memory buffers of length numBytes, returns true if they are byte for byte equal
+   */
+  def equate(srcObj: Any, srcOffset: Long, destObj: Any, destOffset: Long, numBytes: Int): Boolean = {
+    var i = 0
+    while (i <= numBytes - 8) {
+      if (getLong(srcObj, srcOffset + i) != getLong(destObj, destOffset + i)) return false
+      i += 8
+    }
+    while (i < numBytes) {
+      if (getByte(srcObj, srcOffset + i) != getByte(destObj, destOffset + i)) return false
+      i += 1
+    }
+    true
+  }
 }
 
 trait FastBufferReader {

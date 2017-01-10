@@ -37,5 +37,31 @@ class ZeroCopyBinaryTest extends FunSpec with Matchers {
       ZeroCopyUTF8String("bobcat").cachedHash64 should equal (ZeroCopyUTF8String("bobcat").cachedHash64)
       ZeroCopyUTF8String("bobcat").cachedHash64 should not equal (ZeroCopyUTF8String("bob").cachedHash64)
     }
+
+    val str1 = ZeroCopyUTF8String("1234")
+    val str2 = ZeroCopyUTF8String("一2三4")
+    val str3 = ZeroCopyUTF8String("一二34")
+
+    it("should get substring correctly") {
+      str1.substring(3, 2) should equal (ZeroCopyUTF8String(""))
+      str2.substring(0, 2) should equal (ZeroCopyUTF8String("一2"))
+      str2.substring(1, 5) should equal (ZeroCopyUTF8String("2三4"))
+      str3.substring(0, 3) should equal (ZeroCopyUTF8String("一二3"))
+      str2.substring(1, 3) should equal (ZeroCopyUTF8String("2三"))
+    }
+
+    it("should startsWith and endsWith correctly") {
+      str2.startsWith(ZeroCopyUTF8String("一2")) should equal (true)
+      str2.startsWith(ZeroCopyUTF8String("2三")) should equal (false)
+      str2.startsWith(str1) should equal (false)
+
+      str2.endsWith(str3) should equal (false)
+      str2.endsWith(ZeroCopyUTF8String("4")) should equal (true)
+    }
+
+    it("should check contains correctly") {
+      str2.contains(ZeroCopyUTF8String("2三")) should equal (true)
+      str2.contains(str1) should equal (false)
+    }
   }
 }
