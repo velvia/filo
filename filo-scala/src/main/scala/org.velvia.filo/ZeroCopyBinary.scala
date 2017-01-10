@@ -25,11 +25,15 @@ trait ZeroCopyBinary extends Ordered[ZeroCopyBinary] {
   def compare(other: ZeroCopyBinary): Int = {
     val minLen = Math.min(numBytes, other.numBytes)
     // TODO: compare 4 bytes at a time, or even 8
-    for { i <- 0 until minLen optimized } {
-      val res = getByte(i) - other.getByte(i)
-      if (res != 0) return res
-    }
-    return numBytes - other.numBytes
+    val minLenAligned = minLen & -4
+    val wordComp = UnsafeUtils.wordCompare(base, offset, other.base, other.offset, minLenAligned)
+    if (wordComp == 0) {
+      for { i <- minLenAligned until minLen optimized } {
+        val res = getByte(i) - other.getByte(i)
+        if (res != 0) return res
+      }
+      return numBytes - other.numBytes
+    } else wordComp
   }
 
   final def getByte(byteNum: Int): Byte = UnsafeUtils.getByte(base, offset + byteNum)

@@ -52,6 +52,7 @@ object UnsafeUtils {
 
   /**
    * Compares two memory buffers of length numBytes, returns true if they are byte for byte equal
+   * Compares long words for speed
    */
   def equate(srcObj: Any, srcOffset: Long, destObj: Any, destOffset: Long, numBytes: Int): Boolean = {
     var i = 0
@@ -64,6 +65,21 @@ object UnsafeUtils {
       i += 1
     }
     true
+  }
+
+
+  // Comparison of two memories assuming both are word aligned and length is rounded to next word (4 bytes)
+  // Also assumes a little-endian (eg Intel) architecture
+  def wordCompare(srcObj: Any, srcOffset: Long, destObj: Any, destOffset: Long, n: Int): Int = {
+    import java.lang.Integer.reverseBytes
+    var i = 0
+    while (i < n) {
+      val srcWord = reverseBytes(getInt(srcObj, srcOffset + i)) ^ 0x80000000
+      val destWord = reverseBytes(getInt(destObj, destOffset + i)) ^ 0x80000000
+      if (srcWord < destWord) return -1 else if (srcWord != destWord) return 1
+      i += 4
+    }
+    0
   }
 }
 

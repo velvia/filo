@@ -1,8 +1,9 @@
 package org.velvia.filo
 
 import org.scalatest.{FunSpec, Matchers}
+import org.scalatest.prop.PropertyChecks
 
-class ZeroCopyBinaryTest extends FunSpec with Matchers {
+class ZeroCopyBinaryTest extends FunSpec with Matchers with PropertyChecks {
   describe("ZeroCopyUTF8String") {
     it("should convert back and forth between regular strings") {
       ZeroCopyUTF8String("sheep").asNewString should equal ("sheep")
@@ -23,6 +24,14 @@ class ZeroCopyBinaryTest extends FunSpec with Matchers {
       // Strings longer than 8 chars (in case comparison uses long compare)
       ZeroCopyUTF8String("dictionary") should be < (ZeroCopyUTF8String("pictionar"))
       ZeroCopyUTF8String("dictionary") should be > (ZeroCopyUTF8String("dictionaries"))
+    }
+
+    it("should compare random strings properly") {
+      import java.lang.Integer.signum
+      forAll { (strs: (String, String)) =>
+        val nativeCmp = signum(strs._1.compare(strs._2))
+        signum(ZeroCopyUTF8String(strs._1).compare(ZeroCopyUTF8String(strs._2))) should equal (nativeCmp)
+      }
     }
 
     it("should get bytes back and convert back to instance, and compare equally") {
