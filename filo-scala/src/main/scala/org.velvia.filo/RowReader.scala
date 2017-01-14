@@ -21,7 +21,8 @@ trait RowReader {
   def getAny(columnNo: Int): Any
 
   // Please override final def if your RowReader has a faster implementation
-  def filoUTF8String(columnNo: Int): ZeroCopyUTF8String = ZeroCopyUTF8String(getString(columnNo))
+  def filoUTF8String(columnNo: Int): ZeroCopyUTF8String =
+    Option(getString(columnNo)).map(ZeroCopyUTF8String.apply).getOrElse(ZeroCopyUTF8String.empty)
 
   /**
    * This method serves two purposes.
@@ -52,6 +53,7 @@ case class TupleRowReader(tuple: Product) extends RowReader {
 
   def getLong(columnNo: Int): Long = tuple.productElement(columnNo) match {
     case Some(x: Long) => x
+    case Some(x: Timestamp) => x.getTime
     case None => 0L
   }
 
@@ -83,7 +85,11 @@ case class ArrayStringRowReader(strings: Array[String]) extends RowReader {
   //scalastyle:on
   def getBoolean(columnNo: Int): Boolean = strings(columnNo).toBoolean
   def getInt(columnNo: Int): Int = strings(columnNo).toInt
-  def getLong(columnNo: Int): Long = strings(columnNo).toLong
+  def getLong(columnNo: Int): Long = try {
+    strings(columnNo).toLong
+  } catch {
+    case ex: NumberFormatException => DateTime.parse(strings(columnNo)).getMillis
+  }
   def getDouble(columnNo: Int): Double = strings(columnNo).toDouble
   def getFloat(columnNo: Int): Float = strings(columnNo).toFloat
   def getString(columnNo: Int): String = strings(columnNo)
@@ -150,6 +156,13 @@ object RowReader {
     def getField(reader: RowReader, columnNo: Int): F
     def getFieldOrDefault(reader: RowReader, columnNo: Int): F = getField(reader, columnNo)
     def compare(reader: RowReader, other: RowReader, columnNo: Int): Int
+  }
+
+  class WrappedExtractor[@specialized T, F: TypedFieldExtractor](func: F => T)
+    extends TypedFieldExtractor[T] {
+    val orig = implicitly[TypedFieldExtractor[F]]
+    def getField(reader: RowReader, columnNo: Int): T = func(orig.getField(reader, columnNo))
+    def compare(reader: RowReader, other: RowReader, col: Int): Int = orig.compare(reader, other, col)
   }
 
   implicit object BooleanFieldExtractor extends TypedFieldExtractor[Boolean] {

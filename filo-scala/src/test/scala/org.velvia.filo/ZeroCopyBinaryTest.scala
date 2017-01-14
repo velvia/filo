@@ -24,6 +24,9 @@ class ZeroCopyBinaryTest extends FunSpec with Matchers with PropertyChecks {
       // Strings longer than 8 chars (in case comparison uses long compare)
       ZeroCopyUTF8String("dictionary") should be < (ZeroCopyUTF8String("pictionar"))
       ZeroCopyUTF8String("dictionary") should be > (ZeroCopyUTF8String("dictionaries"))
+
+      // Calling equals to some other type should return false
+      ZeroCopyUTF8String("dictionary") should not equal ("dictionary")
     }
 
     it("should compare random strings properly") {

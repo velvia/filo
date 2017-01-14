@@ -65,6 +65,10 @@ class RowReaderTest extends FunSpec with Matchers {
     reader.as[Timestamp](2) should equal (new Timestamp(DateTime.parse("1970-07-08").getMillis))
   }
 
+  it("should read longs from timestamp strings from ArrayStringRowReader") {
+    ArrayStringRowReader(csvRows.head).getLong(2) should equal (96796800000L)
+  }
+
   import RowReader._
   it("should compare RowReaders using TypedFieldExtractor") {
     val readers = rows.map(TupleRowReader)

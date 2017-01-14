@@ -65,6 +65,8 @@ trait ZeroCopyBinary extends Ordered[ZeroCopyBinary] {
   override def equals(other: Any): Boolean = other match {
     case z: ZeroCopyBinary =>
       (numBytes == z.numBytes) && UnsafeUtils.equate(base, offset, z.base, z.offset, numBytes)
+    case o: Any =>
+      false
   }
 
   // Ideally, hash without copying to another byte array, esp if the base storage is a byte array already
