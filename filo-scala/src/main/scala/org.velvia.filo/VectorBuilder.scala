@@ -8,6 +8,7 @@ import scala.collection.mutable.BitSet
 import scala.reflect.ClassTag
 
 import RowReader._
+import codecs.Utils
 
 /**
  * A builder for FiloVectors.  Used to build up elements of a vector before freezing it as an

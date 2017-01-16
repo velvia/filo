@@ -1,9 +1,11 @@
-package org.velvia.filo
+package org.velvia.filo.codecs
 
 import com.google.flatbuffers.{FlatBufferBuilder, Table}
 import java.nio.{ByteBuffer, ByteOrder}
-import org.velvia.filo.vector._
 import scala.collection.mutable.BitSet
+
+import org.velvia.filo.vector._
+import org.velvia.filo.WireFormat
 
 /**
  * Common utilities for creating FlatBuffers, including mask and data vector building

@@ -1,4 +1,4 @@
-package org.velvia.filo
+package org.velvia.filo.codecs
 
 import com.google.flatbuffers.FlatBufferBuilder
 import scala.collection.mutable.BitSet
