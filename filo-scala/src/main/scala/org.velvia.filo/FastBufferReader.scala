@@ -94,15 +94,21 @@ trait FastBufferReader {
 
 import UnsafeUtils._
 
-class FastUnsafeArrayBufferReader(buf: ByteBuffer) extends FastBufferReader {
-  val offset = arayOffset + buf.arrayOffset + buf.position
-  val byteArray = buf.array()
-  final def readByte(i: Int): Byte = unsafe.getByte(byteArray, (offset + i).toLong)
-  final def readShort(i: Int): Short = unsafe.getShort(byteArray, (offset + i * 2).toLong)
-  final def readInt(i: Int): Int = unsafe.getInt(byteArray, (offset + i * 4).toLong)
-  final def readLong(i: Int): Long = unsafe.getLong(byteArray, (offset + i * 8).toLong)
-  final def readDouble(i: Int): Double = unsafe.getDouble(byteArray, (offset + i * 8).toLong)
-  final def readFloat(i: Int): Float = unsafe.getFloat(byteArray, (offset + i * 4).toLong)
+trait FastUnsafeBufferReader extends FastBufferReader {
+  def base: Any
+  def bufOffset: Long
+
+  final def readByte(i: Int): Byte = unsafe.getByte(base, (bufOffset + i).toLong)
+  final def readShort(i: Int): Short = unsafe.getShort(base, (bufOffset + i * 2).toLong)
+  final def readInt(i: Int): Int = unsafe.getInt(base, (bufOffset + i * 4).toLong)
+  final def readLong(i: Int): Long = unsafe.getLong(base, (bufOffset + i * 8).toLong)
+  final def readDouble(i: Int): Double = unsafe.getDouble(base, (bufOffset + i * 8).toLong)
+  final def readFloat(i: Int): Float = unsafe.getFloat(base, (bufOffset + i * 4).toLong)
+}
+
+class FastUnsafeArrayBufferReader(buf: ByteBuffer) extends FastUnsafeBufferReader {
+  val base = buf.array()
+  val bufOffset = arayOffset.toLong + buf.arrayOffset + buf.position
 }
 
 class FastLongBufferReader(long: Long) extends FastBufferReader {

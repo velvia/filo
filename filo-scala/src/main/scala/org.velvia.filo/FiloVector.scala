@@ -91,14 +91,9 @@ object FiloVector {
  * Fastest ways to access FiloVector randomly:
  * 1. Call isAvailable and apply at desired index
  */
-trait FiloVector[@specialized(Int, Double, Long, Float, Boolean) A] extends Traversable[A] {
+trait FiloVectorCore[@specialized(Int, Double, Long, Float, Boolean) A] {
   // Returns true if the element at position index is available, false if NA
   def isAvailable(index: Int): Boolean
-
-  // Calls fn for each available element in the column.  Will call 0 times if column is empty.
-  // NOTE: super slow for primitives because no matter what we do, this will not specialize
-  // the A => B and becomes Object => Object.  :/
-  def foreach[B](fn: A => B): Unit
 
   /**
    * Returns the element at a given index.  If the element is not available, the value returned
@@ -106,6 +101,11 @@ trait FiloVector[@specialized(Int, Double, Long, Float, Boolean) A] extends Trav
    * @param index the index in the column to pull from.  No bounds checking is done.
    */
   def apply(index: Int): A
+
+  /**
+   * Returns the number of elements in the column.
+   */
+  def length: Int
 
   /**
    * Same as apply(), but returns Any, forcing to be an object.
@@ -117,11 +117,6 @@ trait FiloVector[@specialized(Int, Double, Long, Float, Boolean) A] extends Trav
     else                    { null }
 
   /**
-   * Returns the number of elements in the column.
-   */
-  def length: Int
-
-  /**
    * A "safe" but slower get-element-at-position method.  It is slower because it does
    * bounds checking and has to call isAvailable() every time.
    * @param index the index in the column to get
@@ -130,6 +125,14 @@ trait FiloVector[@specialized(Int, Double, Long, Float, Boolean) A] extends Trav
   def get(index: Int): Option[A] =
     if (index >= 0 && index < length && isAvailable(index)) { Some(apply(index)) }
     else                                                    { None }
+}
+
+trait FiloVector[@specialized(Int, Double, Long, Float, Boolean) A] extends Traversable[A]
+with FiloVectorCore[A] {
+  // Calls fn for each available element in the column.  Will call 0 times if column is empty.
+  // NOTE: super slow for primitives because no matter what we do, this will not specialize
+  // the A => B and becomes Object => Object.  :/
+  def foreach[B](fn: A => B): Unit
 
   /**
    * Returns an Iterator[Option[A]] over the Filo bytebuffer.  This basically calls

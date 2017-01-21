@@ -3,7 +3,7 @@ package org.velvia.filo.codecs
 import scala.language.postfixOps
 import scalaxy.loops._
 
-import org.velvia.filo._
+import org.velvia.filo.{FiloVector, NaMaskAvailable, FastBufferReader}
 import org.velvia.filo.vector._
 
 /**

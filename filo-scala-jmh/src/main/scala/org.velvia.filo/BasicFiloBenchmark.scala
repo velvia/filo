@@ -21,6 +21,7 @@ import java.util.concurrent.TimeUnit
 @State(Scope.Thread)
 class BasicFiloBenchmark {
   import VectorReader._
+  import vectors.IntBinaryVector
 
   // Ok, create an IntColumn and benchmark it.
   val numValues = 10000
@@ -29,6 +30,10 @@ class BasicFiloBenchmark {
   val randomIntsAray = randomInts.toArray
   val filoBuffer = VectorBuilder(randomInts).toFiloBuffer
   val sc = FiloVector[Int](filoBuffer)
+
+  val ivbuilder = IntBinaryVector.appendingVectorNoNA(numValues)
+  randomInts.foreach(ivbuilder.addData)
+  val iv = IntBinaryVector(ivbuilder.base, ivbuilder.offset, ivbuilder.numBytes)
 
   val byteFiloBuf = VectorBuilder(randomInts.map(_ % 128)).toFiloBuffer
   val byteVect = FiloVector[Int](byteFiloBuf)
@@ -46,6 +51,17 @@ class BasicFiloBenchmark {
     var total = 0
     for { i <- 0 until numValues optimized } {
       total += sc(i)
+    }
+    total
+  }
+
+  @Benchmark
+  @BenchmarkMode(Array(Mode.AverageTime))
+  @OutputTimeUnit(TimeUnit.MICROSECONDS)
+  def sumAllIntsBinaryVectApply(): Int = {
+    var total = 0
+    for { i <- 0 until numValues optimized } {
+      total += iv(i)
     }
     total
   }

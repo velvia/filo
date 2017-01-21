@@ -1,14 +1,15 @@
 package org.velvia.filo
 
 import java.sql.Timestamp
+import java.util.concurrent.TimeUnit
 import org.openjdk.jmh.annotations.Benchmark
 import org.openjdk.jmh.annotations.BenchmarkMode
-import org.openjdk.jmh.annotations.{Mode, State, Scope}
 import org.openjdk.jmh.annotations.OutputTimeUnit
-import scalaxy.loops._
+import org.openjdk.jmh.annotations.{Mode, State, Scope}
 import scala.language.postfixOps
+import scalaxy.loops._
 
-import java.util.concurrent.TimeUnit
+import org.velvia.filo.vectors.IntBinaryVector
 
 /**
  * Measures the speed of encoding different types of data,
@@ -41,11 +42,6 @@ class EncodingBenchmark {
   }
   val randomStrings = (0 until numValues).map(i => uniqueStrings(nextInt(numUniqueStrings)))
 
-  val chunks = Array(VectorBuilder(randomInts).toFiloBuffer,
-                     VectorBuilder(randomLongs).toFiloBuffer,
-                     VectorBuilder(randomStrings).toFiloBuffer)
-  val clazzes = Array[Class[_]](classOf[Int], classOf[Long], classOf[String])
-
   @Benchmark
   @BenchmarkMode(Array(Mode.Throughput))
   @OutputTimeUnit(TimeUnit.SECONDS)
@@ -59,6 +55,18 @@ class EncodingBenchmark {
   @OutputTimeUnit(TimeUnit.SECONDS)
   def intVectorEncoding(): Unit = {
     VectorBuilder(randomInts).toFiloBuffer
+  }
+
+  val intArray = randomInts.toArray
+
+  @Benchmark
+  @BenchmarkMode(Array(Mode.Throughput))
+  @OutputTimeUnit(TimeUnit.SECONDS)
+  def newIntVectorEncoding(): Unit = {
+    val cb = IntBinaryVector.appendingVector(numValues)
+    for { i <- 0 until numValues optimized } {
+      cb.addData(intArray(i))
+    }
   }
 
   // TODO: RowReader based vector building
