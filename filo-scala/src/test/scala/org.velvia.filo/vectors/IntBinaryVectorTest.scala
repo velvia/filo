@@ -3,10 +3,26 @@ package org.velvia.filo.vectors
 import org.scalatest.{FunSpec, Matchers}
 
 class IntBinaryVectorTest extends FunSpec with Matchers {
-  describe("Int32AppendingVector") {
+  describe("IntAppendingVector") {
     it("should append a mix of Ints and read them all back") {
       val builder = IntBinaryVector.appendingVectorNoNA(4)
       val orig = Seq(1, 2, -5, 101)
+      orig.foreach(builder.addData)
+      builder.length should equal (4)
+      builder.immute.toSeq should equal (orig)
+    }
+
+    it("should append 16-bit Ints and read them back") {
+      val builder = IntBinaryVector.appendingVectorNoNA(5)
+      val orig = Seq(1, 0, -127, Short.MaxValue, Short.MinValue)
+      orig.foreach(builder.addData)
+      builder.length should equal (5)
+      builder.immute.toSeq should equal (orig)
+    }
+
+    it("should append bytes and read them back") {
+      val builder = IntBinaryVector.appendingVectorNoNA(4)
+      val orig = Seq(1, 0, -128, 127)
       orig.foreach(builder.addData)
       builder.length should equal (4)
       builder.immute.toSeq should equal (orig)
