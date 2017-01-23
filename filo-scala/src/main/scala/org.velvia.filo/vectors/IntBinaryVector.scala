@@ -1,7 +1,6 @@
 package org.velvia.filo.vectors
 
 import org.velvia.filo._
-import org.velvia.filo.TypedBufferReader._
 
 object IntBinaryVector {
   /**
