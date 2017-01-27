@@ -20,8 +20,8 @@ object UTF8Vector {
    * for the strings themselves; add another 4 bytes per string when more than 32KB is needed.
    */
   def appendingVector(maxElements: Int, maxBytes: Int): UTF8AppendableVector = {
-    val bytes = new Array[Byte](maxBytes)
-    new UTF8AppendableVector(bytes, UnsafeUtils.arayOffset, maxBytes, maxElements)
+    val (base, off, nBytes) = BinaryVector.allocWithMagicHeader(maxBytes)
+    new UTF8AppendableVector(base, off, nBytes, maxElements)
   }
 
   val MaxSmallOffset = 0x7fff

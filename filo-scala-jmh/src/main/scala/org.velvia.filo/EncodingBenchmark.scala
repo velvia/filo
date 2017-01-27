@@ -78,14 +78,16 @@ class EncodingBenchmark {
     IntBinaryVector.optimize(cb).toFiloBuffer
   }
 
-  val utf8strings = randomStrings.map(ZeroCopyUTF8String.apply)
+  val utf8strings = randomStrings.map(ZeroCopyUTF8String.apply).toArray
 
   @Benchmark
   @BenchmarkMode(Array(Mode.Throughput))
   @OutputTimeUnit(TimeUnit.SECONDS)
   def newUtf8VectorEncoding(): Unit = {
-    val cb = UTF8Vector.appendingVector(10000, 500 * 1024)
-    utf8strings.foreach(cb.addData)
+    val cb = UTF8Vector.appendingVector(numValues, 16 + numValues * 20)
+    for { i <- 0 until numValues optimized } {
+      cb.addData(utf8strings(i))
+    }
     cb.toFiloBuffer()
   }
   // TODO: RowReader based vector building
