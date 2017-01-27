@@ -9,7 +9,7 @@ import org.openjdk.jmh.annotations.{Mode, State, Scope}
 import scala.language.postfixOps
 import scalaxy.loops._
 
-import org.velvia.filo.vectors.IntBinaryVector
+import org.velvia.filo.vectors._
 
 /**
  * Measures the speed of encoding different types of data,
@@ -20,6 +20,7 @@ import org.velvia.filo.vectors.IntBinaryVector
  */
 @State(Scope.Thread)
 class EncodingBenchmark {
+  import BuilderEncoder.SimpleEncoding
   import scala.util.Random.{alphanumeric, nextInt, nextFloat}
   import VectorReader._
 
@@ -53,6 +54,13 @@ class EncodingBenchmark {
   @Benchmark
   @BenchmarkMode(Array(Mode.Throughput))
   @OutputTimeUnit(TimeUnit.SECONDS)
+  def simpleStringEncoding(): Unit = {
+    VectorBuilder(randomStrings).toFiloBuffer(SimpleEncoding)
+  }
+
+  @Benchmark
+  @BenchmarkMode(Array(Mode.Throughput))
+  @OutputTimeUnit(TimeUnit.SECONDS)
   def intVectorEncoding(): Unit = {
     VectorBuilder(randomInts).toFiloBuffer
   }
@@ -67,7 +75,18 @@ class EncodingBenchmark {
     for { i <- 0 until numValues optimized } {
       cb.addData(intArray(i))
     }
+    IntBinaryVector.optimize(cb).toFiloBuffer
   }
 
+  val utf8strings = randomStrings.map(ZeroCopyUTF8String.apply)
+
+  @Benchmark
+  @BenchmarkMode(Array(Mode.Throughput))
+  @OutputTimeUnit(TimeUnit.SECONDS)
+  def newUtf8VectorEncoding(): Unit = {
+    val cb = UTF8Vector.appendingVector(10000, 500 * 1024)
+    utf8strings.foreach(cb.addData)
+    cb.toFiloBuffer()
+  }
   // TODO: RowReader based vector building
 }

@@ -21,6 +21,7 @@ private object Classes {
   val String = classOf[String]
   val DateTime = classOf[org.joda.time.DateTime]
   val SqlTimestamp = classOf[java.sql.Timestamp]
+  val UTF8 = classOf[ZeroCopyUTF8String]
 }
 
 object RowToVectorBuilder {

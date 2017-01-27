@@ -52,6 +52,7 @@ object FiloVector {
     case Classes.Float   => ((b: ByteBuffer, len: Int) => FiloVector[Float](b, len))
     case Classes.DateTime => ((b: ByteBuffer, len: Int) => FiloVector[DateTime](b, len))
     case Classes.SqlTimestamp => ((b: ByteBuffer, len: Int) => FiloVector[Timestamp](b, len))
+    case Classes.UTF8    => ((b: ByteBuffer, len: Int) => FiloVector[ZeroCopyUTF8String](b, len))
   }
 
   /**

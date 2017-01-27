@@ -1,7 +1,7 @@
 package org.velvia.filo.vectors
 
 import org.scalatest.{FunSpec, Matchers}
-import org.velvia.filo.ZeroCopyUTF8String
+import org.velvia.filo.{FiloVector, ZeroCopyUTF8String}
 
 class UTF8VectorTest extends FunSpec with Matchers {
   describe("UTF8Vector") {
@@ -46,6 +46,29 @@ class UTF8VectorTest extends FunSpec with Matchers {
       Seq("apple", "", "bananas").foreach(s => utf8vect2.addData(ZeroCopyUTF8String(s)))
       utf8vect2.noNAs should equal (true)
       utf8vect2.minMaxStrLen should equal ((0, 7))
+    }
+
+    it("should be able to freeze and minimize bytes used") {
+      val strs = Seq("apple", "zoe", "bananas").map(ZeroCopyUTF8String.apply)
+      val utf8vect = UTF8Vector.appendingVector(5, 1024)
+      strs.foreach(utf8vect.addData)
+      utf8vect.length should equal (3)
+      utf8vect.noNAs should equal (true)
+      utf8vect.numBytes should equal (4 + 20 + 8 + 4 + 8)
+
+      val frozen = utf8vect.freeze()
+      frozen.length should equal (3)
+      frozen.toSeq should equal (strs)
+      frozen.numBytes should equal (4 + 12 + 8 + 4 + 8)
+    }
+
+    it("should be able toFiloBuffer() and parse back with FiloVector") {
+      val strs = Seq("apple", "zoe", "bananas").map(ZeroCopyUTF8String.apply)
+      val utf8vect = UTF8Vector.appendingVector(5, 1024)
+      strs.foreach(utf8vect.addData)
+      val buffer = utf8vect.toFiloBuffer()
+      val readVect = FiloVector[ZeroCopyUTF8String](buffer)
+      readVect.toSeq should equal (strs)
     }
   }
 }

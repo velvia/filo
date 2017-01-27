@@ -243,9 +243,7 @@ BitmapMaskAppendableVector[Int](base, offset + 4L, maxElements) {
     if (bitmapBytes == bitmapMaskBufferSize) { this.asInstanceOf[BinaryVector[Int]] }
     // Otherwise move the next element back
     else {
-      UnsafeUtils.unsafe.copyMemory(base, offset + intVectOffset,
-                                    base, bitmapOffset + bitmapBytes,
-                                    intVect.numBytes)
+      copyTo(base, bitmapOffset + bitmapBytes, intVectOffset, intVect.numBytes)
       // Don't forget to write the new intVectOffset
       UnsafeUtils.setInt(base, offset, (bitmapOffset + bitmapBytes - offset).toInt)
       new MaskedIntBinaryVector(base, offset, 4 + bitmapBytes + intVect.numBytes)

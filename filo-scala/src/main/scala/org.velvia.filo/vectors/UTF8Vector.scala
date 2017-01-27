@@ -77,31 +77,34 @@ UTF8Vector(base, offset) with BinaryAppendableVector[ZeroCopyUTF8String] {
   val vectMajorType = WireFormat.VECTORTYPE_BINSIMPLE
   val vectSubType = WireFormat.SUBTYPE_UTF8
 
-  var _len = 0
+  private var _len = 0
   override final def length: Int = _len
-  var numBytes: Int = 4 + (maxElements * 4)
+  private val fixedNumBytes = 4 + (maxElements * 4)
+  private var curFixedOffset = offset + 4
+  var numBytes: Int = fixedNumBytes
 
   private def bumpLen(): Unit = {
     _len += 1
+    curFixedOffset += 4
     UnsafeUtils.setInt(base, offset, _len)
   }
 
   final def addData(data: ZeroCopyUTF8String): Unit = {
     require(length < maxElements)
     val fixedData = appendBlob(data)
-    UnsafeUtils.setInt(base, offset + 4 + _len * 4, fixedData)
+    UnsafeUtils.setInt(base, curFixedOffset, fixedData)
     bumpLen()
   }
 
   final def addNA(): Unit = {
     require(length < maxElements)
-    UnsafeUtils.setInt(base, offset + 4 + _len * 4, EmptyBlob)
+    UnsafeUtils.setInt(base, curFixedOffset, EmptyBlob)
     bumpLen()
   }
 
   final def isAllNA: Boolean = {
     var fixedOffset = offset + 4
-    while (fixedOffset < (offset + 4 + _len * 4)) {
+    while (fixedOffset < curFixedOffset) {
       if (UnsafeUtils.getInt(base, fixedOffset) != EmptyBlob) return false
       fixedOffset += 4
     }
@@ -110,7 +113,7 @@ UTF8Vector(base, offset) with BinaryAppendableVector[ZeroCopyUTF8String] {
 
   final def noNAs: Boolean = {
     var fixedOffset = offset + 4
-    while (fixedOffset < (offset + 4 + _len * 4)) {
+    while (fixedOffset < curFixedOffset) {
       if (UnsafeUtils.getInt(base, fixedOffset) == EmptyBlob) return false
       fixedOffset += 4
     }
@@ -134,6 +137,25 @@ UTF8Vector(base, offset) with BinaryAppendableVector[ZeroCopyUTF8String] {
       }
     }
     (min, max)
+  }
+
+  override final def freeze(): BinaryVector[ZeroCopyUTF8String] = {
+    if (_len == maxElements) { this.asInstanceOf[BinaryVector[ZeroCopyUTF8String]] }
+    else {
+      val offsetDiff = (maxElements - _len) * 4
+      // Move the blob data back
+      copyTo(base, curFixedOffset, fixedNumBytes, numBytes - fixedNumBytes)
+      // Adjust all the offsets back
+      for { i <- 0 until _len optimized } {
+        val fixedData = UnsafeUtils.getInt(base, offset + 4 + i * 4)
+        val newData = if (fixedData < 0) {
+          val newDelta = ((fixedData & 0x7fff0000) >> 16) - offsetDiff
+          blobFixedInt(newDelta, fixedData & 0xffff)
+        } else { fixedData - offsetDiff }
+        UnsafeUtils.setInt(base, offset + 4 + i * 4, newData)
+      }
+      UTF8Vector(base, offset, numBytes - offsetDiff)
+    }
   }
 
   /**
