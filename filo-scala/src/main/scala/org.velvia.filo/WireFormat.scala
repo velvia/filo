@@ -10,6 +10,7 @@ object WireFormat {
   val VECTORTYPE_DICT = 0x03
   val VECTORTYPE_CONST = 0x04
   val VECTORTYPE_DIFF = 0x05
+  val VECTORTYPE_BINSIMPLE = 0x06
 
   def majorVectorType(headerBytes: Int): Int = headerBytes & 0x00ff
   def emptyVectorLen(headerBytes: Int): Int = {
@@ -19,9 +20,10 @@ object WireFormat {
 
   val SUBTYPE_PRIMITIVE = 0x00
   val SUBTYPE_STRING = 0x01
-  val SUBTYPE_BINARY = 0x02
-  val SUBTYPE_FIXEDSTRING = 0x03
+  val SUBTYPE_UTF8 = 0x02
+  val SUBTYPE_FIXEDUTF8 = 0x03
   val SUBTYPE_DATETIME = 0x04
+  val SUBTYPE_PRIMITIVE_NOMASK = 0x05
 
   def vectorSubType(headerBytes: Int): Int = (headerBytes & 0x00ff00) >> 8
 

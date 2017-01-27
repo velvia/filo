@@ -32,6 +32,15 @@ object UnsafeUtils {
 
   val arayOffset = unsafe.arrayBaseOffset(classOf[Array[Byte]])
 
+  /** Translate ByteBuffer into base, offset, numBytes */
+  def BOLfromBuffer(buf: ByteBuffer): (Any, Long, Int) = {
+    if (buf.hasArray) {
+      (buf.array, arayOffset.toLong + buf.arrayOffset + buf.position, buf.limit - buf.position)
+    } else {
+      throw new RuntimeException("Cannot support this ByteBuffer!")
+    }
+  }
+
   /**
    * Generic methods to read and write data to any offset from a base object location.  Be careful, this
    * can easily crash the system!
@@ -107,8 +116,7 @@ trait FastUnsafeBufferReader extends FastBufferReader {
 }
 
 class FastUnsafeArrayBufferReader(buf: ByteBuffer) extends FastUnsafeBufferReader {
-  val base = buf.array()
-  val bufOffset = arayOffset.toLong + buf.arrayOffset + buf.position
+  val (base, bufOffset, _) = BOLfromBuffer(buf)
 }
 
 class FastLongBufferReader(long: Long) extends FastBufferReader {

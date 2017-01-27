@@ -77,21 +77,47 @@ object FiloVector {
     }
     aray
   }
+
+  /**
+   * Gives Traversable / Scala collection semantics to a FiloVector.  It is implemented as
+   * an extension/implicit class to limit the class footprint of core FiloVectors, and also
+   * separated out because any methods used on these are slow due to boxing.
+   */
+  implicit class FiloVectorTraversable[A](vector: FiloVector[A]) extends Traversable[A] {
+    // Calls fn for each available element in the column.  Will call 0 times if column is empty.
+    // NOTE: super slow for primitives because no matter what we do, this will not specialize
+    // the A => B and becomes Object => Object.  :/
+    def foreach[B](fn: A => B): Unit = {
+      for { i <- 0 until vector.length optimized } {
+        if (vector.isAvailable(i)) fn(vector.apply(i))
+      }
+    }
+
+    /**
+     * Returns an Iterator[Option[A]] over the Filo bytebuffer.  This basically calls
+     * get() at each index, so it returns Some(A) when the value is defined and None
+     * if it is NA.
+     * NOTE: This is a very slow API, due to the need to wrap items in Option, as well as
+     * the natural slowness of get().
+     * TODO: make this faster.  Don't use the get() API.
+     */
+    def optionIterator(): Iterator[Option[A]] =
+      for { index <- (0 until vector.length).toIterator } yield { vector.get(index) }
+  }
 }
 
 /**
- * A FiloVector gives collection API semantics around the binary Filo format vector,
- * as well as extremely fast read APIs, all with minimal or zero deserialization, and
+ * A FiloVector gives extremely fast read APIs, all with minimal or zero deserialization, and
  * able to be completely off-heap.
  *
  * Fastest ways to access a FiloVector in order, taking into account NA's:
  * 1. while loop, call apply and isAvailable directly
- * 2. use Traversable semantics
+ * 2. use the implicit FiloVectorTraversable to get Traversable semantics
  *
  * Fastest ways to access FiloVector randomly:
  * 1. Call isAvailable and apply at desired index
  */
-trait FiloVectorCore[@specialized(Int, Double, Long, Float, Boolean) A] {
+trait FiloVector[@specialized(Int, Double, Long, Float, Boolean) A] {
   // Returns true if the element at position index is available, false if NA
   def isAvailable(index: Int): Boolean
 
@@ -125,25 +151,6 @@ trait FiloVectorCore[@specialized(Int, Double, Long, Float, Boolean) A] {
   def get(index: Int): Option[A] =
     if (index >= 0 && index < length && isAvailable(index)) { Some(apply(index)) }
     else                                                    { None }
-}
-
-trait FiloVector[@specialized(Int, Double, Long, Float, Boolean) A] extends Traversable[A]
-with FiloVectorCore[A] {
-  // Calls fn for each available element in the column.  Will call 0 times if column is empty.
-  // NOTE: super slow for primitives because no matter what we do, this will not specialize
-  // the A => B and becomes Object => Object.  :/
-  def foreach[B](fn: A => B): Unit
-
-  /**
-   * Returns an Iterator[Option[A]] over the Filo bytebuffer.  This basically calls
-   * get() at each index, so it returns Some(A) when the value is defined and None
-   * if it is NA.
-   * NOTE: This is a very slow API, due to the need to wrap items in Option, as well as
-   * the natural slowness of get().
-   * TODO: make this faster.  Don't use the get() API.
-   */
-  def optionIterator(): Iterator[Option[A]] =
-    for { index <- (0 until length).toIterator } yield { get(index) }
 }
 
 trait NaMaskReader {

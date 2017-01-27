@@ -74,6 +74,9 @@ class UTF8AppendableVector(base: Any, offset: Long, val maxBytes: Int, maxElemen
 UTF8Vector(base, offset) with BinaryAppendableVector[ZeroCopyUTF8String] {
   import UTF8Vector._
 
+  val vectMajorType = WireFormat.VECTORTYPE_BINSIMPLE
+  val vectSubType = WireFormat.SUBTYPE_UTF8
+
   var _len = 0
   override final def length: Int = _len
   var numBytes: Int = 4 + (maxElements * 4)
@@ -96,7 +99,23 @@ UTF8Vector(base, offset) with BinaryAppendableVector[ZeroCopyUTF8String] {
     bumpLen()
   }
 
-  final def isAllNA: Boolean = numBytes == 4 + (maxElements * 4)
+  final def isAllNA: Boolean = {
+    var fixedOffset = offset + 4
+    while (fixedOffset < (offset + 4 + _len * 4)) {
+      if (UnsafeUtils.getInt(base, fixedOffset) != EmptyBlob) return false
+      fixedOffset += 4
+    }
+    return true
+  }
+
+  final def noNAs: Boolean = {
+    var fixedOffset = offset + 4
+    while (fixedOffset < (offset + 4 + _len * 4)) {
+      if (UnsafeUtils.getInt(base, fixedOffset) == EmptyBlob) return false
+      fixedOffset += 4
+    }
+    return true
+  }
 
   /**
    * Returns the minimum and maximum length (# bytes) of all the elements.
@@ -108,9 +127,11 @@ UTF8Vector(base, offset) with BinaryAppendableVector[ZeroCopyUTF8String] {
     var max = 0
     for { index <- 0 until _len optimized } {
       val fixedData = UnsafeUtils.getInt(base, offset + 4 + index * 4)
-      val utf8len = if (fixedData < 0) fixedData & 0xffff else UnsafeUtils.getInt(base, offset + fixedData)
-      if (utf8len < min) min = utf8len
-      if (utf8len > max) max = utf8len
+      if (fixedData != EmptyBlob) {
+        val utf8len = if (fixedData < 0) fixedData & 0xffff else UnsafeUtils.getInt(base, offset + fixedData)
+        if (utf8len < min) min = utf8len
+        if (utf8len > max) max = utf8len
+      }
     }
     (min, max)
   }

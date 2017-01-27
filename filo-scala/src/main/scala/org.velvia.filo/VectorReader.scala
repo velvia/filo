@@ -7,6 +7,7 @@ import org.joda.time.DateTime
 
 import org.velvia.filo.codecs._
 import org.velvia.filo.vector._
+import org.velvia.filo.vectors.{IntBinaryVector}
 
 case class UnsupportedFiloType(vectType: Int, subType: Int) extends
   Exception(s"Unsupported Filo vector type $vectType, subType $subType")
@@ -30,6 +31,14 @@ object VectorReader {
         val base = baseReader.readInt(0)
         final def apply(i: Int): Int = base + dataReader.read(i)
       }
+    }
+    override def makeMaskedBinaryVector(buf: ByteBuffer): FiloVector[Int] = {
+      val (base, off, nBytes) = UnsafeUtils.BOLfromBuffer(buf)
+      IntBinaryVector.masked(base, off, nBytes)
+    }
+    override def makeSimpleBinaryVector(buf: ByteBuffer): FiloVector[Int] = {
+      val (base, off, nBytes) = UnsafeUtils.BOLfromBuffer(buf)
+      IntBinaryVector(base, off, nBytes)
     }
   }
 
@@ -139,9 +148,16 @@ class PrimitiveVectorReader[@specialized A: TypedReaderProvider] extends VectorR
         val dpv = DiffPrimitiveVector.getRootAsDiffPrimitiveVector(buf)
         makeDiffVector(dpv)
 
+      case (VECTORTYPE_BINSIMPLE, SUBTYPE_PRIMITIVE) =>
+        makeMaskedBinaryVector(buf)
+      case (VECTORTYPE_BINSIMPLE, SUBTYPE_PRIMITIVE_NOMASK) =>
+        makeSimpleBinaryVector(buf)
+
       case (vectType, subType) => throw UnsupportedFiloType(vectType, subType)
     }
   }
 
   def makeDiffVector(dpv: DiffPrimitiveVector): FiloVector[A] = ???
+  def makeMaskedBinaryVector(buf: ByteBuffer): FiloVector[A] = ???
+  def makeSimpleBinaryVector(buf: ByteBuffer): FiloVector[A] = ???
 }

@@ -17,13 +17,15 @@ The valid values of the vector type:
 | 0xnnnnnn01  | EmptyVector    | Every value in vector of length nnnnnn is NA |
 | 0x00000002  | SimplePrimitiveVector | FlatBuffer Vector with fixed bit size per element |
 | 0x00000102  | SimpleStringVector | FlatBuffer Vector with variable-size string elements |
-| 0x00000202  | SimpleBinaryVector | FlatBuffer Vector with variable-size binary elements |
-| 0x00000302  | SimpleFixedStringVector | Actually a SimplePrimitiveVector for string vectors where max string len < 32 bytes |
 | 0x00000103  | DictStringVector   | FlatBuffer Vector with dictionary-encoded strings |
 | 0x00000004  | ConstPrimitiveVector  | A SimplePrimitiveVector for representing primitives holding the same value for entire vector
 | 0x00000104  | ConstStringVector     | Same string vector for entire vector |
 | 0x00000005  | DiffPrimitiveVector   | Stores base + deltas for primitives for more compact representation |
 | 0x00000405  | DiffDateTimeVector   | Delta-encoded timestamp with TZ info for joda.time.DateTime |
+| 0x00000006  | Primitive bitmap-mask vector | New-style BinaryVector with fixed bit size (primitives) per element and bitmask for NA |
+| 0x00000206  | UTF8Vector | New-style BinaryVector with variable sized UTF8 strings or binary blobs |
+| 0x00000306  | FixedUTF8Vector | Actually a PrimitiveVector for UTF8/blob elements with a fixed max size and a size byte |
+| 0x00000506  | PrimitiveAppendableVector | New-style BinaryVector with fixed bit size (primitives) per element and no NA mask |
 
 See `WireFormat.scala` for code definitions.
 
@@ -59,11 +61,11 @@ SimplePrimitiveVector contains a data vector as described above with nbits and s
 
 Note that when implementing custom types, if the binary blobs are all fixed size, it is probably more efficient to use SimplePrimitiveVector - assuming the blobs are less than 256 bytes long each.
 
-## SimpleFixedStringVector
+## FixedUTF8Vector
 
 `SimpleStringVector` is actually inefficient for strings less than about 16 chars long, or string columns where the strings are all the same size.  This is because a `[string]` vector has 8 bytes of overhead compared to a primitive fixed array: a string vector is an array of int offsets to a `[byte]` vector, which is itself a 4-byte length element plus the bytes.
 
-The `SimpleFixedStringVector` uses a `SimplePrimitiveVector` for short strings and stores them inline in the data vector itself.  The first byte is a length field, followed by the UTF8 bytes.  `nbits` is set to `(longest string length + 1) * 8`.  Another benefit is better cache efficiency.
+The `FixedUTF8Vector` uses a `PrimitiveAppendableVector` for short strings and stores them inline in the data vector itself.  The first byte is a length field, followed by the UTF8 bytes.  `nbits` is set to `(longest string length + 1) * 8`.  Another benefit is better cache efficiency.
 
 The actual equation for determining when simpleFixedString works well is this:
 
