@@ -26,6 +26,7 @@ The valid values of the vector type:
 | 0x00000206  | UTF8Vector | New-style BinaryVector with variable sized UTF8 strings or binary blobs |
 | 0x00000306  | FixedUTF8Vector | Actually a PrimitiveVector for UTF8/blob elements with a fixed max size and a size byte |
 | 0x00000506  | PrimitiveAppendableVector | New-style BinaryVector with fixed bit size (primitives) per element and no NA mask |
+| 0x00000207  | DictUTF8Vector  | New-style BinaryVector with dictionary-encoded UTF8/blobs |
 
 See `WireFormat.scala` for code definitions.
 

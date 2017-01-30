@@ -15,10 +15,17 @@ object IntBinaryVector {
   def appendingVector(maxElements: Int,
                       nbits: Short = 32,
                       signed: Boolean = true): MaskedIntAppendingVector = {
-    val bytesRequired = 4 + BitmapMask.numBytesRequired(maxElements) + 4 + (maxElements * nbits / 8)
+    val bytesRequired = 4 + BitmapMask.numBytesRequired(maxElements) + noNAsize(maxElements, nbits)
     val (base, off, nBytes) = BinaryVector.allocWithMagicHeader(bytesRequired)
     new MaskedIntAppendingVector(base, off, nBytes, maxElements, nbits, signed)
   }
+
+  /**
+   * Returns the number of bytes required for a NoNA appending vector of given max length and nbits
+   * This accounts for when nbits < 8 and we need extra byte
+   */
+  def noNAsize(maxElements: Int, nbits: Short): Int =
+    4 + ((maxElements * nbits + Math.max(8 - nbits, 0)) / 8)
 
   /**
    * Same as appendingVector but uses a SimpleAppendingVector with no ability to hold NA mask
@@ -26,7 +33,7 @@ object IntBinaryVector {
   def appendingVectorNoNA(maxElements: Int,
                           nbits: Short = 32,
                           signed: Boolean = true): IntAppendingVector = {
-    val bytesRequired = 4 + (maxElements * nbits / 8)
+    val bytesRequired = noNAsize(maxElements, nbits)
     val (base, off, nBytes) = BinaryVector.allocWithMagicHeader(bytesRequired)
     appendingVectorNoNA(base, off, nBytes, nbits, signed)
   }
@@ -89,8 +96,15 @@ object IntBinaryVector {
     }
   }
 
-  def masked(base: Any, offset: Long, numBytes: Int): MaskedIntBinaryVector =
-    new MaskedIntBinaryVector(base, offset, numBytes)
+  def apply(buffer: ByteBuffer): BinaryVector[Int] = {
+    val (base, off, len) = UnsafeUtils.BOLfromBuffer(buffer)
+    apply(base, off, len)
+  }
+
+  def masked(buffer: ByteBuffer): MaskedIntBinaryVector = {
+    val (base, off, len) = UnsafeUtils.BOLfromBuffer(buffer)
+    new MaskedIntBinaryVector(base, off, len)
+  }
 
   /**
    * Given the min and max values in an IntVector, determines the most optimal (smallest)
@@ -177,7 +191,6 @@ extends PrimitiveAppendableVector[Int](base, offset, maxBytes, nbits, signed) {
   final def apply(index: Int): Int = readVect.apply(index)
   final def isAvailable(index: Int): Boolean = true
 
-
   override final def addVector(other: BinaryVector[Int]): Unit = other match {
     case v: MaskedIntAppendingVector =>
       addVector(v.intVect)
@@ -190,6 +203,9 @@ extends PrimitiveAppendableVector[Int](base, offset, maxBytes, nbits, signed) {
       }
       _len += other.length
   }
+
+  override def finishCompaction(newBase: Any, newOff: Long): BinaryVector[Int] =
+    IntBinaryVector.appendingVectorNoNA(base, offset, numBytes, nbits, signed)
 }
 
 class MaskedIntAppendingVector(base: Any,
@@ -238,15 +254,9 @@ BitmapMaskAppendableVector[Int](base, offset + 4L, maxElements) {
       super.addVector(other)
   }
 
-  override def freeze(): BinaryVector[Int] = {
-    // If bitmap bytes is already same as allocated size, then nothing needs to be done
-    if (bitmapBytes == bitmapMaskBufferSize) { this.asInstanceOf[BinaryVector[Int]] }
-    // Otherwise move the next element back
-    else {
-      copyTo(base, bitmapOffset + bitmapBytes, intVectOffset, intVect.numBytes)
-      // Don't forget to write the new intVectOffset
-      UnsafeUtils.setInt(base, offset, (bitmapOffset + bitmapBytes - offset).toInt)
-      new MaskedIntBinaryVector(base, offset, 4 + bitmapBytes + intVect.numBytes)
-    }
+  override def finishCompaction(newBase: Any, newOff: Long): BinaryVector[Int] = {
+    // Don't forget to write the new intVectOffset
+    UnsafeUtils.setInt(newBase, newOff, (bitmapOffset + bitmapBytes - offset).toInt)
+    new MaskedIntBinaryVector(newBase, newOff, 4 + bitmapBytes + intVect.numBytes)
   }
 }

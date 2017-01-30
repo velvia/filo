@@ -92,10 +92,42 @@ trait BinaryAppendableVector[@specialized A] extends BinaryVector[A] {
   }
 
   /**
+   * Returns the number of bytes required for a compacted AppendableVector
+   * The default implementation must be overridden if freeze() is also overridden.
+   */
+  def frozenSize: Int = numBytes - (primaryMaxBytes - primaryBytes)
+
+  /**
    * Compact the bytes of this BinaryVector into smallest space possible, and return an immutable
    * version of this FiloVector that cannot be appended to.
+   * The default implementation assumes the following common case:
+   *  - AppendableBinaryVectors usually are divided into a fixed primary area and a secondary variable
+   *    area that can extend up to maxBytes.  Ex.: the area for bitmap masks or UTF8 offets/lengths.
+   *  - primary area can extend up to primaryMaxBytes but is currently at primaryBytes
+   *  - compaction works by moving secondary area up (primaryMaxBytes - primaryBytes) bytes, either
+   *    in place or to a new location (and the primary area would be copied too).
+   *  - finishCompaction is called to instantiate the new BinaryVector and do any other cleanup.
+   *
+   * @param newBaseOffset optionally, compact not in place but to a new location.  If left as None,
+   *                      any compaction will be done "in-place" in the same buffer.
    */
-  def freeze(): BinaryVector[A] = this.asInstanceOf[BinaryVector[A]]
+  def freeze(newBaseOffset: Option[(Any, Long)] = None): BinaryVector[A] =
+    if (newBaseOffset.isEmpty && numBytes == frozenSize) { this.asInstanceOf[BinaryVector[A]] }
+    else {
+      val (newBase, newOffset) = newBaseOffset.getOrElse((base, offset))
+      if (newBaseOffset.nonEmpty) copyTo(newBase, newOffset, n = primaryBytes)
+      if (numBytes > primaryMaxBytes) {
+        copyTo(newBase, newOffset + primaryBytes, primaryMaxBytes, numBytes - primaryMaxBytes)
+      }
+      finishCompaction(newBase, newOffset)
+    }
+
+  // The defaults below only work for vectors with no variable/secondary area.  Override as needed.
+  def primaryBytes: Int = numBytes
+  def primaryMaxBytes: Int = maxBytes
+
+  // Does any necessary metadata adjustments and instantiates immutable BinaryVector
+  def finishCompaction(newBase: Any, newOff: Long): BinaryVector[A] = ???
 
   /** The major and subtype bytes as defined in WireFormat that will go into the FiloVector header */
   def vectMajorType: Int
@@ -211,6 +243,9 @@ extends BitmapMaskVector[A] with BinaryAppendableVector[A] {
     val naMask = curMask - 1
     (UnsafeUtils.getLong(base, bitmapOffset + curBitmapOffset) & naMask) == 0
   }
+
+  override def primaryBytes: Int = (bitmapOffset - offset).toInt + bitmapBytes
+  override def primaryMaxBytes: Int = (bitmapOffset - offset).toInt + bitmapMaskBufferSize
 
   final def copyMaskFrom(other: BitmapMaskAppendableVector[A]): Unit = {
     require(other.bitmapMaskBufferSize <= this.bitmapMaskBufferSize)

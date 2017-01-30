@@ -71,4 +71,38 @@ class UTF8VectorTest extends FunSpec with Matchers {
       readVect.toSeq should equal (strs)
     }
   }
+
+  describe("DictUTF8Vector") {
+    it("shouldMakeDict when source strings are mostly repeated") {
+      val strs = Seq("apple", "zoe", "grape").permutations.flatten.toList.map(ZeroCopyUTF8String.apply)
+      val utf8vect = UTF8Vector.appendingVector(20, 10240)
+      strs.foreach(utf8vect.addData)
+      val dictInfo = DictUTF8Vector.shouldMakeDict(utf8vect, samplingRate=0.5)
+      dictInfo should be ('defined)
+      dictInfo.get.codeMap.size should equal (3)
+      dictInfo.get.dictStrings.length should equal (4)
+    }
+
+    it("should not makeDict when source strings are all unique") {
+      val strs = (0 to 9).map(_.toString).map(ZeroCopyUTF8String.apply)
+      val utf8vect = UTF8Vector.appendingVector(20, 10240)
+      strs.foreach(utf8vect.addData)
+      val dictInfo = DictUTF8Vector.shouldMakeDict(utf8vect)
+      dictInfo should be ('empty)
+    }
+
+    it("should optimize UTF8Vector to DictVector with NAs and read it back") {
+      val strs = Seq("apple", "zoe", "grape").permutations.flatten.toList.map(ZeroCopyUTF8String.apply)
+      val utf8vect = UTF8Vector.appendingVector(20, 10240)
+      utf8vect.addNA()
+      strs.foreach(utf8vect.addData)
+      val buffer = UTF8Vector.writeOptimizedBuffer(utf8vect, samplingRate=0.5)
+      val reader = FiloVector[ZeroCopyUTF8String](buffer)
+      reader shouldBe a [DictUTF8Vector]
+      reader.length should equal (strs.length + 1)
+      reader.toSeq should equal (strs)
+      reader.isAvailable(0) should be (false)
+      reader(0) should equal (ZeroCopyUTF8String(""))
+    }
+  }
 }

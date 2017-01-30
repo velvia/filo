@@ -7,7 +7,7 @@ import org.joda.time.DateTime
 
 import org.velvia.filo.codecs._
 import org.velvia.filo.vector._
-import org.velvia.filo.vectors.{IntBinaryVector, UTF8Vector}
+import org.velvia.filo.vectors.{IntBinaryVector, UTF8Vector, DictUTF8Vector}
 
 case class UnsupportedFiloType(vectType: Int, subType: Int) extends
   Exception(s"Unsupported Filo vector type $vectType, subType $subType")
@@ -32,14 +32,8 @@ object VectorReader {
         final def apply(i: Int): Int = base + dataReader.read(i)
       }
     }
-    override def makeMaskedBinaryVector(buf: ByteBuffer): FiloVector[Int] = {
-      val (base, off, nBytes) = UnsafeUtils.BOLfromBuffer(buf)
-      IntBinaryVector.masked(base, off, nBytes)
-    }
-    override def makeSimpleBinaryVector(buf: ByteBuffer): FiloVector[Int] = {
-      val (base, off, nBytes) = UnsafeUtils.BOLfromBuffer(buf)
-      IntBinaryVector(base, off, nBytes)
-    }
+    override def makeMaskedBinaryVector(buf: ByteBuffer): FiloVector[Int] = IntBinaryVector.masked(buf)
+    override def makeSimpleBinaryVector(buf: ByteBuffer): FiloVector[Int] = IntBinaryVector(buf)
   }
 
   implicit object LongVectorReader extends PrimitiveVectorReader[Long] {
@@ -80,9 +74,8 @@ object VectorReader {
   implicit object UTF8VectorReader extends VectorReader[ZeroCopyUTF8String] {
     def makeVector(buf: ByteBuffer, headerBytes: Int): FiloVector[ZeroCopyUTF8String] = {
       (majorVectorType(headerBytes), vectorSubType(headerBytes)) match {
-        case (VECTORTYPE_BINSIMPLE, SUBTYPE_UTF8) =>
-          val (base, off, nBytes) = UnsafeUtils.BOLfromBuffer(buf)
-          UTF8Vector(base, off, nBytes)
+        case (VECTORTYPE_BINSIMPLE, SUBTYPE_UTF8) => UTF8Vector(buf)
+        case (VECTORTYPE_BINDICT, SUBTYPE_UTF8)   => DictUTF8Vector(buf)
         case (vectType, subType) => throw UnsupportedFiloType(vectType, subType)
       }
     }

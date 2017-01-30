@@ -1,5 +1,6 @@
 package org.velvia.filo.vectors
 
+import java.nio.ByteBuffer
 import org.velvia.filo._
 import scala.language.postfixOps
 import scalaxy.loops._
@@ -9,10 +10,15 @@ import scalaxy.loops._
  */
 object UTF8Vector {
   /**
-   * Creates a standard UTF8Vector from any memory location.
+   * Creates a standard UTF8Vector from a ByteBuffer or any memory location
    */
   def apply(base: Any, offset: Long, nBytes: Int): UTF8Vector =
     new UTF8Vector(base, offset) { val numBytes = nBytes }
+
+  def apply(buffer: ByteBuffer): UTF8Vector = {
+    val (base, off, len) = UnsafeUtils.BOLfromBuffer(buffer)
+    new UTF8Vector(base, off) { val numBytes = len }
+  }
 
   /**
    * Creates an appendable UTF8 string vector given the max capacity and max elements.
@@ -22,6 +28,14 @@ object UTF8Vector {
   def appendingVector(maxElements: Int, maxBytes: Int): UTF8AppendableVector = {
     val (base, off, nBytes) = BinaryVector.allocWithMagicHeader(maxBytes)
     new UTF8AppendableVector(base, off, nBytes, maxElements)
+  }
+
+  def writeOptimizedBuffer(utf8vect: UTF8AppendableVector,
+                           spaceThreshold: Double = 0.6,
+                           samplingRate: Double = 0.5): ByteBuffer = {
+    DictUTF8Vector.shouldMakeDict(utf8vect, spaceThreshold, samplingRate).map { dictInfo =>
+      DictUTF8Vector.makeBuffer(dictInfo, utf8vect)
+    }.getOrElse(utf8vect.toFiloBuffer())
   }
 
   val MaxSmallOffset = 0x7fff
@@ -79,9 +93,11 @@ UTF8Vector(base, offset) with BinaryAppendableVector[ZeroCopyUTF8String] {
 
   private var _len = 0
   override final def length: Int = _len
-  private val fixedNumBytes = 4 + (maxElements * 4)
+  override val primaryMaxBytes = 4 + (maxElements * 4)
   private var curFixedOffset = offset + 4
-  var numBytes: Int = fixedNumBytes
+  var numBytes: Int = primaryMaxBytes
+
+  override def primaryBytes: Int = (curFixedOffset - offset).toInt
 
   private def bumpLen(): Unit = {
     _len += 1
@@ -139,23 +155,18 @@ UTF8Vector(base, offset) with BinaryAppendableVector[ZeroCopyUTF8String] {
     (min, max)
   }
 
-  override final def freeze(): BinaryVector[ZeroCopyUTF8String] = {
-    if (_len == maxElements) { this.asInstanceOf[BinaryVector[ZeroCopyUTF8String]] }
-    else {
-      val offsetDiff = (maxElements - _len) * 4
-      // Move the blob data back
-      copyTo(base, curFixedOffset, fixedNumBytes, numBytes - fixedNumBytes)
-      // Adjust all the offsets back
-      for { i <- 0 until _len optimized } {
-        val fixedData = UnsafeUtils.getInt(base, offset + 4 + i * 4)
-        val newData = if (fixedData < 0) {
-          val newDelta = ((fixedData & 0x7fff0000) >> 16) - offsetDiff
-          blobFixedInt(newDelta, fixedData & 0xffff)
-        } else { fixedData - offsetDiff }
-        UnsafeUtils.setInt(base, offset + 4 + i * 4, newData)
-      }
-      UTF8Vector(base, offset, numBytes - offsetDiff)
+  override def finishCompaction(newBase: Any, newOff: Long): BinaryVector[ZeroCopyUTF8String] = {
+    val offsetDiff = (maxElements - _len) * 4
+    // Adjust all the offsets back
+    for { i <- 0 until _len optimized } {
+      val fixedData = UnsafeUtils.getInt(newBase, newOff + 4 + i * 4)
+      val newData = if (fixedData < 0) {
+        val newDelta = ((fixedData & 0x7fff0000) >> 16) - offsetDiff
+        blobFixedInt(newDelta, fixedData & 0xffff)
+      } else { fixedData - offsetDiff }
+      UnsafeUtils.setInt(newBase, newOff + 4 + i * 4, newData)
     }
+    UTF8Vector(newBase, newOff, numBytes - offsetDiff)
   }
 
   /**

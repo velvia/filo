@@ -10,7 +10,7 @@ class IntBinaryVectorTest extends FunSpec with Matchers {
       val orig = Seq(1, 2, -5, 101)
       orig.foreach(builder.addData)
       builder.length should equal (4)
-      builder.freeze.toSeq should equal (orig)
+      builder.freeze().toSeq should equal (orig)
     }
 
     it("should append 16-bit Ints and read them back") {
@@ -18,7 +18,7 @@ class IntBinaryVectorTest extends FunSpec with Matchers {
       val orig = Seq(1, 0, -127, Short.MaxValue, Short.MinValue)
       orig.foreach(builder.addData)
       builder.length should equal (5)
-      builder.freeze.toSeq should equal (orig)
+      builder.freeze().toSeq should equal (orig)
     }
 
     it("should append bytes and read them back") {
@@ -26,7 +26,7 @@ class IntBinaryVectorTest extends FunSpec with Matchers {
       val orig = Seq(1, 0, -128, 127)
       orig.foreach(builder.addData)
       builder.length should equal (4)
-      builder.freeze.toSeq should equal (orig)
+      builder.freeze().toSeq should equal (orig)
     }
 
     it("should be able to create new FiloVector from frozen appending vector") {
@@ -49,7 +49,7 @@ class IntBinaryVectorTest extends FunSpec with Matchers {
       builder.addNA
       builder.isAllNA should be (true)
       builder.noNAs should be (false)
-      val sc = builder.freeze
+      val sc = builder.freeze()
       sc.length should equal (1)
       sc(0)   // Just to make sure this does not throw an exception
       sc.isAvailable(0) should equal (false)
@@ -66,7 +66,7 @@ class IntBinaryVectorTest extends FunSpec with Matchers {
       cb.addNA
       cb.isAllNA should be (false)
       cb.noNAs should be (false)
-      val sc = cb.freeze
+      val sc = cb.freeze()
 
       sc.length should equal (5)
       sc.isAvailable(0) should equal (false)
