@@ -91,4 +91,11 @@ class EncodingBenchmark {
     cb.toFiloBuffer()
   }
   // TODO: RowReader based vector building
+
+  @Benchmark
+  @BenchmarkMode(Array(Mode.Throughput))
+  @OutputTimeUnit(TimeUnit.SECONDS)
+  def newDictUtf8VectorEncoding(): Unit = {
+    UTF8Vector.writeOptimizedBuffer(utf8strings, samplingRate=0.5, maxBytes=(16 + numValues * 20))
+  }
 }

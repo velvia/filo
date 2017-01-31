@@ -77,9 +77,7 @@ class UTF8VectorTest extends FunSpec with Matchers {
   describe("DictUTF8Vector") {
     it("shouldMakeDict when source strings are mostly repeated") {
       val strs = Seq("apple", "zoe", "grape").permutations.flatten.toList.map(ZeroCopyUTF8String.apply)
-      val utf8vect = UTF8Vector.appendingVector(20, 10240)
-      strs.foreach(utf8vect.addData)
-      val dictInfo = DictUTF8Vector.shouldMakeDict(utf8vect, samplingRate=0.5)
+      val dictInfo = DictUTF8Vector.shouldMakeDict(strs, samplingRate=0.5)
       dictInfo should be ('defined)
       dictInfo.get.codeMap.size should equal (3)
       dictInfo.get.dictStrings.length should equal (4)
@@ -87,22 +85,18 @@ class UTF8VectorTest extends FunSpec with Matchers {
 
     it("should not makeDict when source strings are all unique") {
       val strs = (0 to 9).map(_.toString).map(ZeroCopyUTF8String.apply)
-      val utf8vect = UTF8Vector.appendingVector(20, 10240)
-      strs.foreach(utf8vect.addData)
-      val dictInfo = DictUTF8Vector.shouldMakeDict(utf8vect)
+      val dictInfo = DictUTF8Vector.shouldMakeDict(strs)
       dictInfo should be ('empty)
     }
 
     it("should optimize UTF8Vector to DictVector with NAs and read it back") {
-      val strs = Seq("apple", "zoe", "grape").permutations.flatten.toList.map(ZeroCopyUTF8String.apply)
-      val utf8vect = UTF8Vector.appendingVector(20, 10240)
-      utf8vect.addNA()
-      strs.foreach(utf8vect.addData)
-      val buffer = UTF8Vector.writeOptimizedBuffer(utf8vect, samplingRate=0.5)
+      val strs = ZeroCopyUTF8String.NA +:
+                 Seq("apple", "zoe", "grape").permutations.flatten.toList.map(ZeroCopyUTF8String.apply)
+      val buffer = UTF8Vector.writeOptimizedBuffer(strs, samplingRate=0.5)
       val reader = FiloVector[ZeroCopyUTF8String](buffer)
       reader shouldBe a [DictUTF8Vector]
-      reader.length should equal (strs.length + 1)
-      reader.toSeq should equal (strs)
+      reader.length should equal (strs.length)
+      reader.toSeq should equal (strs.drop(1))
       reader.isAvailable(0) should be (false)
       reader(0) should equal (ZeroCopyUTF8String(""))
     }
@@ -111,9 +105,7 @@ class UTF8VectorTest extends FunSpec with Matchers {
     // to an ArrayOutOfBoundsException.
     it("should ensure proper conversion when there are 128-255 unique strings") {
       val orig = (0 to 130).map(_.toString).map(ZeroCopyUTF8String.apply)
-      val utf8vect = UTF8Vector.appendingVector(140, 10240)
-      orig.foreach(utf8vect.addData)
-      val buffer = UTF8Vector.writeOptimizedBuffer(utf8vect, spaceThreshold = 1.1)
+      val buffer = UTF8Vector.writeOptimizedBuffer(orig, spaceThreshold = 1.1)
       val binarySeq = FiloVector[ZeroCopyUTF8String](buffer)
       binarySeq shouldBe a [DictUTF8Vector]
 

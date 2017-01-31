@@ -19,51 +19,46 @@ object DictUTF8Vector {
    * This approach might not work for source vectors that are very biased but the sampling rate is
    * adjustable.
    *
-   * TODO: for now you need a real UTF8Vector built first.  This is not that efficient though - creating
-   * a UTF8Vector requires copying lots of source bytes.  Make this more flexible in the future by
-   * allowing taking any BinaryVector[UTF8Str]... one could implement one that iterates through BinaryRecords
-   * for example, so there does not need to be any copying of source bytes.
-   *
-   * @param sourceVector the source UTF8Vector with all the source strings
+   * @param sourceBlobs the source Seq of UTF8 strings.  It is highly recommended this be an ArrayBuffer.
    * @param spaceThreshold a number between 0.0 and 1.0, the fraction of the original
    *                       space below which the DictUTF8Vector should be sized to be
    *                       worth doing dictionary encoding for. Make this >1.0 if you want to force it
    * @param samplingRate the fraction (0.0 <= n < 1.0) of the source vector to use to determine
    *                     if dictionary encoding will be worth it
+   * @param maxDictSize the max number of bytes that the dictionary coukd grow to
    * @return Option[DictUTF8Info] contains info for building the dictionary if it is worth it
    */
-  def shouldMakeDict(sourceVector: UTF8Vector,
+  def shouldMakeDict(sourceBlobs: Seq[UTF8Str],
                      spaceThreshold: Double = 0.6,
-                     samplingRate: Double = 0.3): Option[DictUTF8Info] = {
+                     samplingRate: Double = 0.3,
+                     maxDictSize: Int = 10000): Option[DictUTF8Info] = {
     val codeMap = new HashMap[UTF8Str, Int]
-    val sampleSize = (sourceVector.length * samplingRate).toInt
+    val sampleSize = (sourceBlobs.length * samplingRate).toInt
     // The max size for the dict we will tolerate given the sample size and orig vector size
     // Above this, cardinality is not likely to be low enough for dict encoding
-    val dictThreshold = (sourceVector.numBytes * spaceThreshold * samplingRate).toInt
-    val dictVect = UTF8Vector.appendingVector(sourceVector.length + 1, sourceVector.numBytes)
+    val dictThreshold = (sampleSize * spaceThreshold).toInt
+    val dictVect = UTF8Vector.appendingVector(sourceBlobs.length + 1, maxDictSize)
     dictVect.addNA()   // first code point 0 == NA
 
-    for { i <- 0 until sourceVector.length optimized } {
-      if (sourceVector.isAvailable(i)) {
-        val item = sourceVector(i)
-        if (!codeMap.containsKey(item)) {
-          codeMap.put(item, codeMap.size + 1)
-          dictVect.addData(item)
-        }
+    for { i <- 0 until sourceBlobs.length optimized } {
+      val item = sourceBlobs(i)
+      if (!ZeroCopyUTF8String.isNA(item)) {
+        val orig = codeMap.putIfAbsent(item, codeMap.size + 1)  // Just one hashcode/compare
+        if (orig == 0) dictVect.addData(item)
       }
       // Now check if we are over the threshold already
-      if (i <= sampleSize && dictVect.frozenSize > dictThreshold) return None
+      if (i <= sampleSize && dictVect.length > dictThreshold) return None
     }
     Some(DictUTF8Info(codeMap, dictVect))
   }
 
   /**
-   * Creates the dictionary-encoding vector as a final ByteBuffer from source UTF8 vector.
+   * Creates the dictionary-encoding vector as a final ByteBuffer from source UTF8 sequence.
    */
-  def makeBuffer(info: DictUTF8Info, sourceVector: UTF8Vector): ByteBuffer = {
+  def makeBuffer(info: DictUTF8Info, sourceBlobs: Seq[UTF8Str]): ByteBuffer = {
     // Estimate and allocate enough space for the UTF8Vector
     val (nbits, signed) = IntBinaryVector.minMaxToNbitsSigned(0, info.codeMap.size)
-    val codeVectSize = IntBinaryVector.noNAsize(sourceVector.length, nbits)
+    val codeVectSize = IntBinaryVector.noNAsize(sourceBlobs.length, nbits)
     val dictVectSize = info.dictStrings.frozenSize
     val bytesRequired = 8 + dictVectSize + codeVectSize
     val (base, off, nBytes) = BinaryVector.allocWithMagicHeader(bytesRequired)
@@ -77,9 +72,9 @@ object DictUTF8Vector {
                                                        off + 8 + dictVectSize,
                                                        codeVectSize,
                                                        nbits, signed)
-    for { i <- 0 until sourceVector.length } {
-      if (sourceVector.isAvailable(i)) { codeVect.addData(info.codeMap.get(sourceVector(i))) }
-      else                             { codeVect.addData(0) }
+    sourceBlobs.foreach { blob =>
+      if (!ZeroCopyUTF8String.isNA(blob)) { codeVect.addData(info.codeMap.get(blob)) }
+      else                                { codeVect.addData(0) }
     }
 
     // Write 8 bytes of metadata at beginning

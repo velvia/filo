@@ -90,7 +90,8 @@ trait ZeroCopyBinary extends Ordered[ZeroCopyBinary] {
 }
 
 object ZeroCopyBinary {
-  val xxhashFactory = XXHashFactory.fastestInstance
+  // NOTE: fastestInstance sometimes returns JNI lib, which seems much slower for shorter strings
+  val xxhashFactory = XXHashFactory.fastestJavaInstance
   val hasher32 = xxhashFactory.hash32
   val hasher64 = xxhashFactory.hash64
   val Seed = 0x9747b28c
@@ -176,6 +177,11 @@ object ZeroCopyUTF8String {
   def apply(str: String): ZeroCopyUTF8String = apply(str.getBytes("UTF-8"))
 
   val empty = ZeroCopyUTF8String("")
+
+  // The official ZeroCopyUTF8String instance designated to equal NA / not available
+  val NA = new ZeroCopyUTF8String(null.asInstanceOf[Any], 0, 0)
+
+  final def isNA(utf8: ZeroCopyUTF8String): Boolean = utf8.base == NA.base
 
   val bytesOfCodePointInUTF8 = Array(2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2,
     2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2,

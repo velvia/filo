@@ -145,9 +145,8 @@ class EncodingPropertiesTest extends FunSpec with Matchers with PropertyChecks {
     forAll(optionList[ZeroCopyUTF8String]) { s =>
       // val utf8vect = vectors.UTF8Vector.appendingVector(500, 10240)
       // XXX: making size bigger for now so we can avoid growable buffers problem
-      val utf8vect = vectors.UTF8Vector.appendingVector(500, 20480)
-      s.foreach(utf8vect.add)
-      val buf = vectors.UTF8Vector.writeOptimizedBuffer(utf8vect, spaceThreshold=0.8)
+      val utf8strs = s.map(_.getOrElse(ZeroCopyUTF8String.NA))
+      val buf = vectors.UTF8Vector.writeOptimizedBuffer(utf8strs, spaceThreshold=0.8, maxBytes=20480)
       val binarySeq = FiloVector[ZeroCopyUTF8String](buf)
       binarySeq.length should equal (s.length)
       val elements = binarySeq.optionIterator.toSeq

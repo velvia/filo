@@ -51,4 +51,11 @@ class UTF8StringBenchmark {
   def nativeSubstring(): String = {
     str.substring(2, 6)
   }
+
+  @Benchmark
+  @BenchmarkMode(Array(Mode.Throughput))
+  @OutputTimeUnit(TimeUnit.SECONDS)
+  def utf8hash(): Int = {
+    zcStr.hashCode
+  }
 }

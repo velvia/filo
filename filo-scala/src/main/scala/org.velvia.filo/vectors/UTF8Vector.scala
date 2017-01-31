@@ -31,16 +31,31 @@ object UTF8Vector {
   }
 
   /**
-   * Optimize the source UTF8vector, creating a more optimal, smaller vector if possible
+   * A convenience function which adds a bunch of ZeroCopyUTF8Strings to a vector.
+   */
+  def appendingVector(strings: Seq[ZeroCopyUTF8String], maxBytes: Int): UTF8AppendableVector = {
+    val vect = appendingVector(strings.length, maxBytes)
+    strings.foreach { str =>
+      if (ZeroCopyUTF8String.isNA(str)) vect.addNA() else vect.addData(str)
+    }
+    vect
+  }
+
+  /**
+   * Optimize the source UTF8 strings, creating a more optimal, smaller vector if possible
    * eg using DictUTF8Vector.
    * See [[DictUTF8Vector.shouldMakeDict]] for the parameters.
    */
-  def writeOptimizedBuffer(utf8vect: UTF8AppendableVector,
+  def writeOptimizedBuffer(sourceStrings: Seq[ZeroCopyUTF8String],
                            spaceThreshold: Double = 0.6,
-                           samplingRate: Double = 0.5): ByteBuffer = {
-    DictUTF8Vector.shouldMakeDict(utf8vect, spaceThreshold, samplingRate).map { dictInfo =>
-      DictUTF8Vector.makeBuffer(dictInfo, utf8vect)
-    }.getOrElse(utf8vect.toFiloBuffer())
+                           samplingRate: Double = 0.3,
+                           maxBytes: Int = 10000): ByteBuffer = {
+    DictUTF8Vector.shouldMakeDict(sourceStrings, spaceThreshold, samplingRate, maxBytes).map { dictInfo =>
+      DictUTF8Vector.makeBuffer(dictInfo, sourceStrings)
+    }.getOrElse {
+      // In the future, decide between regular UTF8Vectors and Fixed and other choices
+      appendingVector(sourceStrings, maxBytes).toFiloBuffer()
+    }
   }
 
   val MaxSmallOffset = 0x7fff
