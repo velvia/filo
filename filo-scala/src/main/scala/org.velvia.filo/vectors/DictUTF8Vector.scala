@@ -19,10 +19,15 @@ object DictUTF8Vector {
    * This approach might not work for source vectors that are very biased but the sampling rate is
    * adjustable.
    *
+   * TODO: for now you need a real UTF8Vector built first.  This is not that efficient though - creating
+   * a UTF8Vector requires copying lots of source bytes.  Make this more flexible in the future by
+   * allowing taking any BinaryVector[UTF8Str]... one could implement one that iterates through BinaryRecords
+   * for example, so there does not need to be any copying of source bytes.
+   *
    * @param sourceVector the source UTF8Vector with all the source strings
    * @param spaceThreshold a number between 0.0 and 1.0, the fraction of the original
    *                       space below which the DictUTF8Vector should be sized to be
-   *                       worth doing dictionary encoding for
+   *                       worth doing dictionary encoding for. Make this >1.0 if you want to force it
    * @param samplingRate the fraction (0.0 <= n < 1.0) of the source vector to use to determine
    *                     if dictionary encoding will be worth it
    * @return Option[DictUTF8Info] contains info for building the dictionary if it is worth it
@@ -35,7 +40,7 @@ object DictUTF8Vector {
     // The max size for the dict we will tolerate given the sample size and orig vector size
     // Above this, cardinality is not likely to be low enough for dict encoding
     val dictThreshold = (sourceVector.numBytes * spaceThreshold * samplingRate).toInt
-    val dictVect = UTF8Vector.appendingVector(sourceVector.length, sourceVector.numBytes)
+    val dictVect = UTF8Vector.appendingVector(sourceVector.length + 1, sourceVector.numBytes)
     dictVect.addNA()   // first code point 0 == NA
 
     for { i <- 0 until sourceVector.length optimized } {

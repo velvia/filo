@@ -7,6 +7,7 @@ import org.scalatest.prop.PropertyChecks
 class EncodingPropertiesTest extends FunSpec with Matchers with PropertyChecks {
   import BuilderEncoder._
   import VectorReader._
+  import org.velvia.filo.vectors
 
   it("Filo format int vectors should match length and sum") {
     forAll { (s: List[Int]) =>
@@ -90,6 +91,20 @@ class EncodingPropertiesTest extends FunSpec with Matchers with PropertyChecks {
     }
   }
 
+  implicit val utf8arb = Arbitrary(arbitrary[String].map(ZeroCopyUTF8String.apply))
+
+  it("should match elements and length for BinaryIntVectors with missing/NA elements") {
+    import vectors.IntBinaryVector
+    forAll(boundedIntList) { s =>
+      val intVect = IntBinaryVector.appendingVector(1000)
+      s.foreach(intVect.add)
+      val binarySeq = FiloVector[Int](IntBinaryVector.optimize(intVect).toFiloBuffer)
+      binarySeq.length should equal (s.length)
+      val elements = binarySeq.optionIterator.toSeq
+      elements should equal (s)
+    }
+  }
+
   it("should match elements and length for simple string vectors with missing/NA elements") {
     forAll(optionList[String]) { s =>
       val buf = VectorBuilder.fromOptions(s).toFiloBuffer(SimpleEncoding)
@@ -101,11 +116,39 @@ class EncodingPropertiesTest extends FunSpec with Matchers with PropertyChecks {
     }
   }
 
+  it("should match elements and length for UTF8Vectors with missing/NA elements") {
+    forAll(optionList[ZeroCopyUTF8String]) { s =>
+      // val utf8vect = vectors.UTF8Vector.appendingVector(500, 10240)
+      // XXX: making size bigger for now so we can avoid growable buffers problem
+      val utf8vect = vectors.UTF8Vector.appendingVector(500, 20480)
+      s.foreach(utf8vect.add)
+      val buf = utf8vect.toFiloBuffer()
+      val binarySeq = FiloVector[ZeroCopyUTF8String](buf)
+      binarySeq.length should equal (s.length)
+      val elements = binarySeq.optionIterator.toSeq
+      elements should equal (s)
+    }
+  }
+
   it("should match elements and length for dictionary string vectors with missing/NA elements") {
     forAll(optionList[String]) { s =>
       val buf = VectorBuilder.fromOptions(s).toFiloBuffer(DictionaryEncoding)
       val binarySeq = FiloVector[String](buf)
 
+      binarySeq.length should equal (s.length)
+      val elements = binarySeq.optionIterator.toSeq
+      elements should equal (s)
+    }
+  }
+
+  it("should match elements and length for DictUTF8Vectors with missing/NA elements") {
+    forAll(optionList[ZeroCopyUTF8String]) { s =>
+      // val utf8vect = vectors.UTF8Vector.appendingVector(500, 10240)
+      // XXX: making size bigger for now so we can avoid growable buffers problem
+      val utf8vect = vectors.UTF8Vector.appendingVector(500, 20480)
+      s.foreach(utf8vect.add)
+      val buf = vectors.UTF8Vector.writeOptimizedBuffer(utf8vect, spaceThreshold=0.8)
+      val binarySeq = FiloVector[ZeroCopyUTF8String](buf)
       binarySeq.length should equal (s.length)
       val elements = binarySeq.optionIterator.toSeq
       elements should equal (s)

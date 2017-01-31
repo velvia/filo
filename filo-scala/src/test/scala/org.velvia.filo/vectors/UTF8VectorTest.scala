@@ -10,6 +10,7 @@ class UTF8VectorTest extends FunSpec with Matchers {
       utf8vect.addNA()
       utf8vect.addNA()
       utf8vect.length should equal (2)
+      utf8vect.frozenSize should equal (12)
       utf8vect.isAvailable(0) should equal (false)
       utf8vect.isAvailable(1) should equal (false)
 
@@ -34,6 +35,7 @@ class UTF8VectorTest extends FunSpec with Matchers {
       utf8vect.isAvailable(1) should equal (true)
       utf8vect.isAvailable(2) should equal (true)
       utf8vect.numBytes should equal (40)
+      utf8vect.frozenSize should equal (40)
     }
 
     it("should be able to calculate min, max # bytes for all elements") {
@@ -50,11 +52,11 @@ class UTF8VectorTest extends FunSpec with Matchers {
 
     it("should be able to freeze and minimize bytes used") {
       val strs = Seq("apple", "zoe", "bananas").map(ZeroCopyUTF8String.apply)
-      val utf8vect = UTF8Vector.appendingVector(5, 1024)
+      val utf8vect = UTF8Vector.appendingVector(10, 1024)
       strs.foreach(utf8vect.addData)
       utf8vect.length should equal (3)
       utf8vect.noNAs should equal (true)
-      utf8vect.numBytes should equal (4 + 20 + 8 + 4 + 8)
+      utf8vect.frozenSize should equal (4 + 12 + 8 + 4 + 8)
 
       val frozen = utf8vect.freeze()
       frozen.length should equal (3)
@@ -103,6 +105,20 @@ class UTF8VectorTest extends FunSpec with Matchers {
       reader.toSeq should equal (strs)
       reader.isAvailable(0) should be (false)
       reader(0) should equal (ZeroCopyUTF8String(""))
+    }
+
+    // Negative byte values might not get converted to ints properly, leading
+    // to an ArrayOutOfBoundsException.
+    it("should ensure proper conversion when there are 128-255 unique strings") {
+      val orig = (0 to 130).map(_.toString).map(ZeroCopyUTF8String.apply)
+      val utf8vect = UTF8Vector.appendingVector(140, 10240)
+      orig.foreach(utf8vect.addData)
+      val buffer = UTF8Vector.writeOptimizedBuffer(utf8vect, spaceThreshold = 1.1)
+      val binarySeq = FiloVector[ZeroCopyUTF8String](buffer)
+      binarySeq shouldBe a [DictUTF8Vector]
+
+      binarySeq.length should equal (orig.length)
+      binarySeq.toSeq should equal (orig)
     }
   }
 }

@@ -30,6 +30,11 @@ object UTF8Vector {
     new UTF8AppendableVector(base, off, nBytes, maxElements)
   }
 
+  /**
+   * Optimize the source UTF8vector, creating a more optimal, smaller vector if possible
+   * eg using DictUTF8Vector.
+   * See [[DictUTF8Vector.shouldMakeDict]] for the parameters.
+   */
   def writeOptimizedBuffer(utf8vect: UTF8AppendableVector,
                            spaceThreshold: Double = 0.6,
                            samplingRate: Double = 0.5): ByteBuffer = {
@@ -106,7 +111,7 @@ UTF8Vector(base, offset) with BinaryAppendableVector[ZeroCopyUTF8String] {
   }
 
   final def addData(data: ZeroCopyUTF8String): Unit = {
-    require(length < maxElements)
+    require(length < maxElements, s"length $length is not < $maxElements")
     val fixedData = appendBlob(data)
     UnsafeUtils.setInt(base, curFixedOffset, fixedData)
     bumpLen()
@@ -161,8 +166,10 @@ UTF8Vector(base, offset) with BinaryAppendableVector[ZeroCopyUTF8String] {
     for { i <- 0 until _len optimized } {
       val fixedData = UnsafeUtils.getInt(newBase, newOff + 4 + i * 4)
       val newData = if (fixedData < 0) {
-        val newDelta = ((fixedData & 0x7fff0000) >> 16) - offsetDiff
-        blobFixedInt(newDelta, fixedData & 0xffff)
+        if (fixedData == EmptyBlob) { EmptyBlob } else {
+          val newDelta = ((fixedData & 0x7fff0000) >> 16) - offsetDiff
+          blobFixedInt(newDelta, fixedData & 0xffff)
+        }
       } else { fixedData - offsetDiff }
       UnsafeUtils.setInt(newBase, newOff + 4 + i * 4, newData)
     }
@@ -176,7 +183,7 @@ UTF8Vector(base, offset) with BinaryAppendableVector[ZeroCopyUTF8String] {
    */
   private def reserveVarBytes(bytesToReserve: Int): Long = {
     val roundedLen = (bytesToReserve + 3) & -4
-    require(numBytes + roundedLen <= maxBytes)
+    require(numBytes + roundedLen <= maxBytes, s"$numBytes + $roundedLen <= $maxBytes")
     val offsetToWrite = offset + numBytes
     numBytes += roundedLen
     offsetToWrite

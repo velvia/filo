@@ -196,7 +196,7 @@ extends PrimitiveAppendableVector[Int](base, offset, maxBytes, nbits, signed) {
       addVector(v.intVect)
     case v: BinaryVector[Int] =>
       // Optimization: this vector does not support NAs so just add the data
-      assert(numBytes + (nbits * v.length / 8) <= maxBytes,
+      require(numBytes + (nbits * v.length / 8) <= maxBytes,
              s"Not enough space to add ${v.length} elems; nbits=$nbits; need ${maxBytes-numBytes} bytes")
       for { i <- 0 until v.length optimized } {
         addValue(v(i))
@@ -205,7 +205,7 @@ extends PrimitiveAppendableVector[Int](base, offset, maxBytes, nbits, signed) {
   }
 
   override def finishCompaction(newBase: Any, newOff: Long): BinaryVector[Int] =
-    IntBinaryVector.appendingVectorNoNA(base, offset, numBytes, nbits, signed)
+    IntBinaryVector(newBase, newOff, numBytes)
 }
 
 class MaskedIntAppendingVector(base: Any,

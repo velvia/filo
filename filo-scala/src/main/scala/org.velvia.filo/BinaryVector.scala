@@ -71,6 +71,8 @@ trait BinaryAppendableVector[@specialized A] extends BinaryVector[A] {
     else                    { addNA() }
   }
 
+  final def add(data: Option[A]): Unit = if (data.nonEmpty) addData(data.get) else addNA()
+
   /** Returns true if every element added is NA, or no elements have been added */
   def isAllNA: Boolean
 
@@ -95,7 +97,8 @@ trait BinaryAppendableVector[@specialized A] extends BinaryVector[A] {
    * Returns the number of bytes required for a compacted AppendableVector
    * The default implementation must be overridden if freeze() is also overridden.
    */
-  def frozenSize: Int = numBytes - (primaryMaxBytes - primaryBytes)
+  def frozenSize: Int =
+    if (numBytes >= primaryMaxBytes) numBytes - (primaryMaxBytes - primaryBytes) else numBytes
 
   /**
    * Compact the bytes of this BinaryVector into smallest space possible, and return an immutable
@@ -182,7 +185,7 @@ extends BinaryAppendableVector[A] {
   final def isAllNA: Boolean = (_len == 0)
   final def noNAs: Boolean = (_len > 0)
   final def addData(data: A): Unit = {
-    require(numBytes < maxBytes)
+    require(numBytes < maxBytes, s"Not enough space: $numBytes < $maxBytes")
     addValue(data)
     _len += 1
   }
@@ -216,7 +219,7 @@ extends BitmapMaskVector[A] with BinaryAppendableVector[A] {
   }
 
   final def addNA(): Unit = {
-    require(curBitmapOffset < bitmapMaskBufferSize)
+    require(curBitmapOffset < bitmapMaskBufferSize, s"bitmapOverflow: $curBitmapOffset < $bitmapMaskBufferSize")
     val maskVal = UnsafeUtils.getLong(base, bitmapOffset + curBitmapOffset)
     UnsafeUtils.setLong(base, bitmapOffset + curBitmapOffset, maskVal | curMask)
     addEmptyValue()
@@ -248,7 +251,7 @@ extends BitmapMaskVector[A] with BinaryAppendableVector[A] {
   override def primaryMaxBytes: Int = (bitmapOffset - offset).toInt + bitmapMaskBufferSize
 
   final def copyMaskFrom(other: BitmapMaskAppendableVector[A]): Unit = {
-    require(other.bitmapMaskBufferSize <= this.bitmapMaskBufferSize)
+    require(other.bitmapBytes <= this.bitmapMaskBufferSize)
     UnsafeUtils.unsafe.copyMemory(other.base, other.bitmapOffset,
                                   base, bitmapOffset,
                                   other.bitmapBytes)
