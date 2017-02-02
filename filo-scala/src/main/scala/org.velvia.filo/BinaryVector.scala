@@ -4,6 +4,8 @@ import java.nio.ByteBuffer
 import scala.language.postfixOps
 import scalaxy.loops._
 
+import RowReader._
+
 /**
  * This is really the same as FiloVector, but supports off-heap easier.
  * An immutable, zero deserialization, minimal/zero allocation, insanely fast binary sequence.
@@ -158,6 +160,23 @@ trait BinaryAppendableVector[@specialized A] extends BinaryVector[A] {
     bb.limit(frozenVect.numBytes + 4)
     bb
   }
+}
+
+/**
+ * Wrapper around a BinaryAppendableVector that fits the VectorBuilder APIs.
+ * toFiloBuffer needs to be implemented for each specific type.
+ */
+abstract class BinaryVectorBuilder[@specialized A: TypedFieldExtractor](inner: BinaryAppendableVector[A])
+extends VectorBuilderBase {
+  type T = A
+
+  final def addNA(): Unit = inner.addNA()
+  final def addData(value: T): Unit = inner.addData(value)
+  final def isAllNA: Boolean = inner.isAllNA
+  final def length: Int = inner.length
+  final def reset(): Unit = {}
+
+  val extractor: TypedFieldExtractor[A] = implicitly[TypedFieldExtractor[A]]
 }
 
 /**

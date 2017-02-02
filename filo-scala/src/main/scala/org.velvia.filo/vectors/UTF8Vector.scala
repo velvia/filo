@@ -2,6 +2,7 @@ package org.velvia.filo.vectors
 
 import java.nio.ByteBuffer
 import org.velvia.filo._
+import scala.collection.mutable.ArrayBuffer
 import scala.language.postfixOps
 import scalaxy.loops._
 
@@ -220,5 +221,41 @@ UTF8Vector(base, offset) with BinaryAppendableVector[ZeroCopyUTF8String] {
       blob.copyTo(base, destOffset + 4)
     }
     fixedData
+  }
+}
+
+class UTF8VectorBuilder extends VectorBuilderBase {
+  type T = ZeroCopyUTF8String
+
+  private val strings = new ArrayBuffer[ZeroCopyUTF8String]()
+  private var allNA: Boolean = true
+  private var numBytes: Int = 4
+
+  final def addNA(): Unit = {
+    strings += ZeroCopyUTF8String.NA
+    numBytes += 4
+  }
+
+  final def addData(value: T): Unit = {
+    strings += value
+    allNA = false
+    numBytes += 4 + (value.length + 3) & ~3
+  }
+
+  final def isAllNA: Boolean = allNA
+  final def length: Int = strings.length
+  final def reset(): Unit = { strings.clear }
+
+  val extractor = RowReader.UTF8StringFieldExtractor
+
+  def toFiloBuffer(hint: BuilderEncoder.EncodingHint): ByteBuffer = hint match {
+    case BuilderEncoder.SimpleEncoding =>
+      UTF8Vector.appendingVector(strings, numBytes).toFiloBuffer
+
+    case BuilderEncoder.DictionaryEncoding =>
+      UTF8Vector.writeOptimizedBuffer(strings, spaceThreshold=1.1, maxBytes=numBytes)
+
+    case other: Any =>
+      UTF8Vector.writeOptimizedBuffer(strings, maxBytes=numBytes)
   }
 }

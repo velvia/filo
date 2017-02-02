@@ -14,7 +14,7 @@ import codecs.Utils
  * A builder for FiloVectors.  Used to build up elements of a vector before freezing it as an
  * immutable, extremely fast for reading FiloVector.
  */
-sealed trait VectorBuilderBase {
+trait VectorBuilderBase {
   type T
 
   /** Add a Not Available (null) element to the builder. */
@@ -46,8 +46,6 @@ sealed trait VectorBuilderBase {
   /** Returns true if every element added is NA, or no elements have been added */
   def isAllNA: Boolean
 
-  implicit val builder: BuilderEncoder[T]
-
   /**
    * Produces a binary Filo vector as a ByteBuffer, using default encoding hints
    */
@@ -56,7 +54,7 @@ sealed trait VectorBuilderBase {
   /**
    * Produces a binary Filo vector as a ByteBuffer, with a specific encoding hint
    */
-  def toFiloBuffer(hint: BuilderEncoder.EncodingHint): ByteBuffer = builder.encode(this, hint)
+  def toFiloBuffer(hint: BuilderEncoder.EncodingHint): ByteBuffer
 }
 
 /**
@@ -84,6 +82,10 @@ sealed abstract class VectorBuilder[A](empty: A) extends VectorBuilderBase {
 
   def length: Int = data.length
   def isAllNA: Boolean = Utils.isAllNA(naMask, data.length)
+
+  implicit val builder: BuilderEncoder[T]
+
+  def toFiloBuffer(hint: BuilderEncoder.EncodingHint): ByteBuffer = builder.encode(this, hint)
 }
 
 sealed abstract class TypedVectorBuilder[A](empty: A)
@@ -127,7 +129,8 @@ object VectorBuilder {
     Classes.Float        -> (() => new FloatVectorBuilder),
     Classes.String       -> (() => new StringVectorBuilder),
     Classes.DateTime     -> (() => new DateTimeVectorBuilder),
-    Classes.SqlTimestamp -> (() => new SqlTimestampVectorBuilder)
+    Classes.SqlTimestamp -> (() => new SqlTimestampVectorBuilder),
+    Classes.UTF8         -> (() => new vectors.UTF8VectorBuilder)
   )
 
   import BuilderEncoder._
@@ -195,6 +198,8 @@ abstract class NestedVectorBuilder[A, I](val innerBuilder: VectorBuilderBase { t
 
   def length: Int = innerBuilder.length
   def isAllNA: Boolean = innerBuilder.isAllNA
+
+  def toFiloBuffer(hint: BuilderEncoder.EncodingHint): ByteBuffer = builder.encode(this, hint)
 }
 
 class DateTimeVectorBuilder extends NestedVectorBuilder[DateTime, Long](new LongVectorBuilder) {

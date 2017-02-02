@@ -260,3 +260,10 @@ BitmapMaskAppendableVector[Int](base, offset + 4L, maxElements) {
     new MaskedIntBinaryVector(newBase, newOff, 4 + bitmapBytes + intVect.numBytes)
   }
 }
+
+class IntVectorBuilder(inner: BinaryAppendableVector[Int]) extends BinaryVectorBuilder[Int](inner) {
+  def toFiloBuffer(hint: BuilderEncoder.EncodingHint): ByteBuffer = inner match {
+    case v: MaskedIntAppendingVector =>  IntBinaryVector.optimize(v).toFiloBuffer
+    case v: BinaryAppendableVector[Int] => v.toFiloBuffer
+  }
+}
