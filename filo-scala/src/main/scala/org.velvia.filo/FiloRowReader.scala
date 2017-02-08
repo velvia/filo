@@ -20,13 +20,12 @@ trait FiloRowReader extends RowReader {
  * Designed to minimize allocation by having iterator repeatedly set/update rowNo.
  * Thus, this is not appropriate for Seq[RowReader] or conversion to Seq.
  */
-class FastFiloRowReader(chunks: Array[ByteBuffer],
-                        classes: Array[Class[_]],
-                        emptyLen: Int = 0) extends FiloRowReader {
+class FastFiloRowReader(val parsers: Array[FiloVector[_]]) extends FiloRowReader {
   var rowNo: Int = -1
   def setRowNo(newRowNo: Int): Unit = { rowNo = newRowNo }
 
-  val parsers = FiloVector.makeVectors(chunks, classes, emptyLen)
+  def this(chunks: Array[ByteBuffer], classes: Array[Class[_]], emptyLen: Int = 0) =
+    this(FiloVector.makeVectors(chunks, classes, emptyLen))
 
   final def notNull(columnNo: Int): Boolean = parsers(columnNo).isAvailable(rowNo)
   final def getBoolean(columnNo: Int): Boolean = parsers(columnNo).asInstanceOf[FiloVector[Boolean]](rowNo)
@@ -35,7 +34,8 @@ class FastFiloRowReader(chunks: Array[ByteBuffer],
   final def getDouble(columnNo: Int): Double = parsers(columnNo).asInstanceOf[FiloVector[Double]](rowNo)
   final def getFloat(columnNo: Int): Float = parsers(columnNo).asInstanceOf[FiloVector[Float]](rowNo)
   final def getString(columnNo: Int): String = parsers(columnNo).asInstanceOf[FiloVector[String]](rowNo)
-  override final def filoUTF8String(columnNo: Int): ZeroCopyUTF8String = ???
+  override final def filoUTF8String(columnNo: Int): ZeroCopyUTF8String =
+    parsers(columnNo).asInstanceOf[FiloVector[ZeroCopyUTF8String]](rowNo)
   final def getAny(columnNo: Int): Any = parsers(columnNo).boxed(rowNo)
 }
 
@@ -51,7 +51,8 @@ case class SafeFiloRowReader(reader: FiloRowReader, rowNo: Int) extends FiloRowR
   final def getDouble(columnNo: Int): Double = parsers(columnNo).asInstanceOf[FiloVector[Double]](rowNo)
   final def getFloat(columnNo: Int): Float = parsers(columnNo).asInstanceOf[FiloVector[Float]](rowNo)
   final def getString(columnNo: Int): String = parsers(columnNo).asInstanceOf[FiloVector[String]](rowNo)
-  override final def filoUTF8String(columnNo: Int): ZeroCopyUTF8String = ???
+  override final def filoUTF8String(columnNo: Int): ZeroCopyUTF8String =
+    parsers(columnNo).asInstanceOf[FiloVector[ZeroCopyUTF8String]](rowNo)
   final def getAny(columnNo: Int): Any = parsers(columnNo).boxed(rowNo)
 }
 

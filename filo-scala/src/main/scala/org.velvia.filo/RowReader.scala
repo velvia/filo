@@ -21,8 +21,12 @@ trait RowReader {
   def getAny(columnNo: Int): Any
 
   // Please override final def if your RowReader has a faster implementation
-  def filoUTF8String(columnNo: Int): ZeroCopyUTF8String =
-    Option(getString(columnNo)).map(ZeroCopyUTF8String.apply).getOrElse(ZeroCopyUTF8String.empty)
+  def filoUTF8String(columnNo: Int): ZeroCopyUTF8String = getAny(columnNo) match {
+    case s: String =>
+      Option(s).map(ZeroCopyUTF8String.apply).getOrElse(ZeroCopyUTF8String.empty)
+    case z: ZeroCopyUTF8String => z
+    case null => ZeroCopyUTF8String.NA
+  }
 
   /**
    * This method serves two purposes.

@@ -19,11 +19,11 @@ class ZeroCopyBinaryTest extends FunSpec with Matchers with PropertyChecks {
       // Equal lengths, different content
       // First comparison fights against int comparisons without proper byte ordering
       ZeroCopyUTF8String("aaab") should be < (ZeroCopyUTF8String("baaa"))
-      ZeroCopyUTF8String("bobcat") should equal (ZeroCopyUTF8String("bobcat"))
+      "bobcat".utf8 should equal ("bobcat".utf8)
 
       // Strings longer than 8 chars (in case comparison uses long compare)
-      ZeroCopyUTF8String("dictionary") should be < (ZeroCopyUTF8String("pictionar"))
-      ZeroCopyUTF8String("dictionary") should be > (ZeroCopyUTF8String("dictionaries"))
+      "dictionary".utf8 should be < ("pictionar".utf8)
+      "dictionary".utf8 should be > ("dictionaries".utf8)
 
       // Calling equals to some other type should return false
       ZeroCopyUTF8String("dictionary") should not equal ("dictionary")
@@ -43,11 +43,11 @@ class ZeroCopyBinaryTest extends FunSpec with Matchers with PropertyChecks {
     }
 
     it("should generate same hashcode for same content") {
-      ZeroCopyUTF8String("bobcat").hashCode should equal (ZeroCopyUTF8String("bobcat").hashCode)
-      ZeroCopyUTF8String("bobcat").hashCode should not equal (ZeroCopyUTF8String("bob").hashCode)
+      "bobcat".utf8.hashCode should equal ("bobcat".utf8.hashCode)
+      "bobcat".utf8.hashCode should not equal (ZeroCopyUTF8String("bob").hashCode)
 
-      ZeroCopyUTF8String("bobcat").cachedHash64 should equal (ZeroCopyUTF8String("bobcat").cachedHash64)
-      ZeroCopyUTF8String("bobcat").cachedHash64 should not equal (ZeroCopyUTF8String("bob").cachedHash64)
+      "bobcat".utf8.cachedHash64 should equal ("bobcat".utf8.cachedHash64)
+      "bobcat".utf8.cachedHash64 should not equal (ZeroCopyUTF8String("bob").cachedHash64)
     }
 
     val str1 = ZeroCopyUTF8String("1234")

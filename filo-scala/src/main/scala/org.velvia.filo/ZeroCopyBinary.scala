@@ -198,6 +198,10 @@ object ZeroCopyUTF8String {
     if (offset >= 0) bytesOfCodePointInUTF8(offset) else 1
   }
 
+  implicit class StringToUTF8(str: String) {
+    def utf8: ZeroCopyUTF8String = ZeroCopyUTF8String(str)
+  }
+
   implicit object ZeroCopyUTF8BinaryOrdering extends Ordering[ZeroCopyUTF8String] {
     def compare(a: ZeroCopyUTF8String, b: ZeroCopyUTF8String): Int = a.compare(b)
   }

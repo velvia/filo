@@ -229,7 +229,7 @@ class UTF8VectorBuilder extends VectorBuilderBase {
 
   private val strings = new ArrayBuffer[ZeroCopyUTF8String]()
   private var allNA: Boolean = true
-  private var numBytes: Int = 4
+  private var numBytes: Int = 8      // Be conservative, dict encoding requires extra element
 
   final def addNA(): Unit = {
     strings += ZeroCopyUTF8String.NA
@@ -239,7 +239,8 @@ class UTF8VectorBuilder extends VectorBuilderBase {
   final def addData(value: T): Unit = {
     strings += value
     allNA = false
-    numBytes += 4 + (value.length + 3) & ~3
+    numBytes += 4 + (value.length + 3) & ~3 +
+                (if (numBytes > 32767 || value.length > 65535) 4 else 0)
   }
 
   final def isAllNA: Boolean = allNA
