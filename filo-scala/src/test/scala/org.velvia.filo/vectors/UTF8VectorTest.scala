@@ -1,7 +1,7 @@
 package org.velvia.filo.vectors
 
 import org.scalatest.{FunSpec, Matchers}
-import org.velvia.filo.{FiloVector, ZeroCopyUTF8String}
+import org.velvia.filo.{FiloVector, GrowableVector, ZeroCopyUTF8String}
 
 class UTF8VectorTest extends FunSpec with Matchers {
   describe("UTF8Vector") {
@@ -42,12 +42,14 @@ class UTF8VectorTest extends FunSpec with Matchers {
       val utf8vect = UTF8Vector.appendingVector(5, 1024)
       Seq("apple", "zoe", "bananas").foreach(s => utf8vect.addData(ZeroCopyUTF8String(s)))
       utf8vect.addNA()   // NA or empty string should not affect min/max len
-      utf8vect.minMaxStrLen should equal ((3, 7))
+      val inner = utf8vect.asInstanceOf[GrowableVector[_]].inner.asInstanceOf[UTF8AppendableVector]
+      inner.minMaxStrLen should equal ((3, 7))
 
       val utf8vect2 = UTF8Vector.appendingVector(5, 1024)
       Seq("apple", "", "bananas").foreach(s => utf8vect2.addData(ZeroCopyUTF8String(s)))
       utf8vect2.noNAs should equal (true)
-      utf8vect2.minMaxStrLen should equal ((0, 7))
+      val inner2 = utf8vect2.asInstanceOf[GrowableVector[_]].inner.asInstanceOf[UTF8AppendableVector]
+      inner2.minMaxStrLen should equal ((0, 7))
     }
 
     it("should be able to freeze and minimize bytes used") {
@@ -67,6 +69,15 @@ class UTF8VectorTest extends FunSpec with Matchers {
     it("should be able toFiloBuffer() and parse back with FiloVector") {
       val strs = Seq("apple", "zoe", "bananas").map(ZeroCopyUTF8String.apply)
       val utf8vect = UTF8Vector.appendingVector(5, 1024)
+      strs.foreach(utf8vect.addData)
+      val buffer = utf8vect.toFiloBuffer()
+      val readVect = FiloVector[ZeroCopyUTF8String](buffer)
+      readVect.toSeq should equal (strs)
+    }
+
+    it("should be able to grow the UTF8Vector if run out of initial maxBytes") {
+      val strs = (1 to 100).map(i => ZeroCopyUTF8String("string" + i))
+      val utf8vect = UTF8Vector.appendingVector(50, 500)
       strs.foreach(utf8vect.addData)
       val buffer = utf8vect.toFiloBuffer()
       val readVect = FiloVector[ZeroCopyUTF8String](buffer)

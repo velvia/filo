@@ -25,16 +25,17 @@ object UTF8Vector {
    * Creates an appendable UTF8 string vector given the max capacity and max elements.
    * Be conservative.  The amount of space needed is at least 4 + 4 * #strings + the space needed
    * for the strings themselves; add another 4 bytes per string when more than 32KB is needed.
+   * @param maxBytes the initial max # of bytes allowed.  Will grow as needed.
    */
-  def appendingVector(maxElements: Int, maxBytes: Int): UTF8AppendableVector = {
+  def appendingVector(maxElements: Int, maxBytes: Int): BinaryAppendableVector[ZeroCopyUTF8String] = {
     val (base, off, nBytes) = BinaryVector.allocWithMagicHeader(maxBytes)
-    new UTF8AppendableVector(base, off, nBytes, maxElements)
+    new GrowableVector(new UTF8AppendableVector(base, off, nBytes, maxElements))
   }
 
   /**
    * A convenience function which adds a bunch of ZeroCopyUTF8Strings to a vector.
    */
-  def appendingVector(strings: Seq[ZeroCopyUTF8String], maxBytes: Int): UTF8AppendableVector = {
+  def appendingVector(strings: Seq[ZeroCopyUTF8String], maxBytes: Int): BinaryAppendableVector[ZeroCopyUTF8String] = {
     val vect = appendingVector(strings.length, maxBytes)
     strings.foreach { str =>
       if (ZeroCopyUTF8String.isNA(str)) vect.addNA() else vect.addData(str)
@@ -127,14 +128,14 @@ UTF8Vector(base, offset) with BinaryAppendableVector[ZeroCopyUTF8String] {
   }
 
   final def addData(data: ZeroCopyUTF8String): Unit = {
-    require(length < maxElements, s"length $length is not < $maxElements")
+    checkSize(length + 1, maxElements)
     val fixedData = appendBlob(data)
     UnsafeUtils.setInt(base, curFixedOffset, fixedData)
     bumpLen()
   }
 
   final def addNA(): Unit = {
-    require(length < maxElements)
+    checkSize(length + 1, maxElements)
     UnsafeUtils.setInt(base, curFixedOffset, EmptyBlob)
     bumpLen()
   }
@@ -157,6 +158,11 @@ UTF8Vector(base, offset) with BinaryAppendableVector[ZeroCopyUTF8String] {
     return true
   }
 
+  override def newInstance(growFactor: Int = 2): UTF8AppendableVector = {
+    val (newbase, newoff, nBytes) = BinaryVector.allocWithMagicHeader(maxBytes * growFactor)
+    new UTF8AppendableVector(newbase, newoff, maxBytes * growFactor, maxElements * growFactor)
+  }
+
   /**
    * Returns the minimum and maximum length (# bytes) of all the elements.
    * Useful for calculating which type of UTF8Vector to use.
@@ -177,19 +183,33 @@ UTF8Vector(base, offset) with BinaryAppendableVector[ZeroCopyUTF8String] {
   }
 
   override def finishCompaction(newBase: Any, newOff: Long): BinaryVector[ZeroCopyUTF8String] = {
-    val offsetDiff = (maxElements - _len) * 4
-    // Adjust all the offsets back
+    val offsetDiff = -((maxElements - _len) * 4)
+    adjustOffsets(newBase, newOff, offsetDiff)
+    UTF8Vector(newBase, newOff, numBytes + offsetDiff)
+  }
+
+  private def adjustOffsets(newBase: Any, newOff: Long, delta: Int): Unit = {
     for { i <- 0 until _len optimized } {
       val fixedData = UnsafeUtils.getInt(newBase, newOff + 4 + i * 4)
       val newData = if (fixedData < 0) {
         if (fixedData == EmptyBlob) { EmptyBlob } else {
-          val newDelta = ((fixedData & 0x7fff0000) >> 16) - offsetDiff
+          val newDelta = ((fixedData & 0x7fff0000) >> 16) + delta
           blobFixedInt(newDelta, fixedData & 0xffff)
         }
-      } else { fixedData - offsetDiff }
+      } else { fixedData + delta }
       UnsafeUtils.setInt(newBase, newOff + 4 + i * 4, newData)
     }
-    UTF8Vector(newBase, newOff, numBytes - offsetDiff)
+  }
+
+  override def addVector(other: BinaryVector[ZeroCopyUTF8String]): Unit = other match {
+    case u: UTF8AppendableVector if _len == 0 && u.primaryBytes <= primaryMaxBytes =>
+      u.copyTo(base, offset, n = u.primaryBytes)
+      _len = u.length
+      curFixedOffset = offset + 4 + (4 * _len)
+      u.copyTo(base, offset + primaryMaxBytes, u.primaryMaxBytes, u.numBytes - u.primaryMaxBytes)
+      numBytes = primaryMaxBytes + (u.numBytes - u.primaryMaxBytes)
+      adjustOffsets(base, offset, primaryMaxBytes - u.primaryMaxBytes)
+    case o: BinaryVector[ZeroCopyUTF8String] => super.addVector(o)
   }
 
   /**
@@ -199,7 +219,7 @@ UTF8Vector(base, offset) with BinaryAppendableVector[ZeroCopyUTF8String] {
    */
   private def reserveVarBytes(bytesToReserve: Int): Long = {
     val roundedLen = (bytesToReserve + 3) & -4
-    require(numBytes + roundedLen <= maxBytes, s"$numBytes + $roundedLen <= $maxBytes")
+    checkSize(numBytes + roundedLen, maxBytes)
     val offsetToWrite = offset + numBytes
     numBytes += roundedLen
     offsetToWrite
@@ -239,8 +259,7 @@ class UTF8VectorBuilder extends VectorBuilderBase {
   final def addData(value: T): Unit = {
     strings += value
     allNA = false
-    numBytes += 4 + (value.length + 3) & ~3 +
-                (if (numBytes > 32767 || value.length > 65535) 4 else 0)
+    numBytes += 4 + (value.length + 3) & ~3
   }
 
   final def isAllNA: Boolean = allNA

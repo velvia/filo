@@ -48,6 +48,9 @@ object BitmapMask {
   def numBytesRequired(elements: Int): Int = ((elements + 63) / 64) * 8
 }
 
+case class VectorTooSmall(bytesNeeded: Int, bytesHave: Int) extends
+Exception(s"Need $bytesNeeded bytes, but only have $bytesHave")
+
 /**
  * A BinaryVector that you can append to.  Has some notion of a maximum size (max # of items or bytes)
  * and the user is responsible for resizing if necessary.
@@ -94,6 +97,17 @@ trait BinaryAppendableVector[@specialized A] extends BinaryVector[A] {
       else                      { addNA() }
     }
   }
+
+  /**
+   * Checks to see if enough bytes or need to allocate more space.
+   */
+  def checkSize(need: Int, have: Int): Unit =
+    if (!(need <= have)) throw VectorTooSmall(need, have)
+
+  /**
+   * Allocates a new instance of itself growing by factor growFactor
+   */
+  def newInstance(growFactor: Int = 2): BinaryAppendableVector[A] = ???
 
   /**
    * Returns the number of bytes required for a compacted AppendableVector
@@ -162,6 +176,38 @@ trait BinaryAppendableVector[@specialized A] extends BinaryVector[A] {
   }
 }
 
+class GrowableVector[@specialized A](var inner: BinaryAppendableVector[A]) extends BinaryAppendableVector[A] {
+  def addNA(): Unit = inner.addNA()
+  def addData(value: A): Unit = {
+    try {
+      inner.addData(value)
+    } catch {
+      case e: VectorTooSmall =>
+        val newInst = inner.newInstance()
+        newInst.addVector(inner)
+        inner = newInst
+        inner.addData(value)
+    }
+  }
+
+  final def apply(index: Int): A = inner.apply(index)
+  final def isAvailable(index: Int): Boolean = inner.isAvailable(index)
+  final def base: Any = inner.base
+  final def numBytes: Int = inner.numBytes
+  final def offset: Long = inner.offset
+  final override def length: Int = inner.length
+
+  final def maxBytes: Int = inner.maxBytes
+  def isAllNA: Boolean = inner.isAllNA
+  def noNAs: Boolean = inner.noNAs
+  override def primaryBytes: Int = inner.primaryBytes
+  override def primaryMaxBytes: Int = inner.primaryMaxBytes
+  override def finishCompaction(newBase: Any, newOff: Long): BinaryVector[A] = inner.finishCompaction(newBase, newOff)
+  def vectMajorType: Int = inner.vectMajorType
+  def vectSubType: Int = inner.vectSubType
+  override def frozenSize: Int = inner.frozenSize
+}
+
 /**
  * Wrapper around a BinaryAppendableVector that fits the VectorBuilder APIs.
  * toFiloBuffer needs to be implemented for each specific type.
@@ -204,7 +250,7 @@ extends BinaryAppendableVector[A] {
   final def isAllNA: Boolean = (_len == 0)
   final def noNAs: Boolean = (_len > 0)
   final def addData(data: A): Unit = {
-    require(numBytes < maxBytes, s"Not enough space: $numBytes < $maxBytes")
+    checkSize(numBytes + (nbits / 8), maxBytes)
     addValue(data)
     _len += 1
   }
@@ -238,7 +284,7 @@ extends BitmapMaskVector[A] with BinaryAppendableVector[A] {
   }
 
   final def addNA(): Unit = {
-    require(curBitmapOffset < bitmapMaskBufferSize, s"bitmapOverflow: $curBitmapOffset < $bitmapMaskBufferSize")
+    checkSize(curBitmapOffset, bitmapMaskBufferSize)
     val maskVal = UnsafeUtils.getLong(base, bitmapOffset + curBitmapOffset)
     UnsafeUtils.setLong(base, bitmapOffset + curBitmapOffset, maskVal | curMask)
     addEmptyValue()
@@ -270,7 +316,7 @@ extends BitmapMaskVector[A] with BinaryAppendableVector[A] {
   override def primaryMaxBytes: Int = (bitmapOffset - offset).toInt + bitmapMaskBufferSize
 
   final def copyMaskFrom(other: BitmapMaskAppendableVector[A]): Unit = {
-    require(other.bitmapBytes <= this.bitmapMaskBufferSize)
+    checkSize(other.bitmapBytes, this.bitmapMaskBufferSize)
     UnsafeUtils.unsafe.copyMemory(other.base, other.bitmapOffset,
                                   base, bitmapOffset,
                                   other.bitmapBytes)

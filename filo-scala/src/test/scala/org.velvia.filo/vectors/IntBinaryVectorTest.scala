@@ -1,7 +1,7 @@
 package org.velvia.filo.vectors
 
 import org.scalatest.{FunSpec, Matchers}
-import org.velvia.filo.FiloVector
+import org.velvia.filo.{FiloVector, VectorTooSmall}
 
 class IntBinaryVectorTest extends FunSpec with Matchers {
   describe("IntAppendingVector") {
@@ -42,6 +42,13 @@ class IntBinaryVectorTest extends FunSpec with Matchers {
       val frozen = builder.freeze()
       frozen.length should equal (4)
       frozen.toSeq should equal (orig)
+    }
+
+    it("should throw error if not enough space to add new items") {
+      val builder = IntBinaryVector.appendingVectorNoNA(4)
+      val orig = Seq(1, 2, -5, 101)
+      orig.foreach(builder.addData)
+      intercept[VectorTooSmall] { builder.addNA() }
     }
   }
 

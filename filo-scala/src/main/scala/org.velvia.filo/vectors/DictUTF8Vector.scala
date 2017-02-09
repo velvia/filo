@@ -9,7 +9,7 @@ import scalaxy.loops._
 import org.velvia.filo.{ZeroCopyUTF8String => UTF8Str}
 
 case class DictUTF8Info(codeMap: HashMap[UTF8Str, Int],
-                        dictStrings: UTF8AppendableVector)
+                        dictStrings: BinaryAppendableVector[UTF8Str])
 
 object DictUTF8Vector {
   /**
