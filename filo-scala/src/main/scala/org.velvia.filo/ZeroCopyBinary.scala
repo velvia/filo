@@ -146,6 +146,11 @@ extends ZeroCopyBinary {
     }
   }
 
+  override def equals(other: Any): Boolean = other match {
+    case u: UTF8Wrapper => super.equals(u.utf8)
+    case o: Any         => super.equals(o)
+  }
+
   private def matchAt(s: ZeroCopyUTF8String, pos: Int): Boolean =
     if (s.numBytes + pos > numBytes || pos < 0) { false }
     else { UnsafeUtils.equate(base, offset + pos, s.base, s.offset, s.numBytes) }
@@ -163,6 +168,31 @@ extends ZeroCopyBinary {
       }
       false
     }
+}
+
+@SerialVersionUID(1012L)
+case class UTF8Wrapper(var utf8: ZeroCopyUTF8String) extends java.io.Externalizable {
+  //scalastyle:off
+  def this() = this(null)
+  //scalastyle:on
+
+  override def equals(other: Any): Boolean = other match {
+    case u: UTF8Wrapper => u.utf8 == this.utf8
+    case z: ZeroCopyUTF8String => this.utf8 == z
+    case o: Any         => super.equals(o)
+  }
+
+  override def hashCode: Int = utf8.hashCode
+
+  def writeExternal(out: java.io.ObjectOutput): Unit = {
+    out.writeInt(utf8.length)
+    out.write(utf8.bytes)
+  }
+  def readExternal(in: java.io.ObjectInput): Unit = {
+    val utf8Bytes = new Array[Byte](in.readInt())
+    in.readFully(utf8Bytes, 0, utf8Bytes.size)
+    utf8 = ZeroCopyUTF8String(utf8Bytes)
+  }
 }
 
 object ZeroCopyUTF8String {
