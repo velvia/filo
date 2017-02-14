@@ -92,6 +92,19 @@ class EncodingBenchmark {
   }
   // TODO: RowReader based vector building
 
+  val utf8cb = UTF8Vector.appendingVector(numValues, 16 + numValues * 20)
+  for { i <- 0 until numValues optimized } {
+    utf8cb.addData(utf8strings(i))
+  }
+
+  @Benchmark
+  @BenchmarkMode(Array(Mode.Throughput))
+  @OutputTimeUnit(TimeUnit.SECONDS)
+  def newUtf8AddVector(): Unit = {
+    val cb = UTF8Vector.appendingVector(numValues, 16 + numValues * 20)
+    cb.addVector(utf8cb)
+  }
+
   @Benchmark
   @BenchmarkMode(Array(Mode.Throughput))
   @OutputTimeUnit(TimeUnit.SECONDS)

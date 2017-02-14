@@ -188,6 +188,7 @@ UTF8Vector(base, offset) with BinaryAppendableVector[ZeroCopyUTF8String] {
     UTF8Vector(newBase, newOff, numBytes + offsetDiff)
   }
 
+  // WARNING: no checking for if delta pushes small offsets out.  Intended for compactions only.
   private def adjustOffsets(newBase: Any, newOff: Long, delta: Int): Unit = {
     for { i <- 0 until _len optimized } {
       val fixedData = UnsafeUtils.getInt(newBase, newOff + 4 + i * 4)
@@ -199,17 +200,6 @@ UTF8Vector(base, offset) with BinaryAppendableVector[ZeroCopyUTF8String] {
       } else { fixedData + delta }
       UnsafeUtils.setInt(newBase, newOff + 4 + i * 4, newData)
     }
-  }
-
-  override def addVector(other: BinaryVector[ZeroCopyUTF8String]): Unit = other match {
-    case u: UTF8AppendableVector if _len == 0 && u.primaryBytes <= primaryMaxBytes =>
-      u.copyTo(base, offset, n = u.primaryBytes)
-      _len = u.length
-      curFixedOffset = offset + 4 + (4 * _len)
-      u.copyTo(base, offset + primaryMaxBytes, u.primaryMaxBytes, u.numBytes - u.primaryMaxBytes)
-      numBytes = primaryMaxBytes + (u.numBytes - u.primaryMaxBytes)
-      adjustOffsets(base, offset, primaryMaxBytes - u.primaryMaxBytes)
-    case o: BinaryVector[ZeroCopyUTF8String] => super.addVector(o)
   }
 
   /**
@@ -259,7 +249,7 @@ class UTF8VectorBuilder extends VectorBuilderBase {
   final def addData(value: T): Unit = {
     strings += value
     allNA = false
-    numBytes += 4 + (value.length + 3) & ~3
+    numBytes += 8 + (value.length + 3) & ~3   // Use up to 8 bytes for offset + length.
   }
 
   final def isAllNA: Boolean = allNA

@@ -76,8 +76,9 @@ class UTF8VectorTest extends FunSpec with Matchers {
     }
 
     it("should be able to grow the UTF8Vector if run out of initial maxBytes") {
-      val strs = (1 to 100).map(i => ZeroCopyUTF8String("string" + i))
-      val utf8vect = UTF8Vector.appendingVector(50, 500)
+      // Purposefully test when offsets grow beyond 32k
+      val strs = (1 to 10000).map(i => ZeroCopyUTF8String("string" + i))
+      val utf8vect = UTF8Vector.appendingVector(50, 16384)
       strs.foreach(utf8vect.addData)
       val buffer = utf8vect.toFiloBuffer()
       val readVect = FiloVector[ZeroCopyUTF8String](buffer)
