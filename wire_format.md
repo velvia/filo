@@ -66,6 +66,8 @@ Note that when implementing custom types, if the binary blobs are all fixed size
 
 `SimpleStringVector` is actually inefficient for strings less than about 16 chars long, or string columns where the strings are all the same size.  This is because a `[string]` vector has 8 bytes of overhead compared to a primitive fixed array: a string vector is an array of int offsets to a `[byte]` vector, which is itself a 4-byte length element plus the bytes.
 
+`UTF8Vector` is much more space efficient than `SimpleStringVector` -- it stores 20 bits for offset and 11 bits for string length, and the strings are packed together and not word-aligned -- thus when strings fit into 1MB and are less than 2^11 bytes long, the overhead is just 4 bytes per string.  For fixed length strings though we can do better.
+
 The `FixedUTF8Vector` uses a `PrimitiveAppendableVector` for short strings and stores them inline in the data vector itself.  The first byte is a length field, followed by the UTF8 bytes.  `nbits` is set to `(longest string length + 1) * 8`.  Another benefit is better cache efficiency.
 
 The actual equation for determining when simpleFixedString works well is this:

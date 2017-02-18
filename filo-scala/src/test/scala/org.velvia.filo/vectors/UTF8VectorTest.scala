@@ -34,8 +34,8 @@ class UTF8VectorTest extends FunSpec with Matchers {
       utf8vect.isAvailable(0) should equal (false)
       utf8vect.isAvailable(1) should equal (true)
       utf8vect.isAvailable(2) should equal (true)
-      utf8vect.numBytes should equal (40)
-      utf8vect.frozenSize should equal (40)
+      utf8vect.numBytes should equal (36)
+      utf8vect.frozenSize should equal (36)
     }
 
     it("should be able to calculate min, max # bytes for all elements") {
@@ -58,12 +58,12 @@ class UTF8VectorTest extends FunSpec with Matchers {
       strs.foreach(utf8vect.addData)
       utf8vect.length should equal (3)
       utf8vect.noNAs should equal (true)
-      utf8vect.frozenSize should equal (4 + 12 + 8 + 4 + 8)
+      utf8vect.frozenSize should equal (4 + 12 + 5 + 3 + 7)
 
       val frozen = utf8vect.freeze()
       frozen.length should equal (3)
       frozen.toSeq should equal (strs)
-      frozen.numBytes should equal (4 + 12 + 8 + 4 + 8)
+      frozen.numBytes should equal (4 + 12 + 5 + 3 + 7)
     }
 
     it("should be able toFiloBuffer() and parse back with FiloVector") {

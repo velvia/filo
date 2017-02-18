@@ -60,8 +60,11 @@ object UTF8Vector {
     }
   }
 
-  val MaxSmallOffset = 0x7fff
-  val MaxSmallLen    = 0xffff
+  val SmallOffsetNBits = 20
+  val SmallLenNBits = 31 - SmallOffsetNBits
+  val MaxSmallOffset = Math.pow(2, SmallOffsetNBits).toInt - 1
+  val MaxSmallLen    = Math.pow(2, SmallLenNBits).toInt - 1
+  val SmallOffsetMask = MaxSmallOffset << SmallLenNBits
   val EmptyBlob      = 0x80000000
 
   // Create the fixed-field int for variable length data blobs.  If the result is negative (bit 31 set),
@@ -69,10 +72,12 @@ object UTF8Vector {
   // 4-byte int containing length, followed by the actual blob
   final def blobFixedInt(offset: Int, blobLength: Int): Int =
     if (offset <= MaxSmallOffset && blobLength <= MaxSmallLen) {
-      0x80000000 | (offset << 16) | blobLength
+      0x80000000 | (offset << SmallLenNBits) | blobLength
     } else {
       offset
     }
+
+  final def smallOff(fixedData: Int): Int = (fixedData & SmallOffsetMask) >> SmallLenNBits
 }
 
 /**
@@ -93,8 +98,8 @@ BinaryVector[ZeroCopyUTF8String] {
 
   final def apply(index: Int): ZeroCopyUTF8String = {
     val fixedData = UnsafeUtils.getInt(base, offset + 4 + index * 4)
-    val utf8off = offset + (if (fixedData < 0) ((fixedData & 0x7fff0000) >> 16) else (fixedData + 4))
-    val utf8len = if (fixedData < 0) fixedData & 0xffff else UnsafeUtils.getInt(base, offset + fixedData)
+    val utf8off = offset + (if (fixedData < 0) smallOff(fixedData) else (fixedData + 4))
+    val utf8len = if (fixedData < 0) fixedData & MaxSmallLen else UnsafeUtils.getInt(base, offset + fixedData)
     new ZeroCopyUTF8String(base, utf8off, utf8len)
   }
 
@@ -174,7 +179,7 @@ UTF8Vector(base, offset) with BinaryAppendableVector[ZeroCopyUTF8String] {
     for { index <- 0 until _len optimized } {
       val fixedData = UnsafeUtils.getInt(base, offset + 4 + index * 4)
       if (fixedData != EmptyBlob) {
-        val utf8len = if (fixedData < 0) fixedData & 0xffff else UnsafeUtils.getInt(base, offset + fixedData)
+        val utf8len = if (fixedData < 0) fixedData & MaxSmallLen else UnsafeUtils.getInt(base, offset + fixedData)
         if (utf8len < min) min = utf8len
         if (utf8len > max) max = utf8len
       }
@@ -194,8 +199,8 @@ UTF8Vector(base, offset) with BinaryAppendableVector[ZeroCopyUTF8String] {
       val fixedData = UnsafeUtils.getInt(newBase, newOff + 4 + i * 4)
       val newData = if (fixedData < 0) {
         if (fixedData == EmptyBlob) { EmptyBlob } else {
-          val newDelta = ((fixedData & 0x7fff0000) >> 16) + delta
-          blobFixedInt(newDelta, fixedData & 0xffff)
+          val newDelta = smallOff(fixedData) + delta
+          blobFixedInt(newDelta, fixedData & MaxSmallLen)
         }
       } else { fixedData + delta }
       UnsafeUtils.setInt(newBase, newOff + 4 + i * 4, newData)
@@ -203,15 +208,14 @@ UTF8Vector(base, offset) with BinaryAppendableVector[ZeroCopyUTF8String] {
   }
 
   /**
-   * Reserves space from the variable length area at the end.  Space will always be word-aligned.
+   * Reserves space from the variable length area at the end.
    * If it succeeds, the numBytes will be moved up at the end of the call.
    * @return the Long offset at which the variable space starts
    */
   private def reserveVarBytes(bytesToReserve: Int): Long = {
-    val roundedLen = (bytesToReserve + 3) & -4
-    checkSize(numBytes + roundedLen, maxBytes)
+    checkSize(numBytes + bytesToReserve, maxBytes)
     val offsetToWrite = offset + numBytes
-    numBytes += roundedLen
+    numBytes += bytesToReserve
     offsetToWrite
   }
 
@@ -249,7 +253,7 @@ class UTF8VectorBuilder extends VectorBuilderBase {
   final def addData(value: T): Unit = {
     strings += value
     allNA = false
-    numBytes += 8 + (value.length + 3) & ~3   // Use up to 8 bytes for offset + length.
+    numBytes += 8 + value.length   // Use up to 8 bytes for offset + length.
   }
 
   final def isAllNA: Boolean = allNA
