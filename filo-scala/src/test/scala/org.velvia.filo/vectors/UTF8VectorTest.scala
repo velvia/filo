@@ -4,6 +4,8 @@ import org.scalatest.{FunSpec, Matchers}
 import org.velvia.filo.{FiloVector, GrowableVector, ZeroCopyUTF8String}
 
 class UTF8VectorTest extends FunSpec with Matchers {
+  import ZeroCopyUTF8String._
+
   describe("UTF8Vector") {
     it("should be able to append all NAs") {
       val utf8vect = UTF8Vector.appendingVector(5, 1024)
@@ -83,6 +85,45 @@ class UTF8VectorTest extends FunSpec with Matchers {
       val buffer = utf8vect.toFiloBuffer()
       val readVect = FiloVector[ZeroCopyUTF8String](buffer)
       readVect.toSeq should equal (strs)
+    }
+  }
+
+  describe("FixedMaxUTF8Vector") {
+    it("should throw if try to append item longer than max") {
+      val cb = UTF8Vector.fixedMaxAppending(5, 4)
+      // OK: 3 chars, or 4 chars
+      cb.addData(ZeroCopyUTF8String("zoe"))
+      cb.addData(ZeroCopyUTF8String("card"))
+      cb.length should be (2)
+      cb.frozenSize should be (1 + 5 + 5)
+
+      // Not OK, will throw: 5 chars
+      intercept[IllegalArgumentException] {
+        cb.addData(ZeroCopyUTF8String("money"))
+      }
+    }
+
+    it("should add multiple items, create buffer and read it back") {
+      val strs = Seq("apple", "zoe", "jack").map(ZeroCopyUTF8String.apply)
+      val cb = UTF8Vector.fixedMaxAppending(5, 5)
+      strs.foreach(cb.addData)
+      val buffer = cb.toFiloBuffer()
+      val readVect = FiloVector[ZeroCopyUTF8String](buffer)
+      readVect.toSeq should equal (strs)
+    }
+
+    it("should handle NA items as well as empty strings") {
+      val cb = UTF8Vector.fixedMaxAppending(3, 4)
+      cb.addData("zoe".utf8)
+      cb.addNA()
+      cb.addData("".utf8)
+      val buffer = cb.toFiloBuffer()
+      val readVect = FiloVector[ZeroCopyUTF8String](buffer)
+      readVect(0) should equal ("zoe".utf8)
+      readVect.isAvailable(1) should equal (false)
+      readVect.isAvailable(2) should equal (true)
+      readVect(1) should equal ("".utf8)
+      readVect(2) should equal ("".utf8)
     }
   }
 

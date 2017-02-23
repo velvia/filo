@@ -21,6 +21,11 @@ object UTF8Vector {
     new UTF8Vector(base, off) { val numBytes = len }
   }
 
+  def fixedMax(buffer: ByteBuffer): FixedMaxUTF8Vector = {
+    val (base, off, len) = UnsafeUtils.BOLfromBuffer(buffer)
+    new FixedMaxUTF8VectorReader(base, off, len)
+  }
+
   /**
    * Creates an appendable UTF8 string vector given the max capacity and max elements.
    * Be conservative.  The amount of space needed is at least 4 + 4 * #strings + the space needed
@@ -30,6 +35,16 @@ object UTF8Vector {
   def appendingVector(maxElements: Int, maxBytes: Int): BinaryAppendableVector[ZeroCopyUTF8String] = {
     val (base, off, nBytes) = BinaryVector.allocWithMagicHeader(maxBytes)
     new GrowableVector(new UTF8AppendableVector(base, off, nBytes, maxElements))
+  }
+
+  /**
+   * Creates an appendable FixedMaxUTF8Vector given the max capacity and max bytes per item.
+   * @param maxElements the initial max # of elements to add.  Can grow as needed.
+   * @param maxBytesPerItem the max bytes for any one item
+   */
+  def fixedMaxAppending(maxElements: Int, maxBytesPerItem: Int): BinaryAppendableVector[ZeroCopyUTF8String] = {
+    val (base, off, nBytes) = BinaryVector.allocWithMagicHeader(1 + maxElements * (maxBytesPerItem + 1))
+    new GrowableVector(new FixedMaxUTF8AppendableVector(base, off, nBytes, maxBytesPerItem + 1))
   }
 
   /**
@@ -66,6 +81,7 @@ object UTF8Vector {
   val MaxSmallLen    = Math.pow(2, SmallLenNBits).toInt - 1
   val SmallOffsetMask = MaxSmallOffset << SmallLenNBits
   val EmptyBlob      = 0x80000000
+  val NAShort        = 0xff00.toShort       // Used only for FixedMaxUTF8Vector.  Zero length str.
 
   // Create the fixed-field int for variable length data blobs.  If the result is negative (bit 31 set),
   // then the offset and length are both packed in; otherwise, the fixed int is just an offset to a
@@ -236,6 +252,68 @@ UTF8Vector(base, offset) with BinaryAppendableVector[ZeroCopyUTF8String] {
     }
     fixedData
   }
+}
+
+/**
+ * FixedMaxUTF8Vector allocates a fixed number of bytes for each item, which is 1 more than the max allowed
+ * length of each item.  The length of each item is the first byte of each slot.
+ * If the length of items does not vary a lot, this could save significant space compared to normal UTF8Vector
+ */
+abstract class FixedMaxUTF8Vector(val base: Any, val offset: Long) extends BinaryVector[ZeroCopyUTF8String] {
+  def bytesPerItem: Int    // includes length byte
+
+  override def length: Int = (numBytes - 1) / bytesPerItem
+  private final val itemsOffset = offset + 1
+
+  final def apply(index: Int): ZeroCopyUTF8String = {
+    val itemOffset = itemsOffset + index * bytesPerItem
+    val itemLen = UnsafeUtils.getByte(base, itemOffset) & 0x00ff
+    new ZeroCopyUTF8String(base, itemOffset + 1, itemLen)
+  }
+
+  final def isAvailable(index: Int): Boolean =
+    UnsafeUtils.getShort(base, itemsOffset + index * bytesPerItem) != UTF8Vector.NAShort
+}
+
+class FixedMaxUTF8VectorReader(base: Any, offset: Long, val numBytes: Int) extends
+FixedMaxUTF8Vector(base, offset) {
+  val bytesPerItem = UnsafeUtils.getByte(base, offset) & 0x00ff
+}
+
+/**
+ * An appendable FixedMax vector.  NOTE:
+ * @param bytesPerItem the max number of bytes allowed per item + 1 (for the length byte)
+ */
+class FixedMaxUTF8AppendableVector(base: Any,
+                                   offset: Long,
+                                   val maxBytes: Int,
+                                   val bytesPerItem: Int) extends
+FixedMaxUTF8Vector(base, offset) with BinaryAppendableVector[ZeroCopyUTF8String] {
+  require(bytesPerItem > 1 && bytesPerItem <= 255)
+
+  val vectMajorType = WireFormat.VECTORTYPE_BINSIMPLE
+  val vectSubType = WireFormat.SUBTYPE_FIXEDMAXUTF8
+
+  UnsafeUtils.setByte(base, offset, bytesPerItem.toByte)
+  var numBytes = 1
+
+  final def addData(item: ZeroCopyUTF8String): Unit = {
+    require(item.length < bytesPerItem)
+    checkSize(numBytes + bytesPerItem, maxBytes)
+    // Easy way to ensure byte after length byte is zero (so cannot be NA)
+    UnsafeUtils.setShort(base, offset + numBytes, item.length.toShort)
+    item.copyTo(base, offset + numBytes + 1)
+    numBytes += bytesPerItem
+  }
+
+  final def addNA(): Unit = {
+    UnsafeUtils.setShort(base, offset + numBytes, UTF8Vector.NAShort)
+    numBytes += bytesPerItem
+  }
+
+  // Not needed as this vector will not be optimized further
+  final def isAllNA: Boolean = ???
+  final def noNAs: Boolean = ???
 }
 
 class UTF8VectorBuilder extends VectorBuilderBase {

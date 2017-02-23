@@ -103,7 +103,7 @@ object DictUTF8Vector {
  * Layout:
  * +0   Int    WireFormat vector subtype of dictionary
  * +4   Int    relative offset to integer vector for dictionary codes
- * +8          String dictionary, either UTF8Vector or FixedUTF8Vector
+ * +8          String dictionary, either UTF8Vector or FixedMaxUTF8Vector
  * +....
  *
  * The code zero is used to mark NA.  Thus the first entry of the string dictionary is also NA.

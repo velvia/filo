@@ -75,6 +75,7 @@ object VectorReader {
     def makeVector(buf: ByteBuffer, headerBytes: Int): FiloVector[ZeroCopyUTF8String] = {
       (majorVectorType(headerBytes), vectorSubType(headerBytes)) match {
         case (VECTORTYPE_BINSIMPLE, SUBTYPE_UTF8) => UTF8Vector(buf)
+        case (VECTORTYPE_BINSIMPLE, SUBTYPE_FIXEDMAXUTF8) => UTF8Vector.fixedMax(buf)
         case (VECTORTYPE_BINDICT, SUBTYPE_UTF8)   => DictUTF8Vector(buf)
         case (vectType, subType) => throw UnsupportedFiloType(vectType, subType)
       }

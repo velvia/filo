@@ -22,7 +22,7 @@ object WireFormat {
   val SUBTYPE_PRIMITIVE = 0x00
   val SUBTYPE_STRING = 0x01
   val SUBTYPE_UTF8 = 0x02
-  val SUBTYPE_FIXEDUTF8 = 0x03
+  val SUBTYPE_FIXEDMAXUTF8 = 0x03    // fixed max size per blob, length byte
   val SUBTYPE_DATETIME = 0x04
   val SUBTYPE_PRIMITIVE_NOMASK = 0x05
 
