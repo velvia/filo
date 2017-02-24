@@ -109,6 +109,6 @@ class EncodingBenchmark {
   @BenchmarkMode(Array(Mode.Throughput))
   @OutputTimeUnit(TimeUnit.SECONDS)
   def newDictUtf8VectorEncoding(): Unit = {
-    UTF8Vector.writeOptimizedBuffer(utf8strings, samplingRate=0.5, maxBytes=(16 + numValues * 20))
+    UTF8Vector.writeOptimizedBuffer(utf8strings, samplingRate=0.5)
   }
 }

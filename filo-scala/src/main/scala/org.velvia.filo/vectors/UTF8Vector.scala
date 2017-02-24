@@ -49,9 +49,14 @@ object UTF8Vector {
 
   /**
    * A convenience function which adds a bunch of ZeroCopyUTF8Strings to a vector.
+   * @param maxBytes the initial max number of bytes for the vector to grow to
+   * @param bytesPerItem if defined, use a FixedMaxUTF8Vector.  In this case the maxBytes is ignored.
    */
-  def appendingVector(strings: Seq[ZeroCopyUTF8String], maxBytes: Int): BinaryAppendableVector[ZeroCopyUTF8String] = {
-    val vect = appendingVector(strings.length, maxBytes)
+  def appendingVector(strings: Seq[ZeroCopyUTF8String],
+                      maxBytes: Int,
+                      bytesPerItem: Option[Int] = None): BinaryAppendableVector[ZeroCopyUTF8String] = {
+    val vect = bytesPerItem.map(n => fixedMaxAppending(strings.length, n))
+                           .getOrElse(appendingVector(strings.length, maxBytes))
     strings.foreach { str =>
       if (ZeroCopyUTF8String.isNA(str)) vect.addNA() else vect.addData(str)
     }
@@ -63,16 +68,12 @@ object UTF8Vector {
    * eg using DictUTF8Vector.
    * See [[DictUTF8Vector.shouldMakeDict]] for the parameters.
    */
-  def writeOptimizedBuffer(sourceStrings: Seq[ZeroCopyUTF8String],
+  def writeOptimizedBuffer(strings: Seq[ZeroCopyUTF8String],
                            spaceThreshold: Double = 0.6,
-                           samplingRate: Double = 0.3,
-                           maxBytes: Int = 10000): ByteBuffer = {
-    DictUTF8Vector.shouldMakeDict(sourceStrings, spaceThreshold, samplingRate, maxBytes).map { dictInfo =>
-      DictUTF8Vector.makeBuffer(dictInfo, sourceStrings)
-    }.getOrElse {
-      // In the future, decide between regular UTF8Vectors and Fixed and other choices
-      appendingVector(sourceStrings, maxBytes).toFiloBuffer()
-    }
+                           samplingRate: Double = 0.3): ByteBuffer = {
+    val builder = new UTF8VectorBuilder
+    strings.foreach(builder.addData)
+    builder.optimizedBuffer(spaceThreshold, samplingRate)
   }
 
   val SmallOffsetNBits = 20
@@ -322,6 +323,7 @@ class UTF8VectorBuilder extends VectorBuilderBase {
   private val strings = new ArrayBuffer[ZeroCopyUTF8String]()
   private var allNA: Boolean = true
   private var numBytes: Int = 8      // Be conservative, dict encoding requires extra element
+  private var maxStrLen: Int = 0
 
   final def addNA(): Unit = {
     strings += ZeroCopyUTF8String.NA
@@ -331,7 +333,9 @@ class UTF8VectorBuilder extends VectorBuilderBase {
   final def addData(value: T): Unit = {
     strings += value
     allNA = false
-    numBytes += 8 + value.length   // Use up to 8 bytes for offset + length.
+    numBytes += 4 + value.length +
+                (if (numBytes > 0xffff || value.length > 2047) 4 else 0)
+    maxStrLen = Math.max(maxStrLen, value.length)
   }
 
   final def isAllNA: Boolean = allNA
@@ -345,9 +349,19 @@ class UTF8VectorBuilder extends VectorBuilderBase {
       UTF8Vector.appendingVector(strings, numBytes).toFiloBuffer
 
     case BuilderEncoder.DictionaryEncoding =>
-      UTF8Vector.writeOptimizedBuffer(strings, spaceThreshold=1.1, maxBytes=numBytes)
+      optimizedBuffer(spaceThreshold=1.1)
 
     case other: Any =>
-      UTF8Vector.writeOptimizedBuffer(strings, maxBytes=numBytes)
+      optimizedBuffer()
   }
+
+  def optimizedBuffer(spaceThreshold: Double = 0.6,
+                      samplingRate: Double = 0.3): ByteBuffer =
+    DictUTF8Vector.shouldMakeDict(strings, spaceThreshold, samplingRate, numBytes).map { dictInfo =>
+      DictUTF8Vector.makeBuffer(dictInfo, strings)
+    }.getOrElse {
+      val fixedMaxSize = 1 + (maxStrLen + 1) * strings.length
+      val maxSizeOpt = if (fixedMaxSize < numBytes) Some(Math.max(maxStrLen, 1)) else None
+      UTF8Vector.appendingVector(strings, numBytes, maxSizeOpt).toFiloBuffer()
+    }
 }

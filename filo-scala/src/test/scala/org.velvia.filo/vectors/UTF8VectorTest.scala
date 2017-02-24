@@ -70,8 +70,7 @@ class UTF8VectorTest extends FunSpec with Matchers {
 
     it("should be able toFiloBuffer() and parse back with FiloVector") {
       val strs = Seq("apple", "zoe", "bananas").map(ZeroCopyUTF8String.apply)
-      val utf8vect = UTF8Vector.appendingVector(5, 1024)
-      strs.foreach(utf8vect.addData)
+      val utf8vect = UTF8Vector.appendingVector(strs, 1024)
       val buffer = utf8vect.toFiloBuffer()
       val readVect = FiloVector[ZeroCopyUTF8String](buffer)
       readVect.toSeq should equal (strs)
@@ -105,8 +104,8 @@ class UTF8VectorTest extends FunSpec with Matchers {
 
     it("should add multiple items, create buffer and read it back") {
       val strs = Seq("apple", "zoe", "jack").map(ZeroCopyUTF8String.apply)
-      val cb = UTF8Vector.fixedMaxAppending(5, 5)
-      strs.foreach(cb.addData)
+      val cb = UTF8Vector.appendingVector(strs, 1024, Some(5))
+      cb.asInstanceOf[GrowableVector[_]].inner shouldBe a [FixedMaxUTF8AppendableVector]
       val buffer = cb.toFiloBuffer()
       val readVect = FiloVector[ZeroCopyUTF8String](buffer)
       readVect.toSeq should equal (strs)
@@ -124,6 +123,24 @@ class UTF8VectorTest extends FunSpec with Matchers {
       readVect.isAvailable(2) should equal (true)
       readVect(1) should equal ("".utf8)
       readVect(2) should equal ("".utf8)
+    }
+  }
+
+  describe("UTF8StringBuilder") {
+    it("should produce a FixedMaxUTF8Vector if strings mostly same length") {
+      val strs = Seq("apple", "zoe", "jack").map(ZeroCopyUTF8String.apply)
+      val buffer = UTF8Vector.writeOptimizedBuffer(strs)
+      val reader = FiloVector[ZeroCopyUTF8String](buffer)
+      reader shouldBe a [FixedMaxUTF8Vector]
+      reader.toSeq should equal (strs)
+    }
+
+    it("should produce a UTF8Vector if one string much longer") {
+      val strs = Seq("apple", "zoe", "jacksonhole, wyoming").map(ZeroCopyUTF8String.apply)
+      val buffer = UTF8Vector.writeOptimizedBuffer(strs)
+      val reader = FiloVector[ZeroCopyUTF8String](buffer)
+      reader shouldBe a [UTF8Vector]
+      reader.toSeq should equal (strs)
     }
   }
 
