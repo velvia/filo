@@ -9,7 +9,8 @@ import scalaxy.loops._
 import org.velvia.filo.{ZeroCopyUTF8String => UTF8Str}
 
 case class DictUTF8Info(codeMap: HashMap[UTF8Str, Int],
-                        dictStrings: BinaryAppendableVector[UTF8Str])
+                        dictStrings: BinaryAppendableVector[UTF8Str],
+                        codes: BinaryAppendableVector[Int])
 
 object DictUTF8Vector {
   /**
@@ -32,33 +33,42 @@ object DictUTF8Vector {
                      spaceThreshold: Double = 0.6,
                      samplingRate: Double = 0.3,
                      maxDictSize: Int = 10000): Option[DictUTF8Info] = {
-    val codeMap = new HashMap[UTF8Str, Int]
+    val codeMap = new HashMap[UTF8Str, Int](sourceBlobs.length, 0.5F)
     val sampleSize = (sourceBlobs.length * samplingRate).toInt
     // The max size for the dict we will tolerate given the sample size and orig vector size
     // Above this, cardinality is not likely to be low enough for dict encoding
     val dictThreshold = (sampleSize * spaceThreshold).toInt
     val dictVect = UTF8Vector.appendingVector(sourceBlobs.length + 1, maxDictSize)
+    val codeVect = IntBinaryVector.appendingVectorNoNA(sourceBlobs.length)
     dictVect.addNA()   // first code point 0 == NA
 
     for { i <- 0 until sourceBlobs.length optimized } {
       val item = sourceBlobs(i)
       if (!ZeroCopyUTF8String.isNA(item)) {
-        val orig = codeMap.putIfAbsent(item, codeMap.size + 1)  // Just one hashcode/compare
-        if (orig == 0) dictVect.addData(item)
+        val newCode = codeMap.size + 1
+        val orig = codeMap.putIfAbsent(item, newCode)  // Just one hashcode/compare
+        if (orig == 0) {
+          dictVect.addData(item)
+          codeVect.addData(newCode)
+        } else {
+          codeVect.addData(orig)
+        }
+      } else {
+        codeVect.addData(0)
       }
       // Now check if we are over the threshold already
       if (i <= sampleSize && dictVect.length > dictThreshold) return None
     }
-    Some(DictUTF8Info(codeMap, dictVect))
+    Some(DictUTF8Info(codeMap, dictVect, codeVect))
   }
 
   /**
-   * Creates the dictionary-encoding vector as a final ByteBuffer from source UTF8 sequence.
+   * Creates the dictionary-encoding vector as a final ByteBuffer from intermediate data.
    */
-  def makeBuffer(info: DictUTF8Info, sourceBlobs: Seq[UTF8Str]): ByteBuffer = {
+  def makeBuffer(info: DictUTF8Info): ByteBuffer = {
     // Estimate and allocate enough space for the UTF8Vector
     val (nbits, signed) = IntBinaryVector.minMaxToNbitsSigned(0, info.codeMap.size)
-    val codeVectSize = IntBinaryVector.noNAsize(sourceBlobs.length, nbits)
+    val codeVectSize = IntBinaryVector.noNAsize(info.codes.length, nbits)
     val dictVectSize = info.dictStrings.frozenSize
     val bytesRequired = 8 + dictVectSize + codeVectSize
     val (base, off, nBytes) = BinaryVector.allocWithMagicHeader(bytesRequired)
@@ -72,10 +82,7 @@ object DictUTF8Vector {
                                                        off + 8 + dictVectSize,
                                                        codeVectSize,
                                                        nbits, signed)
-    sourceBlobs.foreach { blob =>
-      if (!ZeroCopyUTF8String.isNA(blob)) { codeVect.addData(info.codeMap.get(blob)) }
-      else                                { codeVect.addData(0) }
-    }
+    codeVect.addVector(info.codes)
 
     // Write 8 bytes of metadata at beginning
     UnsafeUtils.setInt(base, off,     WireFormat.SUBTYPE_UTF8)

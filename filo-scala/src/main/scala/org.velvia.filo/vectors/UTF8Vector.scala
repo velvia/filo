@@ -358,7 +358,7 @@ class UTF8VectorBuilder extends VectorBuilderBase {
   def optimizedBuffer(spaceThreshold: Double = 0.6,
                       samplingRate: Double = 0.3): ByteBuffer =
     DictUTF8Vector.shouldMakeDict(strings, spaceThreshold, samplingRate, numBytes).map { dictInfo =>
-      DictUTF8Vector.makeBuffer(dictInfo, strings)
+      DictUTF8Vector.makeBuffer(dictInfo)
     }.getOrElse {
       val fixedMaxSize = 1 + (maxStrLen + 1) * strings.length
       val maxSizeOpt = if (fixedMaxSize < numBytes) Some(Math.max(maxStrLen, 1)) else None
