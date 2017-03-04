@@ -94,5 +94,8 @@ DiffDateTimeVector is similar, storing the millis since Epoch as the data vector
 
 ## Future Formats
 
-* Diff-based for double values, if there is a tight range between min and max.
-* Sparse element storage.  Store only the index and value, not every element.
+See the [Prometheus TSDB Video](https://promcon.io/2016-berlin/talks/the-prometheus-time-series-database/) for lots of ideas:
+
+* Integer Delta-Delta encoding (use Prometheus's clever idea of a linear slope: delta for index i = i * deltadelta, where deltadelta is the initial delta between index 0 and 1.  This allows random access)
+* Float/Double XOR Delta encoding - encode the XOR between initial value and subsequent values
+* XOR + delta or delta delta?

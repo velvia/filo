@@ -44,21 +44,29 @@ object IntBinaryVector {
                           nbits: Short,
                           signed: Boolean): IntAppendingVector = nbits match {
     case 32 => new IntAppendingVector(base, offset, maxBytes, nbits, signed) {
-      final def addValue(v: Int): Unit = {
+      final def addData(v: Int): Unit = {
         UnsafeUtils.setInt(base, offset + numBytes, v)
-        numBytes += 4
+        bumpWriteOffset(4)
       }
     }
     case 16 => new IntAppendingVector(base, offset, maxBytes, nbits, signed) {
-      final def addValue(v: Int): Unit = {
+      final def addData(v: Int): Unit = {
         UnsafeUtils.setShort(base, offset + numBytes, v.toShort)
-        numBytes += 2
+        bumpWriteOffset(2)
       }
     }
     case 8 => new IntAppendingVector(base, offset, maxBytes, nbits, signed) {
-      final def addValue(v: Int): Unit = {
+      final def addData(v: Int): Unit = {
         UnsafeUtils.setByte(base, offset + numBytes, v.toByte)
-        numBytes += 1
+        bumpWriteOffset(1)
+      }
+    }
+    case 4 => new IntAppendingVector(base, offset, maxBytes, nbits, signed) {
+      final def addData(v: Int): Unit = {
+        val origByte = UnsafeUtils.getByte(base, writeOffset)
+        val newByte = (origByte | (v << bitShift)).toByte
+        UnsafeUtils.setByte(base, writeOffset, newByte)
+        bumpBitShift()
       }
     }
   }
@@ -92,6 +100,10 @@ object IntBinaryVector {
         case 8 => new IntBinaryVector(base, offset, numBytes, nbits) {
           final def apply(index: Int): Int = (UnsafeUtils.getByte(base, bufOffset + index) & 0x00ff).toInt
         }
+        case 4 => new IntBinaryVector(base, offset, numBytes, nbits) {
+          final def apply(index: Int): Int =
+            (UnsafeUtils.getByte(base, bufOffset + index/2) >> ((index & 0x01) * 4)).toInt & 0x0f
+        }
       }
     }
   }
@@ -114,7 +126,9 @@ object IntBinaryVector {
    */
   def minMaxToNbitsSigned(min: Int, max: Int): (Short, Boolean) = {
     // TODO: Add support for stuff below byte level
-    if (min >= Byte.MinValue && max <= Byte.MaxValue) {
+    if (min >= 0 && max < 16) {
+      (4, false)
+    } else if (min >= Byte.MinValue && max <= Byte.MaxValue) {
       (8, true)
     } else if (min >= 0 && max < 256) {
       (8, false)
@@ -164,8 +178,9 @@ abstract class IntBinaryVector(val base: Any,
                                val numBytes: Int,
                                nbits: Short) extends BinaryVector[Int] {
   final val bufOffset = offset + 4
+  private final val bitShift = UnsafeUtils.getByte(base, offset + 3) & 0x07
   // This length method works assuming nbits is divisible into 32
-  override def length: Int = (numBytes - 4) * 8 / nbits
+  override val length: Int = ((numBytes - 4) * 8 + (if (bitShift != 0) bitShift - 8 else 0)) / nbits
   final def isAvailable(index: Int): Boolean = true
 }
 
@@ -198,10 +213,7 @@ extends PrimitiveAppendableVector[Int](base, offset, maxBytes, nbits, signed) {
       // Optimization: this vector does not support NAs so just add the data
       require(numBytes + (nbits * v.length / 8) <= maxBytes,
              s"Not enough space to add ${v.length} elems; nbits=$nbits; need ${maxBytes-numBytes} bytes")
-      for { i <- 0 until v.length optimized } {
-        addValue(v(i))
-      }
-      _len += other.length
+      for { i <- 0 until v.length optimized } { addData(v(i)) }
   }
 
   override def finishCompaction(newBase: Any, newOff: Long): BinaryVector[Int] =

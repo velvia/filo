@@ -104,6 +104,10 @@ trait BinaryAppendableVector[@specialized A] extends BinaryVector[A] {
   def checkSize(need: Int, have: Int): Unit =
     if (!(need <= have)) throw VectorTooSmall(need, have)
 
+  private final val maxOffset = offset + maxBytes
+  final def checkOffset(newOffset: Long): Unit =
+    if (!(newOffset <= maxOffset)) throw VectorTooSmall((newOffset - offset).toInt, maxBytes)
+
   /**
    * Allocates a new instance of itself growing by factor growFactor
    */
@@ -237,23 +241,28 @@ abstract class PrimitiveAppendableVector[@specialized A](val base: Any,
 extends BinaryAppendableVector[A] {
   val vectMajorType = WireFormat.VECTORTYPE_BINSIMPLE
   val vectSubType = WireFormat.SUBTYPE_PRIMITIVE_NOMASK
-  var numBytes: Int = 4
-  var _len = 0
-  override final def length: Int = _len
+  var writeOffset: Long = offset + 4
+  var bitShift: Int = 0
+  override final def length: Int = ((writeOffset - offset - 4).toInt * 8 + bitShift) / nbits
 
   UnsafeUtils.setShort(base, offset, nbits.toShort)
   UnsafeUtils.setByte(base, offset + 2, if (signed) 1 else 0)
 
-  // Responsible for adding a single value and updating numBytes
-  def addValue(v: A): Unit
+  def numBytes: Int = (writeOffset - offset).toInt + (if (bitShift != 0) 1 else 0)
 
-  final def isAllNA: Boolean = (_len == 0)
-  final def noNAs: Boolean = (_len > 0)
-  final def addData(data: A): Unit = {
-    checkSize(numBytes + (nbits / 8), maxBytes)
-    addValue(data)
-    _len += 1
+  final def bumpWriteOffset(delta: Int): Unit = {
+    writeOffset += delta
+    checkOffset(writeOffset)
   }
+
+  protected final def bumpBitShift(): Unit = {
+    bitShift = (bitShift + nbits) % 8
+    if (bitShift == 0) bumpWriteOffset(1)
+    UnsafeUtils.setByte(base, offset + 3, bitShift.toByte)
+  }
+
+  final def isAllNA: Boolean = (length == 0)
+  final def noNAs: Boolean = (length > 0)
 }
 
 /**

@@ -52,6 +52,27 @@ class IntBinaryVectorTest extends FunSpec with Matchers {
     }
   }
 
+  describe("IntBinaryVector 2/4 bit") {
+    it("should append and read back list with nbits=4") {
+      val builder = IntBinaryVector.appendingVectorNoNA(10, nbits=4, signed=false)
+      builder.length should equal (0)
+      builder.addData(2)
+      builder.numBytes should equal (5)
+      builder.toSeq should equal (Seq(2))
+      builder.addData(4)
+      builder.addData(3)
+      builder.length should equal (3)
+      builder.toSeq should equal (Seq(2, 4, 3))
+      builder.frozenSize should equal (6)
+      val frozen = builder.freeze()
+      frozen.length should equal (3)
+      frozen.toSeq should equal (Seq(2, 4, 3))
+
+      val intVect = FiloVector[Int](builder.toFiloBuffer())
+      intVect.toSeq should equal (Seq(2, 4, 3))
+    }
+  }
+
   describe("MaskedIntAppendingVector") {
     it("should append a list of all NAs and read all NAs back") {
       val builder = IntBinaryVector.appendingVector(100)
@@ -143,7 +164,7 @@ class IntBinaryVectorTest extends FunSpec with Matchers {
       optimized.noNAs should equal (true)
 
       val frozen = optimized.freeze()
-      frozen.numBytes should equal (4 + 5)
+      frozen.numBytes should equal (4 + 3)   // nbits=4, so only 3 extra bytes
     }
   }
 }
