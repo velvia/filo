@@ -71,6 +71,17 @@ class IntBinaryVectorTest extends FunSpec with Matchers {
       val intVect = FiloVector[Int](builder.toFiloBuffer())
       intVect.toSeq should equal (Seq(2, 4, 3))
     }
+
+    it("should append and read back list with nbits=2") {
+      val builder = IntBinaryVector.appendingVectorNoNA(10, nbits=2, signed=false)
+      val orig = Seq(0, 2, 1, 3, 2)
+      orig.foreach(builder.addData)
+      builder.toSeq should equal (orig)
+      builder.numBytes should equal (6)
+
+      val intVect = FiloVector[Int](builder.toFiloBuffer())
+      intVect.toSeq should equal (orig)
+    }
   }
 
   describe("MaskedIntAppendingVector") {

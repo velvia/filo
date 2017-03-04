@@ -69,6 +69,14 @@ object IntBinaryVector {
         bumpBitShift()
       }
     }
+    case 2 => new IntAppendingVector(base, offset, maxBytes, nbits, signed) {
+      final def addData(v: Int): Unit = {
+        val origByte = UnsafeUtils.getByte(base, writeOffset)
+        val newByte = (origByte | (v << bitShift)).toByte
+        UnsafeUtils.setByte(base, writeOffset, newByte)
+        bumpBitShift()
+      }
+    }
   }
 
   /**
@@ -104,6 +112,10 @@ object IntBinaryVector {
           final def apply(index: Int): Int =
             (UnsafeUtils.getByte(base, bufOffset + index/2) >> ((index & 0x01) * 4)).toInt & 0x0f
         }
+        case 2 => new IntBinaryVector(base, offset, numBytes, nbits) {
+          final def apply(index: Int): Int =
+            (UnsafeUtils.getByte(base, bufOffset + index/4) >> ((index & 0x03) * 2)).toInt & 0x03
+        }
       }
     }
   }
@@ -125,8 +137,9 @@ object IntBinaryVector {
    * available.
    */
   def minMaxToNbitsSigned(min: Int, max: Int): (Short, Boolean) = {
-    // TODO: Add support for stuff below byte level
-    if (min >= 0 && max < 16) {
+    if (min >= 0 && max < 4) {
+      (2, false)
+    } else if (min >= 0 && max < 16) {
       (4, false)
     } else if (min >= Byte.MinValue && max <= Byte.MaxValue) {
       (8, true)
