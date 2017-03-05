@@ -9,15 +9,14 @@ object IntBinaryVector {
   /**
    * Creates a new MaskedIntAppendingVector, allocating a byte array of the right size for the max #
    * of elements.
-   * @param maxElements maximum number of elements this vector will hold.  If more are appended then
-   *                    an exception will be thrown.
+   * @param maxElements initial maximum number of elements this vector will hold. Will automatically grow.
    */
   def appendingVector(maxElements: Int,
                       nbits: Short = 32,
-                      signed: Boolean = true): MaskedIntAppendingVector = {
+                      signed: Boolean = true): BinaryAppendableVector[Int] = {
     val bytesRequired = 4 + BitmapMask.numBytesRequired(maxElements) + noNAsize(maxElements, nbits)
     val (base, off, nBytes) = BinaryVector.allocWithMagicHeader(bytesRequired)
-    new MaskedIntAppendingVector(base, off, nBytes, maxElements, nbits, signed)
+    GrowableVector(new MaskedIntAppendingVector(base, off, nBytes, maxElements, nbits, signed))
   }
 
   /**
@@ -160,7 +159,12 @@ object IntBinaryVector {
    * The output is a BinaryAppendableVector with optimized nbits and without mask if appropriate,
    * but not frozen.  You need to call freeze / toFiloBuffer yourself.
    */
-  def optimize(vector: MaskedIntAppendingVector): BinaryAppendableVector[Int] = {
+  def optimize(vect: BinaryAppendableVector[Int]): BinaryAppendableVector[Int] = {
+    val vector = vect match {
+      case v: MaskedIntAppendingVector => v
+      case GrowableVector(inner: MaskedIntAppendingVector) => inner
+    }
+
     // Get nbits and signed
     val (min, max) = vector.minMax
     val (nbits, signed) = minMaxToNbitsSigned(min, max)
@@ -288,6 +292,7 @@ BitmapMaskAppendableVector[Int](base, offset + 4L, maxElements) {
 
 class IntVectorBuilder(inner: BinaryAppendableVector[Int]) extends BinaryVectorBuilder[Int](inner) {
   def toFiloBuffer(hint: BuilderEncoder.EncodingHint): ByteBuffer = inner match {
+    case GrowableVector(inner: MaskedIntAppendingVector) => IntBinaryVector.optimize(inner).toFiloBuffer
     case v: MaskedIntAppendingVector =>  IntBinaryVector.optimize(v).toFiloBuffer
     case v: BinaryAppendableVector[Int] => v.toFiloBuffer
   }

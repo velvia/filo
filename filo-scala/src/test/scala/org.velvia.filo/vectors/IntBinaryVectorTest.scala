@@ -1,7 +1,7 @@
 package org.velvia.filo.vectors
 
 import org.scalatest.{FunSpec, Matchers}
-import org.velvia.filo.{FiloVector, VectorTooSmall}
+import org.velvia.filo.{FiloVector, GrowableVector, VectorTooSmall}
 
 class IntBinaryVectorTest extends FunSpec with Matchers {
   describe("IntAppendingVector") {
@@ -138,7 +138,8 @@ class IntBinaryVectorTest extends FunSpec with Matchers {
       cb.addData(102)
       cb.addData(103)
       cb.addNA
-      cb.asInstanceOf[MaskedIntAppendingVector].minMax should equal ((101, 103))
+      val inner = cb.asInstanceOf[GrowableVector[Int]].inner.asInstanceOf[MaskedIntAppendingVector]
+      inner.minMax should equal ((101, 103))
     }
 
     it("should be able to freeze() and minimize bytes used") {

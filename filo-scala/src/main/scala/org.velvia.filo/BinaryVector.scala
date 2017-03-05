@@ -176,11 +176,13 @@ trait BinaryAppendableVector[@specialized A] extends BinaryVector[A] {
     }
     val bb = ByteBuffer.wrap(byteArray)
     bb.limit(frozenVect.numBytes + 4)
+    bb.order(java.nio.ByteOrder.LITTLE_ENDIAN)
     bb
   }
 }
 
-class GrowableVector[@specialized A](var inner: BinaryAppendableVector[A]) extends BinaryAppendableVector[A] {
+case class GrowableVector[@specialized A](var inner: BinaryAppendableVector[A])
+extends BinaryAppendableVector[A] {
   def addNA(): Unit = inner.addNA()
   def addData(value: A): Unit = {
     try {

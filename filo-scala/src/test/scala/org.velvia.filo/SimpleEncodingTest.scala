@@ -53,14 +53,14 @@ class SimpleEncodingTest extends FunSpec with Matchers {
     }
 
     it("should encode a mix of NAs and Ints and decode iterate and skip NAs") {
-      val cb = VectorBuilder(classOf[Int]).asInstanceOf[VectorBuilder[Int]]
+      val cb = VectorBuilder(classOf[Int])//.asInstanceOf[VectorBuilder[Int]]
       cb.addNA
-      cb.addData(101)
-      cb.addData(102)
-      cb.addData(103)
+      cb.addData(101.asInstanceOf[cb.T])
+      cb.addData(102.asInstanceOf[cb.T])
+      cb.addData(103.asInstanceOf[cb.T])
       cb.addNA
       val buf = cb.toFiloBuffer(SimpleEncoding)
-      checkVectorType(buf, WireFormat.VECTORTYPE_SIMPLE, WireFormat.SUBTYPE_PRIMITIVE)
+      checkVectorType(buf, WireFormat.VECTORTYPE_BINSIMPLE, WireFormat.SUBTYPE_PRIMITIVE)
       val sc = FiloVector[Int](buf)
 
       sc.length should equal (5)
@@ -89,15 +89,12 @@ class SimpleEncodingTest extends FunSpec with Matchers {
     it("should encode and decode back a Seq[Int]") {
       val orig = Seq(1, 2, -5, 101)
       val buf = VectorBuilder(orig).toFiloBuffer(SimpleEncoding)
-      checkVectorType(buf, WireFormat.VECTORTYPE_SIMPLE, WireFormat.SUBTYPE_PRIMITIVE)
-      buf.capacity should equal (64)    // should encode to signed bytes
+      checkVectorType(buf, WireFormat.VECTORTYPE_BINSIMPLE, WireFormat.SUBTYPE_PRIMITIVE_NOMASK)
+      buf.capacity should equal (12)    // should encode to signed bytes
       val binarySeq = FiloVector[Int](buf)
 
       binarySeq.length should equal (orig.length)
       binarySeq.sum should equal (orig.sum)
-      val spw = binarySeq.asInstanceOf[SimplePrimitiveWrapper[Int]]
-      spw.isEmptyMask should equal (true)
-      (0 to 3).foreach { i => spw.isAvailable(i) should equal (true) }   // no NA bit set
     }
 
     it("should encode and decode back different length Seq[Int]") {
@@ -105,9 +102,7 @@ class SimpleEncodingTest extends FunSpec with Matchers {
       for { len <- 4 to 7 } {
         val orig = (0 until len).toSeq
         val buf = VectorBuilder(orig).toFiloBuffer(SimpleEncoding)
-        checkVectorType(buf, WireFormat.VECTORTYPE_SIMPLE, WireFormat.SUBTYPE_PRIMITIVE)
-        val bufLen = if (len == 4) 64 else 68
-        buf.capacity should equal (bufLen)
+        checkVectorType(buf, WireFormat.VECTORTYPE_BINSIMPLE, WireFormat.SUBTYPE_PRIMITIVE_NOMASK)
         val binarySeq = FiloVector[Int](buf)
 
         binarySeq.length should equal (orig.length)
