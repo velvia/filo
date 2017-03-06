@@ -164,7 +164,16 @@ import DefaultValues._
 class BoolVectorBuilder extends MinMaxVectorBuilder(false, true, DefaultBool)
 class IntVectorBuilder extends MinMaxVectorBuilder(Int.MinValue, Int.MaxValue, DefaultInt)
 class LongVectorBuilder extends MinMaxVectorBuilder(Long.MinValue, Long.MaxValue, DefaultLong)
-class DoubleVectorBuilder extends MinMaxVectorBuilder(Double.MinValue, Double.MaxValue, DefaultDouble)
+class DoubleVectorBuilder extends MinMaxVectorBuilder(Double.MinValue, Double.MaxValue, DefaultDouble) {
+  var numInts = 0
+  override def addData(value: Double): Unit = {
+    super.addData(value)
+    if (Math.rint(value) == value) numInts += 1
+  }
+
+  def useIntVector: Boolean =
+    (numInts == length) && min >= Int.MinValue.toDouble && max <= Int.MaxValue.toDouble
+}
 class FloatVectorBuilder extends MinMaxVectorBuilder(Float.MinValue, Float.MaxValue, DefaultFloat)
 
 class StringVectorBuilder extends TypedVectorBuilder(DefaultString) {

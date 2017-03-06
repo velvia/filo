@@ -92,6 +92,10 @@ Stores the base value as a separate single element vector, and all other element
 
 DiffDateTimeVector is similar, storing the millis since Epoch as the data vector with a base value (since many timestamp vectors contains values relatively close together), with an optional TZ vector if the DateTimes differ in timezone.  Timezones are encoded as integer increments of 15 minute offsets from UTC (eg, UTC+1hr = 4).
 
+## Double Encoding
+
+If all the doubles are integers and within the int32 range, then an `IntBinaryVector` is used to take advantage of more compact integer encodings, including diff, delta-delta, and less bit width encodings.
+
 ## Future Formats
 
 See the [Prometheus TSDB Video](https://promcon.io/2016-berlin/talks/the-prometheus-time-series-database/) for lots of ideas:

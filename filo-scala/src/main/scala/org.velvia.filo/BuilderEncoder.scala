@@ -3,7 +3,9 @@ package org.velvia.filo
 import java.nio.ByteBuffer
 import java.sql.Timestamp
 import org.joda.time.DateTime
+import scala.language.postfixOps
 import scala.reflect.ClassTag
+import scalaxy.loops._
 
 import org.velvia.filo.codecs._
 
@@ -64,7 +66,16 @@ BuilderEncoder[A] with MinMaxEncoder[A] {
     if (min == max) {
       ConstEncoders.toPrimitiveVector(builder.data, builder.naMask.result, min, max)
     } else {
-      SimpleEncoders.toPrimitiveVector(builder.data, builder.naMask.result, min, max)
+      vBuilder match {
+        case d: DoubleVectorBuilder if d.useIntVector =>
+          val intVect = vectors.IntBinaryVector.appendingVector(d.length)
+          for { i <- 0 until d.length optimized } {
+            if (d.naMask.contains(i)) intVect.addNA() else intVect.addData(d.data(i).toInt)
+          }
+          vectors.IntBinaryVector.optimize(intVect).toFiloBuffer
+        case o: Any =>
+          SimpleEncoders.toPrimitiveVector(builder.data, builder.naMask.result, min, max)
+      }
     }
   }
 }

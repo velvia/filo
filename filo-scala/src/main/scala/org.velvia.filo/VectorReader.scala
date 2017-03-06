@@ -7,7 +7,7 @@ import org.joda.time.DateTime
 
 import org.velvia.filo.codecs._
 import org.velvia.filo.vector._
-import org.velvia.filo.vectors.{IntBinaryVector, UTF8Vector, DictUTF8Vector}
+import org.velvia.filo.vectors.{IntBinaryVector, DoubleVector, UTF8Vector, DictUTF8Vector}
 
 case class UnsupportedFiloType(vectType: Int, subType: Int) extends
   Exception(s"Unsupported Filo vector type $vectType, subType $subType")
@@ -45,7 +45,13 @@ object VectorReader {
     }
   }
 
-  implicit object DoubleVectorReader extends PrimitiveVectorReader[Double]
+  implicit object DoubleVectorReader extends PrimitiveVectorReader[Double] {
+    override def makeMaskedBinaryVector(buf: ByteBuffer): FiloVector[Double] =
+      DoubleVector.fromMaskedIntBuf(buf)
+    override def makeSimpleBinaryVector(buf: ByteBuffer): FiloVector[Double] =
+      DoubleVector.fromIntBuf(buf)
+  }
+
   implicit object FloatVectorReader extends PrimitiveVectorReader[Float]
 
   implicit object StringVectorReader extends VectorReader[String] {
