@@ -129,6 +129,11 @@ object IntBinaryVector {
     new MaskedIntBinaryVector(base, off, len)
   }
 
+  def const(buffer: ByteBuffer): BinaryVector[Int] = {
+    val (base, off, len) = UnsafeUtils.BOLfromBuffer(buffer)
+    new IntConstVector(base, off, len)
+  }
+
   /**
    * Given the min and max values in an IntVector, determines the most optimal (smallest)
    * nbits and the signed flag to use.  Typically used in a workflow where you use
@@ -169,9 +174,15 @@ object IntBinaryVector {
     val (min, max) = vector.minMax
     val (nbits, signed) = minMaxToNbitsSigned(min, max)
 
-    // No NAs?  Use just the PrimitiveAppendableVector
+
     if (vector.noNAs) {
-      if (nbits == vector.nbits) { vector.intVect }
+      if (min == max) {
+        val (b, o, n) = ConstVector.make(vector.length, 4) { case (base, off) =>
+          UnsafeUtils.setInt(base, off, vector(0))
+        }
+        new IntConstVector(b, o, n)
+      // No NAs?  Use just the PrimitiveAppendableVector
+      } else if (nbits == vector.nbits) { vector.intVect }
       else {
         val newVect = IntBinaryVector.appendingVectorNoNA(vector.length, nbits, signed)
         newVect.addVector(vector)
@@ -288,6 +299,11 @@ BitmapMaskAppendableVector[Int](base, offset + 4L, maxElements) {
     UnsafeUtils.setInt(newBase, newOff, (bitmapOffset + bitmapBytes - offset).toInt)
     new MaskedIntBinaryVector(newBase, newOff, 4 + bitmapBytes + intVect.numBytes)
   }
+}
+
+class IntConstVector(base: Any, offset: Long, numBytes: Int) extends
+ConstVector[Int](base, offset, numBytes) {
+  def apply(i: Int): Int = UnsafeUtils.getInt(base, dataOffset)
 }
 
 class IntVectorBuilder(inner: BinaryAppendableVector[Int]) extends BinaryVectorBuilder[Int](inner) {

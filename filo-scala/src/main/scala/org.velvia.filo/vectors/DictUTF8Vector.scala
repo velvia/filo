@@ -93,6 +93,7 @@ object DictUTF8Vector {
     UnsafeUtils.setInt(base, off - 4, headerInt)
     val bb = ByteBuffer.wrap(base.asInstanceOf[Array[Byte]])
     bb.limit(bytesRequired + 4)
+    bb.order(java.nio.ByteOrder.LITTLE_ENDIAN)
     bb
   }
 

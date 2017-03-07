@@ -142,6 +142,14 @@ class UTF8VectorTest extends FunSpec with Matchers {
       reader shouldBe a [UTF8Vector]
       reader.toSeq should equal (strs)
     }
+
+    it("should produce a UTF8ConstVector if all strings the same") {
+      val strs = Seq.fill(50)("apple").map(ZeroCopyUTF8String.apply)
+      val buffer = UTF8Vector.writeOptimizedBuffer(strs)
+      val reader = FiloVector[ZeroCopyUTF8String](buffer)
+      reader shouldBe a [UTF8ConstVector]
+      reader.toSeq should equal (strs)
+    }
   }
 
   describe("DictUTF8Vector") {

@@ -178,5 +178,14 @@ class IntBinaryVectorTest extends FunSpec with Matchers {
       val frozen = optimized.freeze()
       frozen.numBytes should equal (4 + 3)   // nbits=4, so only 3 extra bytes
     }
+
+    it("should be able to optimize constant ints to an IntConstVector") {
+      val builder = IntBinaryVector.appendingVector(100)
+      (0 to 4).foreach(n => builder.addData(999))
+      val buf = IntBinaryVector.optimize(builder).toFiloBuffer
+      val readVect = FiloVector[Int](buf)
+      readVect shouldBe a[IntConstVector]
+      readVect.toSeq should equal (Seq(999, 999, 999, 999, 999))
+    }
   }
 }

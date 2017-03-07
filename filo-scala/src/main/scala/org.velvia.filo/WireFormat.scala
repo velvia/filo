@@ -25,6 +25,7 @@ object WireFormat {
   val SUBTYPE_FIXEDMAXUTF8 = 0x03    // fixed max size per blob, length byte
   val SUBTYPE_DATETIME = 0x04
   val SUBTYPE_PRIMITIVE_NOMASK = 0x05
+  val SUBTYPE_REPEATED = 0x06        // vectors.ConstVector
 
   def vectorSubType(headerBytes: Int): Int = (headerBytes & 0x00ff00) >> 8
 

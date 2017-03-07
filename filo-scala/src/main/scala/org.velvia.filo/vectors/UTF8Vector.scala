@@ -26,6 +26,11 @@ object UTF8Vector {
     new FixedMaxUTF8VectorReader(base, off, len)
   }
 
+  def const(buffer: ByteBuffer): UTF8ConstVector = {
+    val (base, off, len) = UnsafeUtils.BOLfromBuffer(buffer)
+    new UTF8ConstVector(base, off, len)
+  }
+
   /**
    * Creates an appendable UTF8 string vector given the max capacity and max elements.
    * Be conservative.  The amount of space needed is at least 4 + 4 * #strings + the space needed
@@ -317,28 +322,34 @@ FixedMaxUTF8Vector(base, offset) with BinaryAppendableVector[ZeroCopyUTF8String]
   final def noNAs: Boolean = ???
 }
 
+class UTF8ConstVector(base: Any, offset: Long, numBytes: Int) extends
+ConstVector[ZeroCopyUTF8String](base, offset, numBytes) {
+  private final val _utf8 = new ZeroCopyUTF8String(base, dataOffset, numBytes - 4)
+  def apply(i: Int): ZeroCopyUTF8String = _utf8
+}
+
 class UTF8VectorBuilder extends VectorBuilderBase {
   type T = ZeroCopyUTF8String
 
   private val strings = new ArrayBuffer[ZeroCopyUTF8String]()
-  private var allNA: Boolean = true
+  private var numNAs: Int = 0
   private var numBytes: Int = 8      // Be conservative, dict encoding requires extra element
   private var maxStrLen: Int = 0
 
   final def addNA(): Unit = {
     strings += ZeroCopyUTF8String.NA
     numBytes += 4
+    numNAs += 1
   }
 
   final def addData(value: T): Unit = {
     strings += value
-    allNA = false
     numBytes += 4 + value.length +
                 (if (numBytes > 0xffff || value.length > 2047) 4 else 0)
     maxStrLen = Math.max(maxStrLen, value.length)
   }
 
-  final def isAllNA: Boolean = allNA
+  final def isAllNA: Boolean = numNAs == strings.length
   final def length: Int = strings.length
   final def reset(): Unit = { strings.clear }
 
@@ -358,7 +369,12 @@ class UTF8VectorBuilder extends VectorBuilderBase {
   def optimizedBuffer(spaceThreshold: Double = 0.6,
                       samplingRate: Double = 0.3): ByteBuffer =
     DictUTF8Vector.shouldMakeDict(strings, spaceThreshold, samplingRate, numBytes).map { dictInfo =>
-      DictUTF8Vector.makeBuffer(dictInfo)
+      if (numNAs == 0 && dictInfo.codeMap.size == 1) {
+        val (b, o, n) = ConstVector.make(length, strings.head.length) { case (base, off) =>
+          strings.head.copyTo(base, off)
+        }
+        new UTF8ConstVector(b, o, n).toFiloBuffer
+      } else { DictUTF8Vector.makeBuffer(dictInfo) }
     }.getOrElse {
       val fixedMaxSize = 1 + (maxStrLen + 1) * strings.length
       val maxSizeOpt = if (fixedMaxSize < numBytes) Some(Math.max(maxStrLen, 1)) else None

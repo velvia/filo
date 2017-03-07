@@ -34,6 +34,7 @@ object VectorReader {
     }
     override def makeMaskedBinaryVector(buf: ByteBuffer): FiloVector[Int] = IntBinaryVector.masked(buf)
     override def makeSimpleBinaryVector(buf: ByteBuffer): FiloVector[Int] = IntBinaryVector(buf)
+    override def makeConstBinaryVector(buf: ByteBuffer): FiloVector[Int] = IntBinaryVector.const(buf)
   }
 
   implicit object LongVectorReader extends PrimitiveVectorReader[Long] {
@@ -80,9 +81,10 @@ object VectorReader {
   implicit object UTF8VectorReader extends VectorReader[ZeroCopyUTF8String] {
     def makeVector(buf: ByteBuffer, headerBytes: Int): FiloVector[ZeroCopyUTF8String] = {
       (majorVectorType(headerBytes), vectorSubType(headerBytes)) match {
-        case (VECTORTYPE_BINSIMPLE, SUBTYPE_UTF8) => UTF8Vector(buf)
+        case (VECTORTYPE_BINSIMPLE, SUBTYPE_UTF8)     => UTF8Vector(buf)
         case (VECTORTYPE_BINSIMPLE, SUBTYPE_FIXEDMAXUTF8) => UTF8Vector.fixedMax(buf)
-        case (VECTORTYPE_BINDICT, SUBTYPE_UTF8)   => DictUTF8Vector(buf)
+        case (VECTORTYPE_BINDICT, SUBTYPE_UTF8)       => DictUTF8Vector(buf)
+        case (VECTORTYPE_BINSIMPLE, SUBTYPE_REPEATED) => UTF8Vector.const(buf)
         case (vectType, subType) => throw UnsupportedFiloType(vectType, subType)
       }
     }
@@ -163,6 +165,8 @@ class PrimitiveVectorReader[@specialized A: TypedReaderProvider] extends VectorR
         makeMaskedBinaryVector(buf)
       case (VECTORTYPE_BINSIMPLE, SUBTYPE_PRIMITIVE_NOMASK) =>
         makeSimpleBinaryVector(buf)
+      case (VECTORTYPE_BINSIMPLE, SUBTYPE_REPEATED) =>
+        makeConstBinaryVector(buf)
 
       case (vectType, subType) => throw UnsupportedFiloType(vectType, subType)
     }
@@ -171,4 +175,5 @@ class PrimitiveVectorReader[@specialized A: TypedReaderProvider] extends VectorR
   def makeDiffVector(dpv: DiffPrimitiveVector): FiloVector[A] = ???
   def makeMaskedBinaryVector(buf: ByteBuffer): FiloVector[A] = ???
   def makeSimpleBinaryVector(buf: ByteBuffer): FiloVector[A] = ???
+  def makeConstBinaryVector(buf: ByteBuffer): FiloVector[A] = ???
 }
