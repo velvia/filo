@@ -44,24 +44,28 @@ object IntBinaryVector {
                           signed: Boolean): IntAppendingVector = nbits match {
     case 32 => new IntAppendingVector(base, offset, maxBytes, nbits, signed) {
       final def addData(v: Int): Unit = {
+        checkOffset()
         UnsafeUtils.setInt(base, offset + numBytes, v)
-        bumpWriteOffset(4)
+        writeOffset += 4
       }
     }
     case 16 => new IntAppendingVector(base, offset, maxBytes, nbits, signed) {
       final def addData(v: Int): Unit = {
+        checkOffset()
         UnsafeUtils.setShort(base, offset + numBytes, v.toShort)
-        bumpWriteOffset(2)
+        writeOffset += 2
       }
     }
     case 8 => new IntAppendingVector(base, offset, maxBytes, nbits, signed) {
       final def addData(v: Int): Unit = {
+        checkOffset()
         UnsafeUtils.setByte(base, offset + numBytes, v.toByte)
-        bumpWriteOffset(1)
+        writeOffset += 1
       }
     }
     case 4 => new IntAppendingVector(base, offset, maxBytes, nbits, signed) {
       final def addData(v: Int): Unit = {
+        checkOffset()
         val origByte = UnsafeUtils.getByte(base, writeOffset)
         val newByte = (origByte | (v << bitShift)).toByte
         UnsafeUtils.setByte(base, writeOffset, newByte)
@@ -70,6 +74,7 @@ object IntBinaryVector {
     }
     case 2 => new IntAppendingVector(base, offset, maxBytes, nbits, signed) {
       final def addData(v: Int): Unit = {
+        checkOffset()
         val origByte = UnsafeUtils.getByte(base, writeOffset)
         val newByte = (origByte | (v << bitShift)).toByte
         UnsafeUtils.setByte(base, writeOffset, newByte)
@@ -271,6 +276,11 @@ BitmapMaskAppendableVector[Int](base, offset + 4L, maxElements) {
   final def addEmptyValue(): Unit = intVect.addNA()
   final def addDataValue(data: Int): Unit = intVect.addData(data)
 
+  final def reset(): Unit = {
+    intVect.reset()
+    resetMask()
+  }
+
   final def minMax: (Int, Int) = {
     var min = Int.MaxValue
     var max = Int.MinValue
@@ -282,6 +292,12 @@ BitmapMaskAppendableVector[Int](base, offset + 4L, maxElements) {
       }
     }
     (min, max)
+  }
+
+  override def newInstance(growFactor: Int = 2): BinaryAppendableVector[Int] = {
+    val (newbase, newoff, nBytes) = BinaryVector.allocWithMagicHeader(maxBytes * growFactor)
+    new MaskedIntAppendingVector(newbase, newoff, maxBytes * growFactor, maxElements * growFactor,
+                                 nbits, signed)
   }
 
   override final def addVector(other: BinaryVector[Int]): Unit = other match {

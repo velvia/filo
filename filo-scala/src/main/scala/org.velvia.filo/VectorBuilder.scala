@@ -124,7 +124,7 @@ object VectorBuilder {
   val defaultBuilderMap = Map[Class[_], () => VectorBuilderBase](
     Classes.Boolean      -> (() => new BoolVectorBuilder),
     Classes.Int          ->
-      (() => new vectors.IntVectorBuilder(vectors.IntBinaryVector.appendingVector(1000))),
+      (() => new vectors.IntVectorBuilder(vectors.IntBinaryVector.appendingVector(2500))),
     Classes.Long         -> (() => new LongVectorBuilder),
     Classes.Double       -> (() => new DoubleVectorBuilder),
     Classes.Float        -> (() => new FloatVectorBuilder),

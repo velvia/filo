@@ -42,6 +42,7 @@ class FastFiloRowReader(val parsers: Array[FiloVector[_]]) extends FiloRowReader
 // A RowReader that can safely be used in Seqs.  IE the rowNo is final and won't change.
 case class SafeFiloRowReader(reader: FiloRowReader, rowNo: Int) extends FiloRowReader {
   val parsers = reader.parsers
+  require(rowNo < parsers(0).length)
   def setRowNo(newRowNo: Int): Unit = {}
 
   final def notNull(columnNo: Int): Boolean = parsers(columnNo).isAvailable(rowNo)

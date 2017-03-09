@@ -146,6 +146,13 @@ UTF8Vector(base, offset) with BinaryAppendableVector[ZeroCopyUTF8String] {
   private var curFixedOffset = offset + 4
   var numBytes: Int = primaryMaxBytes
 
+  final def reset(): Unit = {
+    _len = 0
+    curFixedOffset = offset + 4
+    numBytes = primaryMaxBytes
+    UnsafeUtils.setInt(base, offset, 0)
+  }
+
   override def primaryBytes: Int = (curFixedOffset - offset).toInt
 
   private def bumpLen(): Unit = {
@@ -302,6 +309,8 @@ FixedMaxUTF8Vector(base, offset) with BinaryAppendableVector[ZeroCopyUTF8String]
 
   UnsafeUtils.setByte(base, offset, bytesPerItem.toByte)
   var numBytes = 1
+
+  final def reset(): Unit = { numBytes = 1 }
 
   final def addData(item: ZeroCopyUTF8String): Unit = {
     require(item.length < bytesPerItem)

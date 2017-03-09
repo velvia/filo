@@ -104,10 +104,6 @@ trait BinaryAppendableVector[@specialized A] extends BinaryVector[A] {
   def checkSize(need: Int, have: Int): Unit =
     if (!(need <= have)) throw VectorTooSmall(need, have)
 
-  private final val maxOffset = offset + maxBytes
-  final def checkOffset(newOffset: Long): Unit =
-    if (!(newOffset <= maxOffset)) throw VectorTooSmall((newOffset - offset).toInt, maxBytes)
-
   /**
    * Allocates a new instance of itself growing by factor growFactor
    */
@@ -179,6 +175,8 @@ trait BinaryAppendableVector[@specialized A] extends BinaryVector[A] {
     bb.order(java.nio.ByteOrder.LITTLE_ENDIAN)
     bb
   }
+
+  def reset(): Unit
 }
 
 case class GrowableVector[@specialized A](var inner: BinaryAppendableVector[A])
@@ -212,6 +210,7 @@ extends BinaryAppendableVector[A] {
   def vectMajorType: Int = inner.vectMajorType
   def vectSubType: Int = inner.vectSubType
   override def frozenSize: Int = inner.frozenSize
+  final def reset(): Unit = inner.reset()
 }
 
 /**
@@ -226,7 +225,7 @@ extends VectorBuilderBase {
   final def addData(value: T): Unit = inner.addData(value)
   final def isAllNA: Boolean = inner.isAllNA
   final def length: Int = inner.length
-  final def reset(): Unit = {}
+  final def reset(): Unit = inner.reset()
 
   val extractor: TypedFieldExtractor[A] = implicitly[TypedFieldExtractor[A]]
 }
@@ -252,19 +251,23 @@ extends BinaryAppendableVector[A] {
 
   def numBytes: Int = (writeOffset - offset).toInt + (if (bitShift != 0) 1 else 0)
 
-  final def bumpWriteOffset(delta: Int): Unit = {
-    writeOffset += delta
-    checkOffset(writeOffset)
-  }
+  private final val dangerZone = offset + maxBytes
+  final def checkOffset(): Unit =
+    if (writeOffset >= dangerZone) throw VectorTooSmall((writeOffset - offset).toInt, maxBytes)
 
   protected final def bumpBitShift(): Unit = {
     bitShift = (bitShift + nbits) % 8
-    if (bitShift == 0) bumpWriteOffset(1)
+    if (bitShift == 0) writeOffset += 1
     UnsafeUtils.setByte(base, offset + 3, bitShift.toByte)
   }
 
   final def isAllNA: Boolean = (length == 0)
   final def noNAs: Boolean = (length > 0)
+
+  def reset(): Unit = {
+    writeOffset = offset + 4
+    bitShift = 0
+  }
 }
 
 /**
@@ -292,6 +295,11 @@ extends BitmapMaskVector[A] with BinaryAppendableVector[A] {
       curMask = 1L
       curBitmapOffset += 8
     }
+  }
+
+  final def resetMask(): Unit = {
+    curBitmapOffset = 0
+    curMask = 1L
   }
 
   final def addNA(): Unit = {

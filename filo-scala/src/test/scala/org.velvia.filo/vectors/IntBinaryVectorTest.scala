@@ -122,9 +122,9 @@ class IntBinaryVectorTest extends FunSpec with Matchers {
       sc.toList should equal (List(101, 102, 103))
     }
 
-    it("should be able to append lots of ints") {
+    it("should be able to append lots of ints and grow vector") {
       val numInts = 1000
-      val builder = IntBinaryVector.appendingVector(numInts)
+      val builder = IntBinaryVector.appendingVector(numInts / 2)
       (0 until numInts).foreach(builder.addData)
       builder.length should equal (numInts)
       builder.isAllNA should be (false)

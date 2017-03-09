@@ -35,4 +35,5 @@ BinaryAppendableVector[A] {
   def addNA(): Unit = ???
   def isAllNA: Boolean = ???
   def noNAs: Boolean = ???
+  final def reset(): Unit = {}
 }
