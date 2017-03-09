@@ -20,10 +20,10 @@ class RowReaderTest extends FunSpec with Matchers {
              )
 
   val csvRows = Seq(
-    "Matthew Perry,18,1973-01-25",
-    "Michelle Pfeiffer,,1970-07-08",
+    "Matthew Perry,18,1973-01-25T00Z",
+    "Michelle Pfeiffer,,1970-07-08T00Z",
     "George C,59,",
-    "Rich Sherman,26,1991-10-12"
+    "Rich Sherman,26,1991-10-12T00Z"
   ).map(str => (str.split(',') :+ "").take(3))
 
   def readValues[T](r: FastFiloRowReader, len: Int)(f: FiloRowReader => T): Seq[T] = {
@@ -62,11 +62,11 @@ class RowReaderTest extends FunSpec with Matchers {
 
     reader.rowNo = 1
     reader.notNull(1) should equal (false)
-    reader.as[Timestamp](2) should equal (new Timestamp(DateTime.parse("1970-07-08").getMillis))
+    reader.as[Timestamp](2) should equal (new Timestamp(DateTime.parse("1970-07-08T00Z").getMillis))
   }
 
   it("should read longs from timestamp strings from ArrayStringRowReader") {
-    ArrayStringRowReader(csvRows.head).getLong(2) should equal (96796800000L)
+    ArrayStringRowReader(csvRows.head).getLong(2) should equal (96768000000L)
   }
 
   import RowReader._
