@@ -386,7 +386,7 @@ class UTF8VectorBuilder extends VectorBuilderBase {
       } else { DictUTF8Vector.makeBuffer(dictInfo) }
     }.getOrElse {
       val fixedMaxSize = 1 + (maxStrLen + 1) * strings.length
-      val maxSizeOpt = if (fixedMaxSize < numBytes) Some(Math.max(maxStrLen, 1)) else None
+      val maxSizeOpt = if (fixedMaxSize < numBytes && maxStrLen < 255) Some(Math.max(maxStrLen, 1)) else None
       UTF8Vector.appendingVector(strings, numBytes, maxSizeOpt).toFiloBuffer()
     }
 }

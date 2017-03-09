@@ -150,6 +150,16 @@ class UTF8VectorTest extends FunSpec with Matchers {
       reader shouldBe a [UTF8ConstVector]
       reader.toSeq should equal (strs)
     }
+
+    it("should not produce a FixedMaxUTF8Vector if longest str >= 255 chars") {
+      val str1 = ZeroCopyUTF8String("apple" * 51)
+      val str2 = ZeroCopyUTF8String("beach" * 52)
+      val strs = Seq(str1, str2, str2, str1, str1)
+      val buffer = UTF8Vector.writeOptimizedBuffer(strs)
+      val reader = FiloVector[ZeroCopyUTF8String](buffer)
+      reader shouldBe a [UTF8Vector]
+      reader.toSeq should equal (strs)
+    }
   }
 
   describe("DictUTF8Vector") {
