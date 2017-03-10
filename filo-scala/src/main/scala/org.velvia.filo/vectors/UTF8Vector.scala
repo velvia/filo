@@ -340,7 +340,8 @@ ConstVector[ZeroCopyUTF8String](base, offset, numBytes) {
 class UTF8VectorBuilder extends VectorBuilderBase {
   type T = ZeroCopyUTF8String
 
-  private val strings = new ArrayBuffer[ZeroCopyUTF8String]()
+  // Start with a larger initial size to avoid resizing penalty.
+  private val strings = new ArrayBuffer[ZeroCopyUTF8String](2000)
   private var numNAs: Int = 0
   private var numBytes: Int = 8      // Be conservative, dict encoding requires extra element
   private var maxStrLen: Int = 0
