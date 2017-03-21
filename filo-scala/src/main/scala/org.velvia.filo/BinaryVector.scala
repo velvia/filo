@@ -277,14 +277,17 @@ abstract class BitmapMaskAppendableVector[@specialized A](val base: Any,
                                                           val bitmapOffset: Long,
                                                           maxElements: Int)
 extends BitmapMaskVector[A] with BinaryAppendableVector[A] {
-  def addEmptyValue(): Unit
-  def addDataValue(data: A): Unit
+  // The base vector holding the actual values
+  def subVect: BinaryAppendableVector[A]
 
   val bitmapMaskBufferSize = BitmapMask.numBytesRequired(maxElements)
   var curBitmapOffset = 0
   var curMask: Long = 1L
 
   UnsafeUtils.unsafe.setMemory(base, bitmapOffset, bitmapMaskBufferSize, 0)
+
+  val subVectOffset = 4 + bitmapMaskBufferSize
+  UnsafeUtils.setInt(base, offset, subVectOffset)
 
   // The number of bytes taken up by the bitmap mask right now
   final def bitmapBytes: Int = curBitmapOffset + (if (curMask == 1L) 0 else 8)
@@ -302,16 +305,25 @@ extends BitmapMaskVector[A] with BinaryAppendableVector[A] {
     curMask = 1L
   }
 
+  final def reset(): Unit = {
+    subVect.reset()
+    resetMask()
+  }
+
+  override final def length: Int = subVect.length
+  final def numBytes: Int = 4 + bitmapMaskBufferSize + subVect.numBytes
+  final def apply(index: Int): A = subVect.apply(index)
+
   final def addNA(): Unit = {
     checkSize(curBitmapOffset, bitmapMaskBufferSize)
     val maskVal = UnsafeUtils.getLong(base, bitmapOffset + curBitmapOffset)
     UnsafeUtils.setLong(base, bitmapOffset + curBitmapOffset, maskVal | curMask)
-    addEmptyValue()
+    subVect.addNA()
     nextMaskIndex()
   }
 
   final def addData(value: A): Unit = {
-    addDataValue(value)
+    subVect.addData(value)
     nextMaskIndex()
   }
 
@@ -333,6 +345,16 @@ extends BitmapMaskVector[A] with BinaryAppendableVector[A] {
 
   override def primaryBytes: Int = (bitmapOffset - offset).toInt + bitmapBytes
   override def primaryMaxBytes: Int = (bitmapOffset - offset).toInt + bitmapMaskBufferSize
+
+  override final def addVector(other: BinaryVector[A]): Unit = other match {
+    // Optimized case: we are empty, so just copy over entire bitmap from other one
+    case v: BitmapMaskAppendableVector[A] if length == 0 =>
+      copyMaskFrom(v)
+      subVect.addVector(v.subVect)
+    // Non-optimized  :(
+    case v: BinaryVector[A] =>
+      super.addVector(other)
+  }
 
   final def copyMaskFrom(other: BitmapMaskAppendableVector[A]): Unit = {
     checkSize(other.bitmapBytes, this.bitmapMaskBufferSize)
