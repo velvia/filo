@@ -233,6 +233,8 @@ abstract class IntAppendingVector(base: Any,
                                   nbits: Short,
                                   signed: Boolean)
 extends PrimitiveAppendableVector[Int](base, offset, maxBytes, nbits, signed) {
+  override val vectSubType = WireFormat.SUBTYPE_INT_NOMASK
+
   final def addNA(): Unit = addData(0)
 
   private final val readVect = IntBinaryVector(base, offset, maxBytes)
@@ -262,7 +264,7 @@ class MaskedIntAppendingVector(base: Any,
 // First four bytes: offset to SimpleIntBinaryVector
 BitmapMaskAppendableVector[Int](base, offset + 4L, maxElements) {
   val vectMajorType = WireFormat.VECTORTYPE_BINSIMPLE
-  val vectSubType = WireFormat.SUBTYPE_PRIMITIVE
+  val vectSubType = WireFormat.SUBTYPE_INT
 
   val subVect = IntBinaryVector.appendingVectorNoNA(base, offset + subVectOffset,
                                                     maxBytes - subVectOffset,

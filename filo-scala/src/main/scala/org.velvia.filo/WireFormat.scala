@@ -26,6 +26,8 @@ object WireFormat {
   val SUBTYPE_DATETIME = 0x04
   val SUBTYPE_PRIMITIVE_NOMASK = 0x05
   val SUBTYPE_REPEATED = 0x06        // vectors.ConstVector
+  val SUBTYPE_INT = 0x07             // Int gets special type because Longs and Doubles may be encoded as Int
+  val SUBTYPE_INT_NOMASK = 0x08
 
   def vectorSubType(headerBytes: Int): Int = (headerBytes & 0x00ff00) >> 8
 

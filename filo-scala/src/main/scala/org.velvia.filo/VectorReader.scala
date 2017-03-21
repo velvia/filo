@@ -32,9 +32,12 @@ object VectorReader {
         final def apply(i: Int): Int = base + dataReader.read(i)
       }
     }
-    override def makeMaskedBinaryVector(buf: ByteBuffer): FiloVector[Int] = IntBinaryVector.masked(buf)
-    override def makeSimpleBinaryVector(buf: ByteBuffer): FiloVector[Int] = IntBinaryVector(buf)
-    override def makeConstBinaryVector(buf: ByteBuffer): FiloVector[Int] = IntBinaryVector.const(buf)
+
+    override val otherMaker: PartialFunction[(Int, Int, ByteBuffer), FiloVector[Int]] = {
+      case (VECTORTYPE_BINSIMPLE, SUBTYPE_INT, b)        => IntBinaryVector.masked(b)
+      case (VECTORTYPE_BINSIMPLE, SUBTYPE_INT_NOMASK, b) => IntBinaryVector(b)
+      case (VECTORTYPE_BINSIMPLE, SUBTYPE_REPEATED, b)   => IntBinaryVector.const(b)
+    }
   }
 
   implicit object LongVectorReader extends PrimitiveVectorReader[Long] {
@@ -47,10 +50,13 @@ object VectorReader {
   }
 
   implicit object DoubleVectorReader extends PrimitiveVectorReader[Double] {
-    override def makeMaskedBinaryVector(buf: ByteBuffer): FiloVector[Double] =
-      DoubleVector.fromMaskedIntBuf(buf)
-    override def makeSimpleBinaryVector(buf: ByteBuffer): FiloVector[Double] =
-      DoubleVector.fromIntBuf(buf)
+    override val otherMaker: PartialFunction[(Int, Int, ByteBuffer), FiloVector[Double]] = {
+      case (VECTORTYPE_BINSIMPLE, SUBTYPE_INT, b)        => DoubleVector.fromMaskedIntBuf(b)
+      case (VECTORTYPE_BINSIMPLE, SUBTYPE_INT_NOMASK, b) => DoubleVector.fromIntBuf(b)
+      case (VECTORTYPE_BINSIMPLE, SUBTYPE_REPEATED, b)   => DoubleVector.const(b)
+      case (VECTORTYPE_BINSIMPLE, SUBTYPE_PRIMITIVE, b)  => DoubleVector.masked(b)
+      case (VECTORTYPE_BINSIMPLE, SUBTYPE_PRIMITIVE_NOMASK, b) => DoubleVector(b)
+    }
   }
 
   implicit object FloatVectorReader extends PrimitiveVectorReader[Float]
@@ -141,39 +147,36 @@ class PrimitiveVectorReader[@specialized A: TypedReaderProvider] extends VectorR
   import VectorReader._
   import WireFormat._
 
-  def makeVector(buf: ByteBuffer, headerBytes: Int): FiloVector[A] = {
-    (majorVectorType(headerBytes), vectorSubType(headerBytes)) match {
-      case (VECTORTYPE_SIMPLE, SUBTYPE_PRIMITIVE) =>
-        val spv = SimplePrimitiveVector.getRootAsSimplePrimitiveVector(buf)
-        new SimplePrimitiveWrapper[A](spv) {
-          val typedReader = TypedBufferReader[A](reader, spv.info.nbits, spv.info.signed)
-          final def apply(i: Int): A = typedReader.read(i)
-        }
+  def makeVector(buf: ByteBuffer, headerBytes: Int): FiloVector[A] =
+    vectMaker((majorVectorType(headerBytes), vectorSubType(headerBytes), buf))
 
-      case (VECTORTYPE_CONST, SUBTYPE_PRIMITIVE) =>
-        val spv = SimplePrimitiveVector.getRootAsSimplePrimitiveVector(buf)
-        new SimplePrimitiveWrapper[A](spv) {
-          val typedReader = TypedBufferReader[A](reader, spv.info.nbits, spv.info.signed)
-          final def apply(i: Int): A = typedReader.read(0)
-        }
+  val fbbPrimitiveMaker: PartialFunction[(Int, Int, ByteBuffer), FiloVector[A]] = {
+    case (VECTORTYPE_SIMPLE, SUBTYPE_PRIMITIVE, buf) =>
+      val spv = SimplePrimitiveVector.getRootAsSimplePrimitiveVector(buf)
+      new SimplePrimitiveWrapper[A](spv) {
+        val typedReader = TypedBufferReader[A](reader, spv.info.nbits, spv.info.signed)
+        final def apply(i: Int): A = typedReader.read(i)
+      }
 
-      case (VECTORTYPE_DIFF, SUBTYPE_PRIMITIVE) =>
-        val dpv = DiffPrimitiveVector.getRootAsDiffPrimitiveVector(buf)
-        makeDiffVector(dpv)
+    case (VECTORTYPE_CONST, SUBTYPE_PRIMITIVE, buf) =>
+      val spv = SimplePrimitiveVector.getRootAsSimplePrimitiveVector(buf)
+      new SimplePrimitiveWrapper[A](spv) {
+        val typedReader = TypedBufferReader[A](reader, spv.info.nbits, spv.info.signed)
+        final def apply(i: Int): A = typedReader.read(0)
+      }
 
-      case (VECTORTYPE_BINSIMPLE, SUBTYPE_PRIMITIVE) =>
-        makeMaskedBinaryVector(buf)
-      case (VECTORTYPE_BINSIMPLE, SUBTYPE_PRIMITIVE_NOMASK) =>
-        makeSimpleBinaryVector(buf)
-      case (VECTORTYPE_BINSIMPLE, SUBTYPE_REPEATED) =>
-        makeConstBinaryVector(buf)
-
-      case (vectType, subType) => throw UnsupportedFiloType(vectType, subType)
-    }
+    case (VECTORTYPE_DIFF, SUBTYPE_PRIMITIVE, buf) =>
+      val dpv = DiffPrimitiveVector.getRootAsDiffPrimitiveVector(buf)
+      makeDiffVector(dpv)
   }
 
+  val defaultMaker: PartialFunction[(Int, Int, ByteBuffer), FiloVector[A]] = {
+    case (vectType, subType, _) => throw UnsupportedFiloType(vectType, subType)
+  }
+
+  def otherMaker: PartialFunction[(Int, Int, ByteBuffer), FiloVector[A]] = Map.empty
+
+  lazy val vectMaker = otherMaker orElse fbbPrimitiveMaker orElse defaultMaker
+
   def makeDiffVector(dpv: DiffPrimitiveVector): FiloVector[A] = ???
-  def makeMaskedBinaryVector(buf: ByteBuffer): FiloVector[A] = ???
-  def makeSimpleBinaryVector(buf: ByteBuffer): FiloVector[A] = ???
-  def makeConstBinaryVector(buf: ByteBuffer): FiloVector[A] = ???
 }
