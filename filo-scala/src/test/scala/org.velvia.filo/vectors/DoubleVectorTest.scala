@@ -80,11 +80,11 @@ class DoubleVectorTest extends FunSpec with Matchers {
       cb.addNA
       cb.addData(101)
       cb.addData(102)
-      cb.addData(103)
+      cb.addData(103.7)
       cb.addNA
       val buffer = DoubleVector.optimize(cb).toFiloBuffer()
       val readVect = FiloVector[Double](buffer)
-      readVect.toSeq should equal (Seq(101.0, 102.0, 103.0))
+      readVect.toSeq should equal (Seq(101.0, 102.0, 103.7))
     }
 
     it("should be able to optimize all integral vector to IntBinaryVector") {
@@ -101,11 +101,11 @@ class DoubleVectorTest extends FunSpec with Matchers {
 
     it("should be able to optimize constant ints to an IntConstVector") {
       val builder = DoubleVector.appendingVector(100)
-      (0 to 4).foreach(n => builder.addData(999))
+      (0 to 4).foreach(n => builder.addData(99.9))
       val buf = DoubleVector.optimize(builder).toFiloBuffer
       val readVect = FiloVector[Double](buf)
       readVect shouldBe a[DoubleConstVector]
-      readVect.toSeq should equal (Seq(999, 999, 999, 999, 999))
+      readVect.toSeq should equal (Seq(99.9, 99.9, 99.9, 99.9, 99.9))
     }
   }
 }

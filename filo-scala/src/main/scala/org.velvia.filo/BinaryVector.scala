@@ -180,8 +180,7 @@ trait BinaryAppendableVector[@specialized A] extends BinaryVector[A] {
 }
 
 case class GrowableVector[@specialized A](var inner: BinaryAppendableVector[A])
-extends BinaryAppendableVector[A] {
-  def addNA(): Unit = inner.addNA()
+extends AppendableVectorWrapper[A, A] {
   def addData(value: A): Unit = {
     try {
       inner.addData(value)
@@ -193,8 +192,14 @@ extends BinaryAppendableVector[A] {
         inner.addData(value)
     }
   }
+  def apply(index: Int): A = inner(index)
+}
 
-  final def apply(index: Int): A = inner.apply(index)
+trait AppendableVectorWrapper[A, I] extends BinaryAppendableVector[A] {
+  def inner: BinaryAppendableVector[I]
+
+  final def addNA(): Unit = inner.addNA()
+
   final def isAvailable(index: Int): Boolean = inner.isAvailable(index)
   final def base: Any = inner.base
   final def numBytes: Int = inner.numBytes
@@ -206,7 +211,8 @@ extends BinaryAppendableVector[A] {
   def noNAs: Boolean = inner.noNAs
   override def primaryBytes: Int = inner.primaryBytes
   override def primaryMaxBytes: Int = inner.primaryMaxBytes
-  override def finishCompaction(newBase: Any, newOff: Long): BinaryVector[A] = inner.finishCompaction(newBase, newOff)
+  override def finishCompaction(newBase: Any, newOff: Long): BinaryVector[A] =
+    inner.finishCompaction(newBase, newOff).asInstanceOf[BinaryVector[A]]
   def vectMajorType: Int = inner.vectMajorType
   def vectSubType: Int = inner.vectSubType
   override def frozenSize: Int = inner.frozenSize

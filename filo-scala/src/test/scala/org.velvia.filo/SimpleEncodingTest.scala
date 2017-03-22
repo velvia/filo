@@ -60,7 +60,7 @@ class SimpleEncodingTest extends FunSpec with Matchers {
       cb.addData(103.asInstanceOf[cb.T])
       cb.addNA
       val buf = cb.toFiloBuffer(SimpleEncoding)
-      checkVectorType(buf, WireFormat.VECTORTYPE_BINSIMPLE, WireFormat.SUBTYPE_PRIMITIVE)
+      checkVectorType(buf, WireFormat.VECTORTYPE_BINSIMPLE, WireFormat.SUBTYPE_INT)
       val sc = FiloVector[Int](buf)
 
       sc.length should equal (5)
@@ -89,7 +89,7 @@ class SimpleEncodingTest extends FunSpec with Matchers {
     it("should encode and decode back a Seq[Int]") {
       val orig = Seq(1, 2, -5, 101)
       val buf = VectorBuilder(orig).toFiloBuffer(SimpleEncoding)
-      checkVectorType(buf, WireFormat.VECTORTYPE_BINSIMPLE, WireFormat.SUBTYPE_PRIMITIVE_NOMASK)
+      checkVectorType(buf, WireFormat.VECTORTYPE_BINSIMPLE, WireFormat.SUBTYPE_INT_NOMASK)
       buf.capacity should equal (12)    // should encode to signed bytes
       val binarySeq = FiloVector[Int](buf)
 
@@ -102,7 +102,7 @@ class SimpleEncodingTest extends FunSpec with Matchers {
       for { len <- 4 to 7 } {
         val orig = (0 until len).toSeq
         val buf = VectorBuilder(orig).toFiloBuffer(SimpleEncoding)
-        checkVectorType(buf, WireFormat.VECTORTYPE_BINSIMPLE, WireFormat.SUBTYPE_PRIMITIVE_NOMASK)
+        checkVectorType(buf, WireFormat.VECTORTYPE_BINSIMPLE, WireFormat.SUBTYPE_INT_NOMASK)
         val binarySeq = FiloVector[Int](buf)
 
         binarySeq.length should equal (orig.length)
@@ -145,7 +145,7 @@ class SimpleEncodingTest extends FunSpec with Matchers {
     it("should optimize all-integer doubles to a binary int vector") {
       val orig = Seq(34.0, 1.0, 2.0, 5.0, 11.0)
       val buf = VectorBuilder(orig).toFiloBuffer
-      checkVectorType(buf, WireFormat.VECTORTYPE_BINSIMPLE, WireFormat.SUBTYPE_PRIMITIVE_NOMASK)
+      checkVectorType(buf, WireFormat.VECTORTYPE_BINSIMPLE, WireFormat.SUBTYPE_INT_NOMASK)
       buf.capacity should equal (4 + 4 + 5)
       val binarySeq = FiloVector[Double](buf)
 

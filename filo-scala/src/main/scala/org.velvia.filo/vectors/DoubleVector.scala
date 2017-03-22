@@ -57,8 +57,27 @@ object DoubleVector {
    *  3. If all values are filled (no NAs) then the bitmask is dropped
    */
   def optimize(vect: BinaryAppendableVector[Double]): BinaryAppendableVector[Double] = {
-    // TODO: optimization logic
-    vect
+    val vector = vect match {
+      case v: MaskedDoubleAppendingVector => v
+      case GrowableVector(inner: MaskedDoubleAppendingVector) => inner
+    }
+
+    val intWrapper = new IntDoubleWrapper(vector)
+
+    if (intWrapper.binConstVector) {
+      val (b, o, n) = ConstVector.make(vector.length, 8) { case (base, off) =>
+        UnsafeUtils.setDouble(base, off, vector(0))
+      }
+      new DoubleConstVector(b, o, n)
+    // Check if all integrals. use the wrapper to avoid an extra pass
+    } else if (intWrapper.allIntegrals) {
+      // After optimize, you are supposed to just call toFiloBuffer(), so this is fine
+      IntBinaryVector.optimize(intWrapper).asInstanceOf[BinaryAppendableVector[Double]]
+    } else if (vector.noNAs) {
+      vector.subVect
+    } else {
+      vect
+    }
   }
 }
 
@@ -108,7 +127,7 @@ extends PrimitiveAppendableVector[Double](base, offset, maxBytes, 64, true) {
 class MaskedDoubleAppendingVector(base: Any,
                                   val offset: Long,
                                   val maxBytes: Int,
-                                  maxElements: Int) extends
+                                  val maxElements: Int) extends
 // First four bytes: offset to DoubleBinaryVector
 BitmapMaskAppendableVector[Double](base, offset + 4L, maxElements) {
   val vectMajorType = WireFormat.VECTORTYPE_BINSIMPLE
@@ -138,6 +157,54 @@ BitmapMaskAppendableVector[Double](base, offset + 4L, maxElements) {
     // Don't forget to write the new subVectOffset
     UnsafeUtils.setInt(newBase, newOff, (bitmapOffset + bitmapBytes - offset).toInt)
     new MaskedDoubleBinaryVector(newBase, newOff, 4 + bitmapBytes + subVect.numBytes)
+  }
+}
+
+/**
+ * A wrapper around MaskedDoubleAppendingVector that returns Ints.  Designed to feed into IntVector
+ * optimizer so that an optimized int representation of double vector can be produced in one pass without
+ * appending to another Int based AppendingVector first.
+ * If it turns out the optimizer needs the original 32-bit vector, then it calls dataVect / getVect.
+ */
+class IntDoubleWrapper(val inner: MaskedDoubleAppendingVector) extends MaskedIntAppending
+with AppendableVectorWrapper[Int, Double] {
+  val (min, max) = inner.minMax
+  def minMax: (Int, Int) = (min.toInt, max.toInt)
+  val nbits: Short = 64
+
+  final def nonIntegrals: Int = {
+    var nonInts = 0
+    for { index <- 0 until length optimized } {
+      if (inner.isAvailable(index)) {
+        val data = inner.subVect.apply(index)
+        if (Math.rint(data) != data) nonInts += 1
+      }
+    }
+    nonInts
+  }
+
+  val allIntegrals: Boolean =
+    (nonIntegrals == 0) && min >= Int.MinValue.toDouble && max <= Int.MaxValue.toDouble
+
+  val binConstVector = (min == max) && inner.noNAs
+
+  final def addData(value: Int): Unit = inner.addData(value.toDouble)
+  final def apply(index: Int): Int = inner(index).toInt
+
+  def dataVect: BinaryAppendableVector[Int] = {
+    val vect = IntBinaryVector.appendingVectorNoNA(inner.length)
+    for { index <- 0 until length optimized } {
+      vect.addData(inner(index).toInt)
+    }
+    vect
+  }
+
+  override def getVect: BinaryAppendableVector[Int] = {
+    val vect = IntBinaryVector.appendingVector(inner.length)
+    for { index <- 0 until length optimized } {
+      if (inner.isAvailable(index)) vect.addData(inner(index).toInt) else vect.addNA()
+    }
+    vect
   }
 }
 
