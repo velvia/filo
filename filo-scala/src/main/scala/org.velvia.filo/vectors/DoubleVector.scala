@@ -56,12 +56,7 @@ object DoubleVector {
    *  2. If all values are integral, then IntBinaryVector is produced (and integer optimization done)
    *  3. If all values are filled (no NAs) then the bitmask is dropped
    */
-  def optimize(vect: BinaryAppendableVector[Double]): BinaryAppendableVector[Double] = {
-    val vector = vect match {
-      case v: MaskedDoubleAppendingVector => v
-      case GrowableVector(inner: MaskedDoubleAppendingVector) => inner
-    }
-
+  def optimize(vector: MaskedDoubleAppendingVector): BinaryAppendableVector[Double] = {
     val intWrapper = new IntDoubleWrapper(vector)
 
     if (intWrapper.binConstVector) {
@@ -76,7 +71,7 @@ object DoubleVector {
     } else if (vector.noNAs) {
       vector.subVect
     } else {
-      vect
+      vector
     }
   }
 }
@@ -147,6 +142,8 @@ BitmapMaskAppendableVector[Double](base, offset + 4L, maxElements) {
     }
     (min, max)
   }
+
+  override def optimize(): BinaryAppendableVector[Double] = DoubleVector.optimize(this)
 
   override def newInstance(growFactor: Int = 2): BinaryAppendableVector[Double] = {
     val (newbase, newoff, nBytes) = BinaryVector.allocWithMagicHeader(maxBytes * growFactor)

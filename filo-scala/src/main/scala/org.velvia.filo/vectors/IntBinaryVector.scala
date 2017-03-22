@@ -169,13 +169,7 @@ object IntBinaryVector {
    * The output is a BinaryAppendableVector with optimized nbits and without mask if appropriate,
    * but not frozen.  You need to call freeze / toFiloBuffer yourself.
    */
-  def optimize(vect: BinaryAppendableVector[Int]): BinaryAppendableVector[Int] = {
-    val vector: MaskedIntAppending = vect match {
-      case v: MaskedIntAppendingVector => v
-      case i: IntDoubleWrapper => i
-      case GrowableVector(inner: MaskedIntAppendingVector) => inner
-    }
-
+  def optimize(vector: MaskedIntAppending): BinaryAppendableVector[Int] = {
     // Get nbits and signed
     val (min, max) = vector.minMax
     val (nbits, signed) = minMaxToNbitsSigned(min, max)
@@ -291,6 +285,8 @@ BitmapMaskAppendableVector[Int](base, offset + 4L, maxElements) with MaskedIntAp
     }
     (min, max)
   }
+
+  override def optimize(): BinaryAppendableVector[Int] = IntBinaryVector.optimize(this)
 
   override def newInstance(growFactor: Int = 2): BinaryAppendableVector[Int] = {
     val (newbase, newoff, nBytes) = BinaryVector.allocWithMagicHeader(maxBytes * growFactor)

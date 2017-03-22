@@ -90,7 +90,7 @@ class IntBinaryVectorTest extends FunSpec with Matchers {
       builder.addNA
       builder.isAllNA should be (true)
       builder.noNAs should be (false)
-      val sc = IntBinaryVector.optimize(builder)
+      val sc = builder.optimize()
       sc.length should equal (1)
       sc(0)   // Just to make sure this does not throw an exception
       sc.isAvailable(0) should equal (false)
@@ -107,7 +107,7 @@ class IntBinaryVectorTest extends FunSpec with Matchers {
       cb.addNA
       cb.isAllNA should be (false)
       cb.noNAs should be (false)
-      val sc = IntBinaryVector.optimize(cb)
+      val sc = cb.optimize()
 
       sc.length should equal (5)
       sc.isAvailable(0) should equal (false)
@@ -162,7 +162,7 @@ class IntBinaryVectorTest extends FunSpec with Matchers {
       cb.addData(102)
       cb.addData(103)
       cb.addNA
-      val buffer = IntBinaryVector.optimize(cb).toFiloBuffer()
+      val buffer = cb.optimize().toFiloBuffer()
       val readVect = FiloVector[Int](buffer)
       readVect.toSeq should equal (Seq(101, 102, 103))
     }
@@ -170,7 +170,7 @@ class IntBinaryVectorTest extends FunSpec with Matchers {
     it("should be able to optimize a 32-bit appending vector to smaller size") {
       val builder = IntBinaryVector.appendingVector(100)
       (0 to 4).foreach(builder.addData)
-      val optimized = IntBinaryVector.optimize(builder)
+      val optimized = builder.optimize()
       optimized.length should equal (5)
       optimized.toSeq should equal (0 to 4)
       optimized.noNAs should equal (true)
@@ -182,7 +182,7 @@ class IntBinaryVectorTest extends FunSpec with Matchers {
     it("should be able to optimize constant ints to an IntConstVector") {
       val builder = IntBinaryVector.appendingVector(100)
       (0 to 4).foreach(n => builder.addData(999))
-      val buf = IntBinaryVector.optimize(builder).toFiloBuffer
+      val buf = builder.optimize().toFiloBuffer
       val readVect = FiloVector[Int](buf)
       readVect shouldBe a[IntConstVector]
       readVect.toSeq should equal (Seq(999, 999, 999, 999, 999))

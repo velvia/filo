@@ -72,7 +72,7 @@ BuilderEncoder[A] with MinMaxEncoder[A] {
           for { i <- 0 until d.length optimized } {
             if (d.naMask.contains(i)) intVect.addNA() else intVect.addData(d.data(i).toInt)
           }
-          vectors.IntBinaryVector.optimize(intVect).toFiloBuffer
+          intVect.optimize().toFiloBuffer
         case o: Any =>
           SimpleEncoders.toPrimitiveVector(builder.data, builder.naMask.result, min, max)
       }

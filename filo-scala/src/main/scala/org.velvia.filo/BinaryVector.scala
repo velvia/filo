@@ -53,7 +53,7 @@ Exception(s"Need $bytesNeeded bytes, but only have $bytesHave")
 
 /**
  * A BinaryVector that you can append to.  Has some notion of a maximum size (max # of items or bytes)
- * and the user is responsible for resizing if necessary.
+ * and the user is responsible for resizing if necessary (but see GrowableVector).
  *
  * Replaces the current VectorBuilder API, and greatly simplifies overall APIs in Filo.  AppendableVectors
  * are still FiloVectors so they could be used as they are being built.
@@ -176,6 +176,17 @@ trait BinaryAppendableVector[@specialized A] extends BinaryVector[A] {
     bb
   }
 
+  /**
+   * Run some heuristics over this vector and automatically determine and return a more optimized
+   * vector if possible.  The default implementation just returns itself, but for example an IntVector
+   * could return a vector with a smaller bit packed size given a max integer.
+   */
+  def optimize(): BinaryAppendableVector[A] = this
+
+  /**
+   * Clears the elements so one can start over.
+   * TODO: deprecate this once VectorBuilder is no longer used. Make world a less mutable place.
+   */
   def reset(): Unit
 }
 
@@ -217,6 +228,8 @@ trait AppendableVectorWrapper[A, I] extends BinaryAppendableVector[A] {
   def vectSubType: Int = inner.vectSubType
   override def frozenSize: Int = inner.frozenSize
   final def reset(): Unit = inner.reset()
+  override def optimize(): BinaryAppendableVector[A] =
+    inner.optimize().asInstanceOf[BinaryAppendableVector[A]]
 }
 
 /**
