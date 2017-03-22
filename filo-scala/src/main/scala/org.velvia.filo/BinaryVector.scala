@@ -280,6 +280,18 @@ extends BinaryAppendableVector[A] {
     UnsafeUtils.setByte(base, offset + 3, bitShift.toByte)
   }
 
+  final def isAvailable(index: Int): Boolean = true
+
+  override final def addVector(other: BinaryVector[A]): Unit = other match {
+    case v: BitmapMaskAppendableVector[A] =>
+      addVector(v.subVect)
+    case v: BinaryVector[A] =>
+      // Optimization: this vector does not support NAs so just add the data
+      require(numBytes + (nbits * v.length / 8) <= maxBytes,
+             s"Not enough space to add ${v.length} elems; nbits=$nbits; need ${maxBytes-numBytes} bytes")
+      for { i <- 0 until v.length optimized } { addData(v(i)) }
+  }
+
   final def isAllNA: Boolean = (length == 0)
   final def noNAs: Boolean = (length > 0)
 

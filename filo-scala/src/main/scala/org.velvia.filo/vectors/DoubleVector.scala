@@ -103,17 +103,6 @@ extends PrimitiveAppendableVector[Double](base, offset, maxBytes, 64, true) {
 
   private final val readVect = new DoubleBinaryVector(base, offset, maxBytes)
   final def apply(index: Int): Double = readVect.apply(index)
-  final def isAvailable(index: Int): Boolean = true
-
-  override final def addVector(other: BinaryVector[Double]): Unit = other match {
-    case v: MaskedDoubleAppendingVector =>
-      addVector(v.subVect)
-    case v: BinaryVector[Double] =>
-      // Optimization: this vector does not support NAs so just add the data
-      require(v.numBytes <= maxBytes,
-             s"Not enough space to add ${v.length} elems; need ${maxBytes-v.numBytes} bytes")
-      for { i <- 0 until v.length optimized } { addData(v(i)) }
-  }
 
   override def finishCompaction(newBase: Any, newOff: Long): BinaryVector[Double] =
     new DoubleBinaryVector(newBase, newOff, numBytes)
@@ -207,7 +196,8 @@ with AppendableVectorWrapper[Int, Double] {
 
 class DoubleConstVector(base: Any, offset: Long, numBytes: Int) extends
 ConstVector[Double](base, offset, numBytes) {
-  def apply(i: Int): Double = UnsafeUtils.getDouble(base, dataOffset)
+  private final val const = UnsafeUtils.getDouble(base, dataOffset)
+  final def apply(i: Int): Double = const
 }
 
 /**

@@ -7,7 +7,7 @@ import org.joda.time.DateTime
 
 import org.velvia.filo.codecs._
 import org.velvia.filo.vector._
-import org.velvia.filo.vectors.{IntBinaryVector, DoubleVector, UTF8Vector, DictUTF8Vector}
+import org.velvia.filo.vectors.{IntBinaryVector, DoubleVector, UTF8Vector, DictUTF8Vector, LongBinaryVector}
 
 case class UnsupportedFiloType(vectType: Int, subType: Int) extends
   Exception(s"Unsupported Filo vector type $vectType, subType $subType")
@@ -46,6 +46,14 @@ object VectorReader {
         val base = baseReader.readLong(0)
         final def apply(i: Int): Long = base + dataReader.read(i)
       }
+    }
+
+    override val otherMaker: PartialFunction[(Int, Int, ByteBuffer), FiloVector[Long]] = {
+      case (VECTORTYPE_BINSIMPLE, SUBTYPE_INT, b)        => LongBinaryVector.fromMaskedIntBuf(b)
+      case (VECTORTYPE_BINSIMPLE, SUBTYPE_INT_NOMASK, b) => LongBinaryVector.fromIntBuf(b)
+      case (VECTORTYPE_BINSIMPLE, SUBTYPE_REPEATED, b)   => LongBinaryVector.const(b)
+      case (VECTORTYPE_BINSIMPLE, SUBTYPE_PRIMITIVE, b)  => LongBinaryVector.masked(b)
+      case (VECTORTYPE_BINSIMPLE, SUBTYPE_PRIMITIVE_NOMASK, b) => LongBinaryVector(b)
     }
   }
 
