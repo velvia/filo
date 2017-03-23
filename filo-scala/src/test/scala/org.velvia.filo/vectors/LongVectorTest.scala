@@ -1,7 +1,7 @@
 package org.velvia.filo.vectors
 
 import org.scalatest.{FunSpec, Matchers}
-import org.velvia.filo.{FiloVector, GrowableVector, VectorTooSmall}
+import org.velvia.filo.{FiloVector, BinaryVector, GrowableVector, VectorTooSmall}
 
 class LongVectorTest extends FunSpec with Matchers {
   def maxPlus(i: Int): Long = Int.MaxValue.toLong + i
@@ -92,14 +92,29 @@ class LongVectorTest extends FunSpec with Matchers {
 
     it("should be able to optimize longs with fewer nbits to IntBinaryVector") {
       val builder = LongBinaryVector.appendingVector(100)
-      (0 to 4).map(_.toLong).foreach(builder.addData)
+      // Be sure to make this not an increasing sequence so it doesn't get delta-delta encoded
+      val orig = Seq(0, 2, 1, 4, 3)
+      orig.map(_.toLong).foreach(builder.addData)
       val optimized = builder.optimize()
       optimized.length should equal (5)
-      optimized.toSeq should equal (0 to 4)
+      optimized.toSeq should equal (orig)
       optimized.noNAs should equal (true)
 
       val frozen = optimized.freeze()
       frozen.numBytes should equal (4 + 3)   // nbits=4, so only 3 extra bytes
+    }
+
+    it("should automatically use Delta-Delta encoding for increasing numbers") {
+      val start = System.currentTimeMillis
+      val orig = (0 to 50).map(_ * 100 + start)
+      val builder = LongBinaryVector.appendingVector(100)
+      orig.foreach(builder.addData)
+      val buf = builder.optimize().toFiloBuffer()
+      val readVect = FiloVector[Long](buf)
+      readVect shouldBe a [DeltaDeltaVector]
+      readVect.toSeq should equal (orig)
+      // The # of bytes below is MUCH less than the original 51 * 8 + 4
+      readVect.asInstanceOf[BinaryVector[Long]].numBytes should equal (12 + 4 + 51/4 + 1)
     }
 
     it("should be able to optimize constant longs to an IntConstVector") {

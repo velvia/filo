@@ -12,6 +12,7 @@ object WireFormat {
   val VECTORTYPE_DIFF = 0x05
   val VECTORTYPE_BINSIMPLE = 0x06
   val VECTORTYPE_BINDICT = 0x07
+  val VECTORTYPE_DELTA2 = 0x08    // Delta-delta encoded
 
   def majorVectorType(headerBytes: Int): Int = headerBytes & 0x00ff
   def emptyVectorLen(headerBytes: Int): Int = {

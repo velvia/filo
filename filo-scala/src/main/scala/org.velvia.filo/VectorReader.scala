@@ -7,7 +7,7 @@ import org.joda.time.DateTime
 
 import org.velvia.filo.codecs._
 import org.velvia.filo.vector._
-import org.velvia.filo.vectors.{IntBinaryVector, DoubleVector, UTF8Vector, DictUTF8Vector, LongBinaryVector}
+import org.velvia.filo.{vectors => bv}
 
 case class UnsupportedFiloType(vectType: Int, subType: Int) extends
   Exception(s"Unsupported Filo vector type $vectType, subType $subType")
@@ -34,9 +34,9 @@ object VectorReader {
     }
 
     override val otherMaker: PartialFunction[(Int, Int, ByteBuffer), FiloVector[Int]] = {
-      case (VECTORTYPE_BINSIMPLE, SUBTYPE_INT, b)        => IntBinaryVector.masked(b)
-      case (VECTORTYPE_BINSIMPLE, SUBTYPE_INT_NOMASK, b) => IntBinaryVector(b)
-      case (VECTORTYPE_BINSIMPLE, SUBTYPE_REPEATED, b)   => IntBinaryVector.const(b)
+      case (VECTORTYPE_BINSIMPLE, SUBTYPE_INT, b)        => bv.IntBinaryVector.masked(b)
+      case (VECTORTYPE_BINSIMPLE, SUBTYPE_INT_NOMASK, b) => bv.IntBinaryVector(b)
+      case (VECTORTYPE_BINSIMPLE, SUBTYPE_REPEATED, b)   => bv.IntBinaryVector.const(b)
     }
   }
 
@@ -49,21 +49,22 @@ object VectorReader {
     }
 
     override val otherMaker: PartialFunction[(Int, Int, ByteBuffer), FiloVector[Long]] = {
-      case (VECTORTYPE_BINSIMPLE, SUBTYPE_INT, b)        => LongBinaryVector.fromMaskedIntBuf(b)
-      case (VECTORTYPE_BINSIMPLE, SUBTYPE_INT_NOMASK, b) => LongBinaryVector.fromIntBuf(b)
-      case (VECTORTYPE_BINSIMPLE, SUBTYPE_REPEATED, b)   => LongBinaryVector.const(b)
-      case (VECTORTYPE_BINSIMPLE, SUBTYPE_PRIMITIVE, b)  => LongBinaryVector.masked(b)
-      case (VECTORTYPE_BINSIMPLE, SUBTYPE_PRIMITIVE_NOMASK, b) => LongBinaryVector(b)
+      case (VECTORTYPE_BINSIMPLE, SUBTYPE_INT, b)        => bv.LongBinaryVector.fromMaskedIntBuf(b)
+      case (VECTORTYPE_BINSIMPLE, SUBTYPE_INT_NOMASK, b) => bv.LongBinaryVector.fromIntBuf(b)
+      case (VECTORTYPE_BINSIMPLE, SUBTYPE_REPEATED, b)   => bv.LongBinaryVector.const(b)
+      case (VECTORTYPE_DELTA2,    SUBTYPE_INT_NOMASK, b) => bv.DeltaDeltaVector(b)
+      case (VECTORTYPE_BINSIMPLE, SUBTYPE_PRIMITIVE, b)  => bv.LongBinaryVector.masked(b)
+      case (VECTORTYPE_BINSIMPLE, SUBTYPE_PRIMITIVE_NOMASK, b) => bv.LongBinaryVector(b)
     }
   }
 
   implicit object DoubleVectorReader extends PrimitiveVectorReader[Double] {
     override val otherMaker: PartialFunction[(Int, Int, ByteBuffer), FiloVector[Double]] = {
-      case (VECTORTYPE_BINSIMPLE, SUBTYPE_INT, b)        => DoubleVector.fromMaskedIntBuf(b)
-      case (VECTORTYPE_BINSIMPLE, SUBTYPE_INT_NOMASK, b) => DoubleVector.fromIntBuf(b)
-      case (VECTORTYPE_BINSIMPLE, SUBTYPE_REPEATED, b)   => DoubleVector.const(b)
-      case (VECTORTYPE_BINSIMPLE, SUBTYPE_PRIMITIVE, b)  => DoubleVector.masked(b)
-      case (VECTORTYPE_BINSIMPLE, SUBTYPE_PRIMITIVE_NOMASK, b) => DoubleVector(b)
+      case (VECTORTYPE_BINSIMPLE, SUBTYPE_INT, b)        => bv.DoubleVector.fromMaskedIntBuf(b)
+      case (VECTORTYPE_BINSIMPLE, SUBTYPE_INT_NOMASK, b) => bv.DoubleVector.fromIntBuf(b)
+      case (VECTORTYPE_BINSIMPLE, SUBTYPE_REPEATED, b)   => bv.DoubleVector.const(b)
+      case (VECTORTYPE_BINSIMPLE, SUBTYPE_PRIMITIVE, b)  => bv.DoubleVector.masked(b)
+      case (VECTORTYPE_BINSIMPLE, SUBTYPE_PRIMITIVE_NOMASK, b) => bv.DoubleVector(b)
     }
   }
 
@@ -95,10 +96,10 @@ object VectorReader {
   implicit object UTF8VectorReader extends VectorReader[ZeroCopyUTF8String] {
     def makeVector(buf: ByteBuffer, headerBytes: Int): FiloVector[ZeroCopyUTF8String] = {
       (majorVectorType(headerBytes), vectorSubType(headerBytes)) match {
-        case (VECTORTYPE_BINSIMPLE, SUBTYPE_UTF8)     => UTF8Vector(buf)
-        case (VECTORTYPE_BINSIMPLE, SUBTYPE_FIXEDMAXUTF8) => UTF8Vector.fixedMax(buf)
-        case (VECTORTYPE_BINDICT, SUBTYPE_UTF8)       => DictUTF8Vector(buf)
-        case (VECTORTYPE_BINSIMPLE, SUBTYPE_REPEATED) => UTF8Vector.const(buf)
+        case (VECTORTYPE_BINSIMPLE, SUBTYPE_UTF8)     => bv.UTF8Vector(buf)
+        case (VECTORTYPE_BINSIMPLE, SUBTYPE_FIXEDMAXUTF8) => bv.UTF8Vector.fixedMax(buf)
+        case (VECTORTYPE_BINDICT, SUBTYPE_UTF8)       => bv.DictUTF8Vector(buf)
+        case (VECTORTYPE_BINSIMPLE, SUBTYPE_REPEATED) => bv.UTF8Vector.const(buf)
         case (vectType, subType) => throw UnsupportedFiloType(vectType, subType)
       }
     }

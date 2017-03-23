@@ -53,8 +53,9 @@ object LongBinaryVector {
    * if all values are not NA.
    * Here are the things tried:
    *  1. If min and max are the same, then a LongConstVector is produced.
-   *  2. Check the nbits, if it can fit in smaller # of bits do that, possibly creating int vector
-   *  3. If all values are filled (no NAs) then the bitmask is dropped
+   *  2. If delta-delta encoding can be used (for timestamps, counters) do that.
+   *  3. Check the nbits, if it can fit in smaller # of bits do that, possibly creating int vector
+   *  4. If all values are filled (no NAs) then the bitmask is dropped
    */
   def optimize(vector: MaskedLongAppendingVector): BinaryAppendableVector[Long] = {
     val intWrapper = new IntLongWrapper(vector)
@@ -64,14 +65,21 @@ object LongBinaryVector {
         UnsafeUtils.setLong(base, off, vector(0))
       }
       new LongConstVector(b, o, n)
-    // Check if all integrals. use the wrapper to avoid an extra pass
-    } else if (intWrapper.fitInInt) {
-      // After optimize, you are supposed to just call toFiloBuffer(), so this is fine
-      IntBinaryVector.optimize(intWrapper).asInstanceOf[BinaryAppendableVector[Long]]
-    } else if (vector.noNAs) {
-      vector.subVect
     } else {
-      vector
+      // Try delta-delta encoding
+      DeltaDeltaVector.fromLongVector(vector, intWrapper.min, intWrapper.max)
+                      .map(_.optimize())
+                      .getOrElse {
+        // Check if all integrals. use the wrapper to avoid an extra pass
+        if (intWrapper.fitInInt) {
+          // After optimize, you are supposed to just call toFiloBuffer(), so this is fine
+          IntBinaryVector.optimize(intWrapper).asInstanceOf[BinaryAppendableVector[Long]]
+        } else if (vector.noNAs) {
+          vector.subVect
+        } else {
+          vector
+        }
+      }
     }
   }
 }
