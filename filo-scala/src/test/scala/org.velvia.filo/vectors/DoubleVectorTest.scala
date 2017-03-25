@@ -75,14 +75,14 @@ class DoubleVectorTest extends FunSpec with Matchers {
       frozen.toSeq should equal (0 to 4)
     }
 
-    it("should toFiloBuffer() and read back using FiloVector.apply") {
+    it("should toFiloBuffer and read back using FiloVector.apply") {
       val cb = DoubleVector.appendingVector(5)
       cb.addNA
       cb.addData(101)
       cb.addData(102)
       cb.addData(103.7)
       cb.addNA
-      val buffer = cb.optimize().toFiloBuffer()
+      val buffer = cb.optimize().toFiloBuffer
       val readVect = FiloVector[Double](buffer)
       readVect.toSeq should equal (Seq(101.0, 102.0, 103.7))
     }
@@ -93,10 +93,7 @@ class DoubleVectorTest extends FunSpec with Matchers {
       val optimized = builder.optimize()
       optimized.length should equal (5)
       optimized.toSeq should equal (0 to 4)
-      optimized.noNAs should equal (true)
-
-      val frozen = optimized.freeze()
-      frozen.numBytes should equal (4 + 3)   // nbits=4, so only 3 extra bytes
+      optimized.numBytes should equal (4 + 3)   // nbits=4, so only 3 extra bytes
     }
 
     it("should be able to optimize constant ints to an IntConstVector") {
@@ -106,6 +103,28 @@ class DoubleVectorTest extends FunSpec with Matchers {
       val readVect = FiloVector[Double](buf)
       readVect shouldBe a[DoubleConstVector]
       readVect.toSeq should equal (Seq(99.9, 99.9, 99.9, 99.9, 99.9))
+    }
+
+    it("should support resetting and optimizing AppendableVector multiple times") {
+      val cb = DoubleVector.appendingVector(5)
+      // Use large numbers on purpose so cannot optimize to ints or const
+      val orig = Seq(11.11E101, -2.2E-176, 1.77E88)
+      cb.addNA()
+      orig.foreach(cb.addData)
+      cb.toSeq should equal (orig)
+      val optimized = cb.optimize()
+      assert(optimized.base != cb.base)   // just compare instances
+      val readVect1 = FiloVector[Double](optimized.toFiloBuffer)
+      readVect1.toSeq should equal (orig)
+
+      // Now the optimize should not have damaged original vector
+      cb.toSeq should equal (orig)
+      cb.reset()
+      val orig2 = orig.map(_ * 2)
+      orig2.foreach(cb.addData)
+      val readVect2 = FiloVector[Double](cb.optimize().toFiloBuffer)
+      readVect2.toSeq should equal (orig2)
+      cb.toSeq should equal (orig2)
     }
   }
 }

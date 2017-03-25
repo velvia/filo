@@ -122,7 +122,7 @@ class EncodingPropertiesTest extends FunSpec with Matchers with PropertyChecks {
       // XXX: making size bigger for now so we can avoid growable buffers problem
       val utf8vect = vectors.UTF8Vector.appendingVector(500, 20480)
       s.foreach(utf8vect.add)
-      val buf = utf8vect.toFiloBuffer()
+      val buf = utf8vect.toFiloBuffer
       val binarySeq = FiloVector[ZeroCopyUTF8String](buf)
       binarySeq.length should equal (s.length)
       val elements = binarySeq.optionIterator.toSeq
@@ -143,7 +143,7 @@ class EncodingPropertiesTest extends FunSpec with Matchers with PropertyChecks {
 
   it("should match elements and length for Double vectors with missing/NA elements") {
     forAll(optionList[Double]) { s =>
-      val buf = VectorBuilder.fromOptions(s).toFiloBuffer()
+      val buf = VectorBuilder.fromOptions(s).toFiloBuffer
       val binarySeq = FiloVector[Double](buf)
 
       binarySeq.length should equal (s.length)

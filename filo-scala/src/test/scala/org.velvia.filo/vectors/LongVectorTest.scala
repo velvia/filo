@@ -77,14 +77,14 @@ class LongVectorTest extends FunSpec with Matchers {
       frozen.toSeq should equal (0 to 4)
     }
 
-    it("should toFiloBuffer() and read back using FiloVector.apply") {
+    it("should toFiloBuffer and read back using FiloVector.apply") {
       val cb = LongBinaryVector.appendingVector(5)
       cb.addNA
       cb.addData(101)
       cb.addData(102)
       cb.addData(maxPlus(104))
       cb.addNA
-      val buffer = cb.optimize().toFiloBuffer()
+      val buffer = cb.optimize().toFiloBuffer
       val readVect = FiloVector[Long](buffer)
       readVect shouldBe a[MaskedLongBinaryVector]
       readVect.toSeq should equal (Seq(101, 102, maxPlus(104)))
@@ -98,10 +98,7 @@ class LongVectorTest extends FunSpec with Matchers {
       val optimized = builder.optimize()
       optimized.length should equal (5)
       optimized.toSeq should equal (orig)
-      optimized.noNAs should equal (true)
-
-      val frozen = optimized.freeze()
-      frozen.numBytes should equal (4 + 3)   // nbits=4, so only 3 extra bytes
+      optimized.numBytes should equal (4 + 3)   // nbits=4, so only 3 extra bytes
     }
 
     it("should automatically use Delta-Delta encoding for increasing numbers") {
@@ -109,7 +106,7 @@ class LongVectorTest extends FunSpec with Matchers {
       val orig = (0 to 50).map(_ * 100 + start)
       val builder = LongBinaryVector.appendingVector(100)
       orig.foreach(builder.addData)
-      val buf = builder.optimize().toFiloBuffer()
+      val buf = builder.optimize().toFiloBuffer
       val readVect = FiloVector[Long](buf)
       readVect shouldBe a [DeltaDeltaVector]
       readVect.toSeq should equal (orig)
@@ -125,6 +122,28 @@ class LongVectorTest extends FunSpec with Matchers {
       val readVect = FiloVector[Long](buf)
       readVect shouldBe a[LongConstVector]
       readVect.toSeq should equal (Seq(longVal, longVal, longVal, longVal, longVal))
+    }
+
+    it("should support resetting and optimizing AppendableVector multiple times") {
+      val cb = LongBinaryVector.appendingVector(5)
+      // Use large numbers on purpose so cannot optimized to less than 32 bits
+      val orig = Seq(100000, 200001, 300002).map(Long.MaxValue - _)
+      cb.addNA()
+      orig.foreach(cb.addData)
+      cb.toSeq should equal (orig)
+      val optimized = cb.optimize()
+      assert(optimized.base != cb.base)   // just compare instances
+      val readVect1 = FiloVector[Long](optimized.toFiloBuffer)
+      readVect1.toSeq should equal (orig)
+
+      // Now the optimize should not have damaged original vector
+      cb.toSeq should equal (orig)
+      cb.reset()
+      val orig2 = orig.map(_ * 2)
+      orig2.foreach(cb.addData)
+      val readVect2 = FiloVector[Long](cb.optimize().toFiloBuffer)
+      readVect2.toSeq should equal (orig2)
+      cb.toSeq should equal (orig2)
     }
   }
 }

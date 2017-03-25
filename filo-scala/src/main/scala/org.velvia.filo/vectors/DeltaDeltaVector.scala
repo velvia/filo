@@ -79,6 +79,8 @@ object DeltaDeltaVector {
 }
 
 case class DeltaDeltaVector(base: Any, offset: Long, numBytes: Int) extends BinaryVector[Long] {
+  val vectMajorType = WireFormat.VECTORTYPE_DELTA2
+  val vectSubType = WireFormat.SUBTYPE_INT_NOMASK
   private final val initValue = UnsafeUtils.getLong(base, offset)
   private final val slope     = UnsafeUtils.getInt(base, offset + 8)
   private final val inner     = IntBinaryVector(base, offset + 12, numBytes - 12)
@@ -144,15 +146,18 @@ class DeltaDeltaAppendingVector(val base: Any,
     expected = initValue + length * slope
   }
 
-  override def optimize(): BinaryAppendableVector[Long] = {
+  def finishCompaction(newBase: Any, newOff: Long): BinaryVector[Long] =
+    DeltaDeltaVector(newBase, newOff, numBytes)
+
+  override def optimize(): BinaryVector[Long] = {
     // Just optimize nbits.
     val (newNbits, newSigned) = IntBinaryVector.minMaxToNbitsSigned(innerMin, innerMax)
     if (newNbits < nbits) {
       val newVect = DeltaDeltaVector.appendingVector(deltas.length, initValue, slope, newNbits, newSigned)
       newVect.addInnerVectors(deltas)
-      newVect
+      newVect.freeze(copy = false)    // already writing new vector
     } else {
-      this
+      freeze()
     }
   }
 }

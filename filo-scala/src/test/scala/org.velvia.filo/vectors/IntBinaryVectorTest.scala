@@ -68,7 +68,7 @@ class IntBinaryVectorTest extends FunSpec with Matchers {
       frozen.length should equal (3)
       frozen.toSeq should equal (Seq(2, 4, 3))
 
-      val intVect = FiloVector[Int](builder.toFiloBuffer())
+      val intVect = FiloVector[Int](builder.toFiloBuffer)
       intVect.toSeq should equal (Seq(2, 4, 3))
     }
 
@@ -79,7 +79,7 @@ class IntBinaryVectorTest extends FunSpec with Matchers {
       builder.toSeq should equal (orig)
       builder.numBytes should equal (6)
 
-      val intVect = FiloVector[Int](builder.toFiloBuffer())
+      val intVect = FiloVector[Int](builder.toFiloBuffer)
       intVect.toSeq should equal (orig)
     }
   }
@@ -91,6 +91,7 @@ class IntBinaryVectorTest extends FunSpec with Matchers {
       builder.isAllNA should be (true)
       builder.noNAs should be (false)
       val sc = builder.optimize()
+      sc.base should not equal (builder.base)
       sc.length should equal (1)
       sc(0)   // Just to make sure this does not throw an exception
       sc.isAvailable(0) should equal (false)
@@ -108,6 +109,7 @@ class IntBinaryVectorTest extends FunSpec with Matchers {
       cb.isAllNA should be (false)
       cb.noNAs should be (false)
       val sc = cb.optimize()
+      sc.base should not equal (cb.base)
 
       sc.length should equal (5)
       sc.isAvailable(0) should equal (false)
@@ -155,16 +157,38 @@ class IntBinaryVectorTest extends FunSpec with Matchers {
       frozen.toSeq should equal (0 to 4)
     }
 
-    it("should toFiloBuffer() and read back using FiloVector.apply") {
+    it("should toFiloBuffer and read back using FiloVector.apply") {
       val cb = IntBinaryVector.appendingVector(5)
       cb.addNA
       cb.addData(101)
       cb.addData(102)
       cb.addData(103)
       cb.addNA
-      val buffer = cb.optimize().toFiloBuffer()
+      val buffer = cb.optimize().toFiloBuffer
       val readVect = FiloVector[Int](buffer)
       readVect.toSeq should equal (Seq(101, 102, 103))
+    }
+
+    it("should support resetting and optimizing AppendableVector multiple times") {
+      val cb = IntBinaryVector.appendingVector(5)
+      // Use large numbers on purpose so cannot optimized to less than 32 bits
+      val orig = Seq(100000, 200001, 300002)
+      cb.addNA()
+      orig.foreach(cb.addData)
+      cb.toSeq should equal (orig)
+      val optimized = cb.optimize()
+      assert(optimized.base != cb.base)   // just compare instances
+      val readVect1 = FiloVector[Int](optimized.toFiloBuffer)
+      readVect1.toSeq should equal (orig)
+
+      // Now the optimize should not have damaged original vector
+      cb.toSeq should equal (orig)
+      cb.reset()
+      val orig2 = orig.map(_ * 2)
+      orig2.foreach(cb.addData)
+      val readVect2 = FiloVector[Int](cb.optimize().toFiloBuffer)
+      readVect2.toSeq should equal (orig2)
+      cb.toSeq should equal (orig2)
     }
 
     it("should be able to optimize a 32-bit appending vector to smaller size") {
@@ -173,10 +197,7 @@ class IntBinaryVectorTest extends FunSpec with Matchers {
       val optimized = builder.optimize()
       optimized.length should equal (5)
       optimized.toSeq should equal (0 to 4)
-      optimized.noNAs should equal (true)
-
-      val frozen = optimized.freeze()
-      frozen.numBytes should equal (4 + 3)   // nbits=4, so only 3 extra bytes
+      optimized.numBytes should equal (4 + 3)   // nbits=4, so only 3 extra bytes
     }
 
     it("should be able to optimize constant ints to an IntConstVector") {

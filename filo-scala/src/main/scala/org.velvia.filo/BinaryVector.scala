@@ -11,7 +11,41 @@ import RowReader._
  * An immutable, zero deserialization, minimal/zero allocation, insanely fast binary sequence.
  * TODO: maybe merge this and FiloVector, or just make FiloVector support ZeroCopyBinary.
  */
-trait BinaryVector[@specialized A] extends FiloVector[A] with ZeroCopyBinary
+trait BinaryVector[@specialized A] extends FiloVector[A] with ZeroCopyBinary {
+  /** The major and subtype bytes as defined in WireFormat that will go into the FiloVector header */
+  def vectMajorType: Int
+  def vectSubType: Int
+
+  /**
+   * Produce a FiloVector ByteBuffer with the four-byte header.  The resulting buffer can be used for I/O
+   * and fed to FiloVector.apply() to be parsed back.  For most BinaryVectors returned by optimize() and
+   * freeze(), a copy is not necessary so this is usually a very inexpensive operation.
+   */
+  def toFiloBuffer: ByteBuffer = {
+    // Check if magic word written to header location.  Then write header, and wrap all the bytes
+    // in a ByteBuffer and return that.  Assumes byte array properly allocated beforehand.
+    // If that doesn't work, copy bytes to new array first then write header.
+    val byteArray = if (base.isInstanceOf[Array[Byte]] && offset == (UnsafeUtils.arayOffset + 4) &&
+                        UnsafeUtils.getInt(base, offset - 4) == BinaryVector.HeaderMagic) {
+      UnsafeUtils.setInt(base, offset - 4, WireFormat(vectMajorType, vectSubType))
+      base.asInstanceOf[Array[Byte]]
+    } else {
+      val bytes = new Array[Byte](numBytes + 4)
+      copyTo(bytes, UnsafeUtils.arayOffset + 4)
+      UnsafeUtils.setInt(bytes, UnsafeUtils.arayOffset, WireFormat(vectMajorType, vectSubType))
+      bytes
+    }
+    val bb = ByteBuffer.wrap(byteArray)
+    bb.limit(numBytes + 4)
+    bb.order(java.nio.ByteOrder.LITTLE_ENDIAN)
+    bb
+  }
+}
+
+trait PrimitiveVector[@specialized A] extends BinaryVector[A] {
+  val vectMajorType = WireFormat.VECTORTYPE_BINSIMPLE
+  val vectSubType = WireFormat.SUBTYPE_PRIMITIVE_NOMASK
+}
 
 object BinaryVector {
   /** Used to reserve memory location "4-byte header will go here" */
@@ -44,6 +78,11 @@ trait BitmapMaskVector[A] extends BinaryVector[A] {
   }
 }
 
+trait PrimitiveMaskVector[@specialized A] extends BitmapMaskVector[A] {
+  val vectMajorType = WireFormat.VECTORTYPE_BINSIMPLE
+  val vectSubType = WireFormat.SUBTYPE_PRIMITIVE
+}
+
 object BitmapMask {
   def numBytesRequired(elements: Int): Int = ((elements + 63) / 64) * 8
 }
@@ -56,7 +95,19 @@ Exception(s"Need $bytesNeeded bytes, but only have $bytesHave")
  * and the user is responsible for resizing if necessary (but see GrowableVector).
  *
  * Replaces the current VectorBuilder API, and greatly simplifies overall APIs in Filo.  AppendableVectors
- * are still FiloVectors so they could be used as they are being built.
+ * are still FiloVectors so they could be read as they are being built -- and the new optimize() APIS
+ * take advantage of this for more immutable optimization.  This approach also lets a user select the
+ * amount of CPU to spend optimizing.
+ *
+ * ## Use Cases and LifeCycle
+ *
+ * The AppendingVector is mutable and can be reset().  THe idea is to call freeze() or optimize() to produce
+ * more compact forms for I/O or longer term storage, but all the forms are readable.  This gives the user
+ * great flexibility to choose compression tradeoffs.
+ *
+ * 1. Fill up one of the appendingVectors and query as is.  Use it like a Seq[].  No need to optimize at all.
+ * 2.  --> freeze() --> toFiloBuffer ...  compresses pointer/bitmask only
+ * 3.  --> optimize() --> toFiloBuffer ... aggressive compression using all techniques available
  */
 trait BinaryAppendableVector[@specialized A] extends BinaryVector[A] {
   import RowReader._
@@ -105,7 +156,8 @@ trait BinaryAppendableVector[@specialized A] extends BinaryVector[A] {
     if (!(need <= have)) throw VectorTooSmall(need, have)
 
   /**
-   * Allocates a new instance of itself growing by factor growFactor
+   * Allocates a new instance of itself growing by factor growFactor.
+   * Needs to be defined for any vectors that GrowableVector wraps.
    */
   def newInstance(growFactor: Int = 2): BinaryAppendableVector[A] = ???
 
@@ -117,8 +169,13 @@ trait BinaryAppendableVector[@specialized A] extends BinaryVector[A] {
     if (numBytes >= primaryMaxBytes) numBytes - (primaryMaxBytes - primaryBytes) else numBytes
 
   /**
-   * Compact the bytes of this BinaryVector into smallest space possible, and return an immutable
-   * version of this FiloVector that cannot be appended to.
+   * Compact this vector, removing unused space and return an immutable version of this FiloVector
+   * that cannot be appended to, by default in a new space using up minimum space.
+   *
+   * WARNING: by default this copies the bytes so that the current bytes are not modified.  Do not set
+   *          copy to false unless you know what you are doing, this may move bytes in place and cause
+   *          heartache and unusable AppendableVectors.
+   *
    * The default implementation assumes the following common case:
    *  - AppendableBinaryVectors usually are divided into a fixed primary area and a secondary variable
    *    area that can extend up to maxBytes.  Ex.: the area for bitmap masks or UTF8 offets/lengths.
@@ -130,7 +187,16 @@ trait BinaryAppendableVector[@specialized A] extends BinaryVector[A] {
    * @param newBaseOffset optionally, compact not in place but to a new location.  If left as None,
    *                      any compaction will be done "in-place" in the same buffer.
    */
-  def freeze(newBaseOffset: Option[(Any, Long)] = None): BinaryVector[A] =
+  def freeze(copy: Boolean = true): BinaryVector[A] = {
+    if (copy) {
+      val (base, off, _) = BinaryVector.allocWithMagicHeader(frozenSize)
+      freeze(Some((base, off)))
+    } else {
+      freeze(None)
+    }
+  }
+
+  def freeze(newBaseOffset: Option[(Any, Long)]): BinaryVector[A] =
     if (newBaseOffset.isEmpty && numBytes == frozenSize) { this.asInstanceOf[BinaryVector[A]] }
     else {
       val (newBase, newOffset) = newBaseOffset.getOrElse((base, offset))
@@ -146,46 +212,19 @@ trait BinaryAppendableVector[@specialized A] extends BinaryVector[A] {
   def primaryMaxBytes: Int = maxBytes
 
   // Does any necessary metadata adjustments and instantiates immutable BinaryVector
-  def finishCompaction(newBase: Any, newOff: Long): BinaryVector[A] = ???
-
-  /** The major and subtype bytes as defined in WireFormat that will go into the FiloVector header */
-  def vectMajorType: Int
-  def vectSubType: Int
-
-  /**
-   * Produce a FiloVector with the four-byte header.   Includes "freeze" action.
-   */
-  def toFiloBuffer(): ByteBuffer = {
-    val frozenVect = freeze()
-    // Check if magic word written to header location.  Then write header, and wrap all the bytes
-    // in a ByteBuffer and return that.  Assumes byte array properly allocated beforehand.
-    // If that doesn't work, copy bytes to new array first then write header.
-    val byteArray = if (base.isInstanceOf[Array[Byte]] && offset == (UnsafeUtils.arayOffset + 4) &&
-                        UnsafeUtils.getInt(base, offset - 4) == BinaryVector.HeaderMagic) {
-      UnsafeUtils.setInt(base, offset - 4, WireFormat(vectMajorType, vectSubType))
-      base.asInstanceOf[Array[Byte]]
-    } else {
-      val bytes = new Array[Byte](frozenVect.numBytes + 4)
-      frozenVect.copyTo(bytes, UnsafeUtils.arayOffset + 4)
-      UnsafeUtils.setInt(bytes, UnsafeUtils.arayOffset, WireFormat(vectMajorType, vectSubType))
-      bytes
-    }
-    val bb = ByteBuffer.wrap(byteArray)
-    bb.limit(frozenVect.numBytes + 4)
-    bb.order(java.nio.ByteOrder.LITTLE_ENDIAN)
-    bb
-  }
+  def finishCompaction(newBase: Any, newOff: Long): BinaryVector[A]
 
   /**
    * Run some heuristics over this vector and automatically determine and return a more optimized
-   * vector if possible.  The default implementation just returns itself, but for example an IntVector
-   * could return a vector with a smaller bit packed size given a max integer.
+   * vector if possible.  The default implementation just does freeze(), but for example
+   * an IntVector could return a vector with a smaller bit packed size given a max integer.
+   * This always produces a new, frozen copy and takes more CPU than freeze() but can result in dramatically
+   * smaller vectors using advanced techniques such as delta-delta or dictionary encoding.
    */
-  def optimize(): BinaryAppendableVector[A] = this
+  def optimize(): BinaryVector[A] = freeze()
 
   /**
    * Clears the elements so one can start over.
-   * TODO: deprecate this once VectorBuilder is no longer used. Make world a less mutable place.
    */
   def reset(): Unit
 }
@@ -222,14 +261,13 @@ trait AppendableVectorWrapper[A, I] extends BinaryAppendableVector[A] {
   def noNAs: Boolean = inner.noNAs
   override def primaryBytes: Int = inner.primaryBytes
   override def primaryMaxBytes: Int = inner.primaryMaxBytes
-  override def finishCompaction(newBase: Any, newOff: Long): BinaryVector[A] =
-    inner.finishCompaction(newBase, newOff).asInstanceOf[BinaryVector[A]]
   def vectMajorType: Int = inner.vectMajorType
   def vectSubType: Int = inner.vectSubType
+  override def finishCompaction(newBase: Any, newOff: Long): BinaryVector[A] =
+    inner.finishCompaction(newBase, newOff).asInstanceOf[BinaryVector[A]]
   override def frozenSize: Int = inner.frozenSize
   final def reset(): Unit = inner.reset()
-  override def optimize(): BinaryAppendableVector[A] =
-    inner.optimize().asInstanceOf[BinaryAppendableVector[A]]
+  override def optimize(): BinaryVector[A] = inner.optimize().asInstanceOf[BinaryVector[A]]
 }
 
 /**
@@ -332,6 +370,7 @@ extends BitmapMaskVector[A] with BinaryAppendableVector[A] {
   }
 
   final def resetMask(): Unit = {
+    UnsafeUtils.unsafe.setMemory(base, bitmapOffset, bitmapMaskBufferSize, 0)
     curBitmapOffset = 0
     curMask = 1L
   }
