@@ -11,7 +11,7 @@ import RowReader._
  * An immutable, zero deserialization, minimal/zero allocation, insanely fast binary sequence.
  * TODO: maybe merge this and FiloVector, or just make FiloVector support ZeroCopyBinary.
  */
-trait BinaryVector[@specialized A] extends FiloVector[A] with ZeroCopyBinary {
+trait BinaryVector[@specialized(Int, Long, Double, Boolean) A] extends FiloVector[A] with ZeroCopyBinary {
   /** The major and subtype bytes as defined in WireFormat that will go into the FiloVector header */
   def vectMajorType: Int
   def vectSubType: Int
@@ -42,7 +42,7 @@ trait BinaryVector[@specialized A] extends FiloVector[A] with ZeroCopyBinary {
   }
 }
 
-trait PrimitiveVector[@specialized A] extends BinaryVector[A] {
+trait PrimitiveVector[@specialized(Int, Long, Double, Boolean) A] extends BinaryVector[A] {
   val vectMajorType = WireFormat.VECTORTYPE_BINSIMPLE
   val vectSubType = WireFormat.SUBTYPE_PRIMITIVE_NOMASK
 }
@@ -78,7 +78,7 @@ trait BitmapMaskVector[A] extends BinaryVector[A] {
   }
 }
 
-trait PrimitiveMaskVector[@specialized A] extends BitmapMaskVector[A] {
+trait PrimitiveMaskVector[@specialized(Int, Long, Double, Boolean) A] extends BitmapMaskVector[A] {
   val vectMajorType = WireFormat.VECTORTYPE_BINSIMPLE
   val vectSubType = WireFormat.SUBTYPE_PRIMITIVE
 }
@@ -109,7 +109,7 @@ Exception(s"Need $bytesNeeded bytes, but only have $bytesHave")
  * 2.  --> freeze() --> toFiloBuffer ...  compresses pointer/bitmask only
  * 3.  --> optimize() --> toFiloBuffer ... aggressive compression using all techniques available
  */
-trait BinaryAppendableVector[@specialized A] extends BinaryVector[A] {
+trait BinaryAppendableVector[@specialized(Int, Long, Double, Boolean) A] extends BinaryVector[A] {
   import RowReader._
 
   /** Max size that current buffer can grow to */
@@ -229,7 +229,7 @@ trait BinaryAppendableVector[@specialized A] extends BinaryVector[A] {
   def reset(): Unit
 }
 
-case class GrowableVector[@specialized A](var inner: BinaryAppendableVector[A])
+case class GrowableVector[@specialized(Int, Long, Double, Boolean) A](var inner: BinaryAppendableVector[A])
 extends AppendableVectorWrapper[A, A] {
   def addData(value: A): Unit = {
     try {
@@ -274,8 +274,8 @@ trait AppendableVectorWrapper[A, I] extends BinaryAppendableVector[A] {
  * Wrapper around a BinaryAppendableVector that fits the VectorBuilder APIs.
  * toFiloBuffer needs to be implemented for each specific type.
  */
-abstract class BinaryVectorBuilder[@specialized A: TypedFieldExtractor](inner: BinaryAppendableVector[A])
-extends VectorBuilderBase {
+abstract class BinaryVectorBuilder[@specialized(Int, Long, Double, Boolean) A: TypedFieldExtractor]
+  (inner: BinaryAppendableVector[A]) extends VectorBuilderBase {
   type T = A
 
   final def addNA(): Unit = inner.addNA()
@@ -291,11 +291,8 @@ extends VectorBuilderBase {
  * A BinaryAppendableVector for simple primitive types, ie where each element has a fixed length
  * and every element is available (there is no bitmap NA mask).
  */
-abstract class PrimitiveAppendableVector[@specialized A](val base: Any,
-                                                         val offset: Long,
-                                                         val maxBytes: Int,
-                                                         nbits: Short,
-                                                         signed: Boolean)
+abstract class PrimitiveAppendableVector[@specialized(Int, Long, Double, Boolean) A]
+  (val base: Any, val offset: Long, val maxBytes: Int, nbits: Short, signed: Boolean)
 extends BinaryAppendableVector[A] {
   val vectMajorType = WireFormat.VECTORTYPE_BINSIMPLE
   val vectSubType = WireFormat.SUBTYPE_PRIMITIVE_NOMASK
@@ -342,9 +339,8 @@ extends BinaryAppendableVector[A] {
 /**
  * Maintains a fast NA bitmap mask as we append elements
  */
-abstract class BitmapMaskAppendableVector[@specialized A](val base: Any,
-                                                          val bitmapOffset: Long,
-                                                          maxElements: Int)
+abstract class BitmapMaskAppendableVector[@specialized(Int, Long, Double, Boolean) A]
+  (val base: Any, val bitmapOffset: Long, maxElements: Int)
 extends BitmapMaskVector[A] with BinaryAppendableVector[A] {
   // The base vector holding the actual values
   def subVect: BinaryAppendableVector[A]
