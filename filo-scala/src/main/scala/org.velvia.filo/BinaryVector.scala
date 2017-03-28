@@ -121,12 +121,6 @@ trait BinaryAppendableVector[@specialized(Int, Long, Double, Boolean) A] extends
   /** Add a value of type T to the builder.  It will be marked as available. */
   def addData(value: A): Unit
 
-  /** Adds an element from a RowReader */
-  final def add(row: RowReader, colNo: Int)(implicit extractor: TypedFieldExtractor[A]): Unit = {
-    if (row.notNull(colNo)) { addData(extractor.getField(row, colNo)) }
-    else                    { addNA() }
-  }
-
   final def add(data: Option[A]): Unit = if (data.nonEmpty) addData(data.get) else addNA()
 
   /** Returns true if every element added is NA, or no elements have been added */
