@@ -69,22 +69,24 @@ object LongBinaryVector {
       // Try delta-delta encoding
       DeltaDeltaVector.fromLongVector(vector, intWrapper.min, intWrapper.max)
                       .map(_.optimize())
-                      .getOrElse {
-        // Check if all integrals. use the wrapper to avoid an extra pass
-        if (intWrapper.fitInInt) {
-          // After optimize, you are supposed to just call toFiloBuffer, so this is fine
-          IntBinaryVector.optimize(intWrapper).asInstanceOf[BinaryVector[Long]]
-        } else if (vector.noNAs) {
-          vector.subVect.freeze()
-        } else {
-          vector.freeze()
-        }
-      }
+                      .getOrElse(optimize2(intWrapper, vector))
+    }
+  }
+
+  private def optimize2(intWrapper: IntLongWrapper, vector: MaskedLongAppendingVector): BinaryVector[Long] = {
+    // Check if all integrals. use the wrapper to avoid an extra pass
+    if (intWrapper.fitInInt) {
+      // After optimize, you are supposed to just call toFiloBuffer, so this is fine
+      IntBinaryVector.optimize(intWrapper).asInstanceOf[BinaryVector[Long]]
+    } else if (vector.noNAs) {
+      vector.subVect.freeze()
+    } else {
+      vector.freeze()
     }
   }
 }
 
-case class LongBinaryVector(base: Any, offset: Long, numBytes: Int) extends PrimitiveVector[Long] {
+final case class LongBinaryVector(base: Any, offset: Long, numBytes: Int) extends PrimitiveVector[Long] {
   override val length: Int = (numBytes - 4) / 8
   final def isAvailable(index: Int): Boolean = true
   final def apply(index: Int): Long = UnsafeUtils.getLong(base, offset + 4 + index * 8)
@@ -160,7 +162,7 @@ BitmapMaskAppendableVector[Long](base, offset + 4L, maxElements) {
  * appending to another Int based AppendingVector first.
  * If it turns out the optimizer needs the original 32-bit vector, then it calls dataVect / getVect.
  */
-class IntLongWrapper(val inner: MaskedLongAppendingVector) extends MaskedIntAppending
+private[vectors] class IntLongWrapper(val inner: MaskedLongAppendingVector) extends MaskedIntAppending
 with AppendableVectorWrapper[Int, Long] {
   val (min, max) = inner.minMax
   def minMax: (Int, Int) = (min.toInt, max.toInt)

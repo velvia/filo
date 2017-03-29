@@ -25,15 +25,16 @@ trait BinaryVector[@specialized(Int, Long, Double, Boolean) A] extends FiloVecto
     // Check if magic word written to header location.  Then write header, and wrap all the bytes
     // in a ByteBuffer and return that.  Assumes byte array properly allocated beforehand.
     // If that doesn't work, copy bytes to new array first then write header.
-    val byteArray = if (base.isInstanceOf[Array[Byte]] && offset == (UnsafeUtils.arayOffset + 4) &&
-                        UnsafeUtils.getInt(base, offset - 4) == BinaryVector.HeaderMagic) {
-      UnsafeUtils.setInt(base, offset - 4, WireFormat(vectMajorType, vectSubType))
-      base.asInstanceOf[Array[Byte]]
-    } else {
-      val bytes = new Array[Byte](numBytes + 4)
-      copyTo(bytes, UnsafeUtils.arayOffset + 4)
-      UnsafeUtils.setInt(bytes, UnsafeUtils.arayOffset, WireFormat(vectMajorType, vectSubType))
-      bytes
+    val byteArray = base match {
+      case a: Array[Byte] if offset == (UnsafeUtils.arayOffset + 4) &&
+                             UnsafeUtils.getInt(base, offset - 4) == BinaryVector.HeaderMagic =>
+        UnsafeUtils.setInt(base, offset - 4, WireFormat(vectMajorType, vectSubType))
+        a
+      case x: Any =>
+        val bytes = new Array[Byte](numBytes + 4)
+        copyTo(bytes, UnsafeUtils.arayOffset + 4)
+        UnsafeUtils.setInt(bytes, UnsafeUtils.arayOffset, WireFormat(vectMajorType, vectSubType))
+        bytes
     }
     val bb = ByteBuffer.wrap(byteArray)
     bb.limit(numBytes + 4)
@@ -98,6 +99,9 @@ Exception(s"Need $bytesNeeded bytes, but only have $bytesHave")
  * are still FiloVectors so they could be read as they are being built -- and the new optimize() APIS
  * take advantage of this for more immutable optimization.  This approach also lets a user select the
  * amount of CPU to spend optimizing.
+ *
+ * NOTE: AppendableVectors are not designed to be multi-thread safe for writing.  They are designed for
+ * high single-thread performance.
  *
  * ## Use Cases and LifeCycle
  *

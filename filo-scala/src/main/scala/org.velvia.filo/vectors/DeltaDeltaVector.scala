@@ -78,7 +78,7 @@ object DeltaDeltaVector {
   }
 }
 
-case class DeltaDeltaVector(base: Any, offset: Long, numBytes: Int) extends BinaryVector[Long] {
+final case class DeltaDeltaVector(base: Any, offset: Long, numBytes: Int) extends BinaryVector[Long] {
   val vectMajorType = WireFormat.VECTORTYPE_DELTA2
   val vectSubType = WireFormat.SUBTYPE_INT_NOMASK
   private final val initValue = UnsafeUtils.getLong(base, offset)
@@ -90,9 +90,10 @@ case class DeltaDeltaVector(base: Any, offset: Long, numBytes: Int) extends Bina
   final def apply(index: Int): Long = initValue + slope * index + inner(index)
 }
 
-case class DeltaTooLarge(value: Long, expected: Long) extends
+final case class DeltaTooLarge(value: Long, expected: Long) extends
   IllegalArgumentException(s"Delta too large for value $value")
 
+// TODO: validate args, esp base offset etc, somehow.  Need to think about this for the many diff classes.
 class DeltaDeltaAppendingVector(val base: Any,
                                 val offset: Long,
                                 val maxBytes: Int,

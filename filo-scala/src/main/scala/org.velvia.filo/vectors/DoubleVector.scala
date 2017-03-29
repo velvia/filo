@@ -76,7 +76,7 @@ object DoubleVector {
   }
 }
 
-case class DoubleBinaryVector(base: Any, offset: Long, numBytes: Int) extends PrimitiveVector[Double] {
+final case class DoubleBinaryVector(base: Any, offset: Long, numBytes: Int) extends PrimitiveVector[Double] {
   override val length: Int = (numBytes - 4) / 8
   final def isAvailable(index: Int): Boolean = true
   final def apply(index: Int): Double = UnsafeUtils.getDouble(base, offset + 4 + index * 8)
@@ -152,7 +152,7 @@ BitmapMaskAppendableVector[Double](base, offset + 4L, maxElements) {
  * appending to another Int based AppendingVector first.
  * If it turns out the optimizer needs the original 32-bit vector, then it calls dataVect / getVect.
  */
-class IntDoubleWrapper(val inner: MaskedDoubleAppendingVector) extends MaskedIntAppending
+private[vectors] class IntDoubleWrapper(val inner: MaskedDoubleAppendingVector) extends MaskedIntAppending
 with AppendableVectorWrapper[Int, Double] {
   val (min, max) = inner.minMax
   def minMax: (Int, Int) = (min.toInt, max.toInt)
