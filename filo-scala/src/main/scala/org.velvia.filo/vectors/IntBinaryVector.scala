@@ -166,19 +166,12 @@ object IntBinaryVector {
   /**
    * Produces a smaller BinaryVector if possible given combination of minimal nbits as well as
    * if all values are not NA.
-   * The output is a BinaryAppendableVector with optimized nbits and without mask if appropriate,
-   * but not frozen.  You need to call freeze / toFiloBuffer yourself.
+   * The output is a frozen BinaryVector with optimized nbits and without mask if appropriate.
    */
-  def optimize(vect: BinaryAppendableVector[Int]): BinaryAppendableVector[Int] = {
-    val vector = vect match {
-      case v: MaskedIntAppendingVector => v
-      case GrowableVector(inner: MaskedIntAppendingVector) => inner
-    }
-
+  def optimize(vector: MaskedIntAppending): BinaryVector[Int] = {
     // Get nbits and signed
     val (min, max) = vector.minMax
     val (nbits, signed) = minMaxToNbitsSigned(min, max)
-
 
     if (vector.noNAs) {
       if (min == max) {
@@ -187,20 +180,20 @@ object IntBinaryVector {
         }
         new IntConstVector(b, o, n)
       // No NAs?  Use just the PrimitiveAppendableVector
-      } else if (nbits == vector.nbits) { vector.intVect }
+      } else if (nbits == vector.nbits) { vector.dataVect }
       else {
         val newVect = IntBinaryVector.appendingVectorNoNA(vector.length, nbits, signed)
         newVect.addVector(vector)
-        newVect
+        newVect.freeze(copy = false)  // we're already creating a new copy
       }
     } else {
       // Some NAs and same number of bits?  Just keep NA mask
-      if (nbits == vector.nbits) { vector }
+      if (nbits == vector.nbits) { vector.getVect }
       // Some NAs and different number of bits?  Create new vector and copy data over
       else {
         val newVect = IntBinaryVector.appendingVector(vector.length, nbits, signed)
         newVect.addVector(vector)
-        newVect
+        newVect.freeze(copy = false)
       }
     }
   }
@@ -209,7 +202,9 @@ object IntBinaryVector {
 abstract class IntBinaryVector(val base: Any,
                                val offset: Long,
                                val numBytes: Int,
-                               nbits: Short) extends BinaryVector[Int] {
+                               nbits: Short) extends PrimitiveVector[Int] {
+  override val vectSubType = WireFormat.SUBTYPE_INT_NOMASK
+
   final val bufOffset = offset + 4
   private final val bitShift = UnsafeUtils.getByte(base, offset + 3) & 0x07
   // This length method works assuming nbits is divisible into 32
@@ -217,7 +212,10 @@ abstract class IntBinaryVector(val base: Any,
   final def isAvailable(index: Int): Boolean = true
 }
 
-class MaskedIntBinaryVector(val base: Any, val offset: Long, val numBytes: Int) extends BitmapMaskVector[Int] {
+class MaskedIntBinaryVector(val base: Any, val offset: Long, val numBytes: Int) extends
+PrimitiveMaskVector[Int] {
+  override val vectSubType = WireFormat.SUBTYPE_INT
+
   // First four bytes: offset to SimpleIntBinaryVector
   val bitmapOffset = offset + 4L
   val intVectOffset = UnsafeUtils.getInt(base, offset)
@@ -233,24 +231,21 @@ abstract class IntAppendingVector(base: Any,
                                   nbits: Short,
                                   signed: Boolean)
 extends PrimitiveAppendableVector[Int](base, offset, maxBytes, nbits, signed) {
-  final def addNA(): Unit = addData(0)
+  override val vectSubType = WireFormat.SUBTYPE_INT_NOMASK
 
+  final def addNA(): Unit = addData(0)
   private final val readVect = IntBinaryVector(base, offset, maxBytes)
   final def apply(index: Int): Int = readVect.apply(index)
-  final def isAvailable(index: Int): Boolean = true
-
-  override final def addVector(other: BinaryVector[Int]): Unit = other match {
-    case v: MaskedIntAppendingVector =>
-      addVector(v.intVect)
-    case v: BinaryVector[Int] =>
-      // Optimization: this vector does not support NAs so just add the data
-      require(numBytes + (nbits * v.length / 8) <= maxBytes,
-             s"Not enough space to add ${v.length} elems; nbits=$nbits; need ${maxBytes-numBytes} bytes")
-      for { i <- 0 until v.length optimized } { addData(v(i)) }
-  }
 
   override def finishCompaction(newBase: Any, newOff: Long): BinaryVector[Int] =
     IntBinaryVector(newBase, newOff, numBytes)
+}
+
+trait MaskedIntAppending extends BinaryAppendableVector[Int] {
+  def minMax: (Int, Int)
+  def nbits: Short
+  def dataVect: BinaryVector[Int]
+  def getVect: BinaryVector[Int] = freeze()
 }
 
 class MaskedIntAppendingVector(base: Any,
@@ -260,33 +255,22 @@ class MaskedIntAppendingVector(base: Any,
                                val nbits: Short,
                                signed: Boolean) extends
 // First four bytes: offset to SimpleIntBinaryVector
-BitmapMaskAppendableVector[Int](base, offset + 4L, maxElements) {
+BitmapMaskAppendableVector[Int](base, offset + 4L, maxElements) with MaskedIntAppending {
   val vectMajorType = WireFormat.VECTORTYPE_BINSIMPLE
-  val vectSubType = WireFormat.SUBTYPE_PRIMITIVE
+  val vectSubType = WireFormat.SUBTYPE_INT
 
-  val intVectOffset = 4 + bitmapMaskBufferSize
-  UnsafeUtils.setInt(base, offset, intVectOffset)
-  val intVect = IntBinaryVector.appendingVectorNoNA(base, offset + intVectOffset,
-                                                    maxBytes - intVectOffset,
+  val subVect = IntBinaryVector.appendingVectorNoNA(base, offset + subVectOffset,
+                                                    maxBytes - subVectOffset,
                                                     nbits, signed)
 
-  override final def length: Int = intVect.length
-  final def numBytes: Int = 4 + bitmapMaskBufferSize + intVect.numBytes
-  final def apply(index: Int): Int = intVect.apply(index)
-  final def addEmptyValue(): Unit = intVect.addNA()
-  final def addDataValue(data: Int): Unit = intVect.addData(data)
-
-  final def reset(): Unit = {
-    intVect.reset()
-    resetMask()
-  }
+  def dataVect: BinaryVector[Int] = subVect.freeze()
 
   final def minMax: (Int, Int) = {
     var min = Int.MaxValue
     var max = Int.MinValue
     for { index <- 0 until length optimized } {
       if (isAvailable(index)) {
-        val data = intVect.apply(index)
+        val data = subVect.apply(index)
         if (data < min) min = data
         if (data > max) max = data
       }
@@ -294,26 +278,18 @@ BitmapMaskAppendableVector[Int](base, offset + 4L, maxElements) {
     (min, max)
   }
 
+  override def optimize(): BinaryVector[Int] = IntBinaryVector.optimize(this)
+
   override def newInstance(growFactor: Int = 2): BinaryAppendableVector[Int] = {
     val (newbase, newoff, nBytes) = BinaryVector.allocWithMagicHeader(maxBytes * growFactor)
     new MaskedIntAppendingVector(newbase, newoff, maxBytes * growFactor, maxElements * growFactor,
                                  nbits, signed)
   }
 
-  override final def addVector(other: BinaryVector[Int]): Unit = other match {
-    // Optimized case: we are empty, so just copy over entire bitmap from other one
-    case v: MaskedIntAppendingVector if length == 0 =>
-      copyMaskFrom(v)
-      intVect.addVector(v.intVect)
-    // Non-optimized  :(
-    case v: BinaryVector[Int] =>
-      super.addVector(other)
-  }
-
-  override def finishCompaction(newBase: Any, newOff: Long): BinaryVector[Int] = {
-    // Don't forget to write the new intVectOffset
+  def finishCompaction(newBase: Any, newOff: Long): BinaryVector[Int] = {
+    // Don't forget to write the new subVectOffset
     UnsafeUtils.setInt(newBase, newOff, (bitmapOffset + bitmapBytes - offset).toInt)
-    new MaskedIntBinaryVector(newBase, newOff, 4 + bitmapBytes + intVect.numBytes)
+    new MaskedIntBinaryVector(newBase, newOff, 4 + bitmapBytes + subVect.numBytes)
   }
 }
 

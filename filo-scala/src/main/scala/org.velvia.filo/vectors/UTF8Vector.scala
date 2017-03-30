@@ -115,6 +115,8 @@ object UTF8Vector {
 abstract class UTF8Vector(val base: Any, val offset: Long) extends
 BinaryVector[ZeroCopyUTF8String] {
   import UTF8Vector._
+  val vectMajorType = WireFormat.VECTORTYPE_BINSIMPLE
+  val vectSubType = WireFormat.SUBTYPE_UTF8
 
   override def length: Int = UnsafeUtils.getInt(base, offset)
 
@@ -136,9 +138,6 @@ BinaryVector[ZeroCopyUTF8String] {
 class UTF8AppendableVector(base: Any, offset: Long, val maxBytes: Int, maxElements: Int) extends
 UTF8Vector(base, offset) with BinaryAppendableVector[ZeroCopyUTF8String] {
   import UTF8Vector._
-
-  val vectMajorType = WireFormat.VECTORTYPE_BINSIMPLE
-  val vectSubType = WireFormat.SUBTYPE_UTF8
 
   private var _len = 0
   override final def length: Int = _len
@@ -275,6 +274,9 @@ UTF8Vector(base, offset) with BinaryAppendableVector[ZeroCopyUTF8String] {
 abstract class FixedMaxUTF8Vector(val base: Any, val offset: Long) extends BinaryVector[ZeroCopyUTF8String] {
   def bytesPerItem: Int    // includes length byte
 
+  val vectMajorType = WireFormat.VECTORTYPE_BINSIMPLE
+  val vectSubType = WireFormat.SUBTYPE_FIXEDMAXUTF8
+
   override def length: Int = (numBytes - 1) / bytesPerItem
   private final val itemsOffset = offset + 1
 
@@ -304,9 +306,6 @@ class FixedMaxUTF8AppendableVector(base: Any,
 FixedMaxUTF8Vector(base, offset) with BinaryAppendableVector[ZeroCopyUTF8String] {
   require(bytesPerItem > 1 && bytesPerItem <= 255)
 
-  val vectMajorType = WireFormat.VECTORTYPE_BINSIMPLE
-  val vectSubType = WireFormat.SUBTYPE_FIXEDMAXUTF8
-
   UnsafeUtils.setByte(base, offset, bytesPerItem.toByte)
   var numBytes = 1
 
@@ -329,6 +328,9 @@ FixedMaxUTF8Vector(base, offset) with BinaryAppendableVector[ZeroCopyUTF8String]
   // Not needed as this vector will not be optimized further
   final def isAllNA: Boolean = ???
   final def noNAs: Boolean = ???
+
+  def finishCompaction(newBase: Any, newOff: Long): BinaryVector[ZeroCopyUTF8String] =
+    new FixedMaxUTF8VectorReader(newBase, newOff, numBytes)
 }
 
 class UTF8ConstVector(base: Any, offset: Long, numBytes: Int) extends
@@ -388,6 +390,6 @@ class UTF8VectorBuilder extends VectorBuilderBase {
     }.getOrElse {
       val fixedMaxSize = 1 + (maxStrLen + 1) * strings.length
       val maxSizeOpt = if (fixedMaxSize < numBytes && maxStrLen < 255) Some(Math.max(maxStrLen, 1)) else None
-      UTF8Vector.appendingVector(strings, numBytes, maxSizeOpt).toFiloBuffer()
+      UTF8Vector.appendingVector(strings, numBytes, maxSizeOpt).toFiloBuffer
     }
 }

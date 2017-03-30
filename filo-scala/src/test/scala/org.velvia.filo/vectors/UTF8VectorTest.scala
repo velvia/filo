@@ -68,10 +68,10 @@ class UTF8VectorTest extends FunSpec with Matchers {
       frozen.numBytes should equal (4 + 12 + 5 + 3 + 7)
     }
 
-    it("should be able toFiloBuffer() and parse back with FiloVector") {
+    it("should be able toFiloBuffer and parse back with FiloVector") {
       val strs = Seq("apple", "zoe", "bananas").map(ZeroCopyUTF8String.apply)
       val utf8vect = UTF8Vector.appendingVector(strs, 1024)
-      val buffer = utf8vect.toFiloBuffer()
+      val buffer = utf8vect.toFiloBuffer
       val readVect = FiloVector[ZeroCopyUTF8String](buffer)
       readVect.toSeq should equal (strs)
     }
@@ -81,7 +81,7 @@ class UTF8VectorTest extends FunSpec with Matchers {
       val strs = (1 to 10000).map(i => ZeroCopyUTF8String("string" + i))
       val utf8vect = UTF8Vector.appendingVector(50, 16384)
       strs.foreach(utf8vect.addData)
-      val buffer = utf8vect.toFiloBuffer()
+      val buffer = utf8vect.toFiloBuffer
       val readVect = FiloVector[ZeroCopyUTF8String](buffer)
       readVect.toSeq should equal (strs)
     }
@@ -106,7 +106,7 @@ class UTF8VectorTest extends FunSpec with Matchers {
       val strs = Seq("apple", "zoe", "jack").map(ZeroCopyUTF8String.apply)
       val cb = UTF8Vector.appendingVector(strs, 1024, Some(5))
       cb.asInstanceOf[GrowableVector[_]].inner shouldBe a [FixedMaxUTF8AppendableVector]
-      val buffer = cb.toFiloBuffer()
+      val buffer = cb.toFiloBuffer
       val readVect = FiloVector[ZeroCopyUTF8String](buffer)
       readVect.toSeq should equal (strs)
     }
@@ -116,7 +116,7 @@ class UTF8VectorTest extends FunSpec with Matchers {
       cb.addData("zoe".utf8)
       cb.addNA()
       cb.addData("".utf8)
-      val buffer = cb.toFiloBuffer()
+      val buffer = cb.toFiloBuffer
       val readVect = FiloVector[ZeroCopyUTF8String](buffer)
       readVect(0) should equal ("zoe".utf8)
       readVect.isAvailable(1) should equal (false)

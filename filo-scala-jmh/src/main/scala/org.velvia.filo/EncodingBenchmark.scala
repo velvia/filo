@@ -75,7 +75,7 @@ class EncodingBenchmark {
     for { i <- 0 until numValues optimized } {
       cb.addData(intArray(i))
     }
-    IntBinaryVector.optimize(cb).toFiloBuffer
+    cb.optimize().toFiloBuffer
   }
 
   val utf8strings = randomStrings.map(ZeroCopyUTF8String.apply).toArray
@@ -88,7 +88,7 @@ class EncodingBenchmark {
     for { i <- 0 until numValues optimized } {
       cb.addData(utf8strings(i))
     }
-    cb.toFiloBuffer()
+    cb.toFiloBuffer
   }
   // TODO: RowReader based vector building
 

@@ -23,17 +23,11 @@ object ConstVector {
  * Note that this is actually an AppendableVector, needed for some APIs.
  */
 abstract class ConstVector[A](val base: Any, val offset: Long, val numBytes: Int) extends
-BinaryAppendableVector[A] {
-  val maxBytes = numBytes
+BinaryVector[A] {
   val vectMajorType = WireFormat.VECTORTYPE_BINSIMPLE
   val vectSubType   = WireFormat.SUBTYPE_REPEATED
 
   override val length = UnsafeUtils.getInt(base, offset)
   protected val dataOffset = offset + 4
   final def isAvailable(i: Int): Boolean = true
-  def addData(value: A): Unit = ???
-  def addNA(): Unit = ???
-  def isAllNA: Boolean = ???
-  def noNAs: Boolean = ???
-  final def reset(): Unit = {}
 }

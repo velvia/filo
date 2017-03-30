@@ -69,6 +69,23 @@ class RowReaderTest extends FunSpec with Matchers {
     ArrayStringRowReader(csvRows.head).getLong(2) should equal (96768000000L)
   }
 
+  import org.velvia.filo.{vectors => bv}
+
+  it("should append to BinaryAppendableVector from Readers with RowReaderAppender") {
+    val readers = rows.map(TupleRowReader)
+    val appenders = Seq(
+      new IntReaderAppender(bv.IntBinaryVector.appendingVector(10), 1),
+      new LongReaderAppender(bv.LongBinaryVector.appendingVector(10), 2)
+    )
+    readers.foreach { r => appenders.foreach(_.append(r)) }
+    val bufs = appenders.map(_.appender.optimize().toFiloBuffer).toArray
+    val reader = new FastFiloRowReader(bufs, Array(classOf[Int], classOf[Long]))
+
+    readValues(reader, 4)(_.getInt(0)) should equal (Seq(18, 0, 59, 26))
+    reader.rowNo = 1
+    reader.notNull(0) should equal (false)
+}
+
   import RowReader._
   it("should compare RowReaders using TypedFieldExtractor") {
     val readers = rows.map(TupleRowReader)
