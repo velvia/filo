@@ -61,10 +61,7 @@ object LongBinaryVector {
     val intWrapper = new IntLongWrapper(vector)
 
     if (intWrapper.binConstVector) {
-      val (b, o, n) = ConstVector.make(vector.length, 8) { case (base, off) =>
-        UnsafeUtils.setLong(base, off, vector(0))
-      }
-      new LongConstVector(b, o, n)
+      (new LongConstAppendingVect(vector(0), vector.length)).optimize()
     } else {
       // Try delta-delta encoding
       DeltaDeltaVector.fromLongVector(vector, intWrapper.min, intWrapper.max)
@@ -196,6 +193,13 @@ class LongConstVector(base: Any, offset: Long, numBytes: Int) extends
 ConstVector[Long](base, offset, numBytes) {
   private final val const = UnsafeUtils.getLong(base, dataOffset)
   final def apply(i: Int): Long = const
+}
+
+class LongConstAppendingVect(value: Long, initLen: Int = 0) extends
+ConstAppendingVector(value, 8, initLen) {
+  def fillBytes(base: Any, offset: Long): Unit = UnsafeUtils.setLong(base, offset, value)
+  override def finishCompaction(newBase: Any, newOff: Long): BinaryVector[Long] =
+    new LongConstVector(newBase, newOff, numBytes)
 }
 
 /**

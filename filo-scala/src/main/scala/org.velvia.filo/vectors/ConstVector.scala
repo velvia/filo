@@ -18,16 +18,53 @@ object ConstVector {
   }
 }
 
-/**
- * A vector which holds the value of one element repeated n times.
- * Note that this is actually an AppendableVector, needed for some APIs.
- */
-abstract class ConstVector[A](val base: Any, val offset: Long, val numBytes: Int) extends
-BinaryVector[A] {
+trait ConstVectorType {
   val vectMajorType = WireFormat.VECTORTYPE_BINSIMPLE
   val vectSubType   = WireFormat.SUBTYPE_REPEATED
+}
 
+/**
+ * A vector which holds the value of one element repeated n times.
+ */
+abstract class ConstVector[A](val base: Any, val offset: Long, val numBytes: Int) extends
+BinaryVector[A] with ConstVectorType {
   override val length = UnsafeUtils.getInt(base, offset)
   protected val dataOffset = offset + 4
   final def isAvailable(i: Int): Boolean = true
+  val maybeNAs = false
+}
+
+/**
+ * An AppendingVector-API compatible class for situations (such as fixed partition keys) where you know
+ * the values will be constant and just need an Appender.  All this class really does is count up however
+ * many instances to repeat, then generates the ConstVector. It also ensures that that field really is
+ * a constant.
+ */
+abstract class ConstAppendingVector[@specialized(Int, Long, Double) A](value: A,
+                                                                       neededBytes: Int,
+                                                                       initLen: Int = 0)
+extends BinaryAppendableVector[A] with ConstVectorType {
+  private var len = initLen
+  // The code to store the value
+  def fillBytes(base: Any, offset: Long): Unit
+
+  final def apply(index: Int): A = value
+  final def addData(data: A): Unit = { len += 1 }
+  final def addNA(): Unit = { len += 1 }
+  final def isAvailable(index: Int): Boolean = true
+  final def base: Any = this
+  final def numBytes: Int = frozenSize
+  final def offset: Long = 0
+  final override def length: Int = len
+
+  val maxBytes = frozenSize
+  val isAllNA = false
+  val noNAs = true
+  val maybeNAs = false
+  override def frozenSize: Int = 4 + neededBytes
+  final def reset(): Unit = { len = 0 }
+  override def optimize(): BinaryVector[A] = {
+    val (b, o, l) = ConstVector.make(len, neededBytes)(fillBytes)
+    finishCompaction(b, o)
+  }
 }

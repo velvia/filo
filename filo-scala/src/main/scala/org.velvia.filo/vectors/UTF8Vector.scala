@@ -339,6 +339,13 @@ ConstVector[ZeroCopyUTF8String](base, offset, numBytes) {
   def apply(i: Int): ZeroCopyUTF8String = _utf8
 }
 
+class UTF8ConstAppendingVect(value: ZeroCopyUTF8String, initLen: Int = 0) extends
+ConstAppendingVector(value, value.length, initLen) {
+  def fillBytes(base: Any, offset: Long): Unit = value.copyTo(base, offset)
+  override def finishCompaction(newBase: Any, newOff: Long): BinaryVector[ZeroCopyUTF8String] =
+    new UTF8ConstVector(newBase, newOff, numBytes)
+}
+
 class UTF8VectorBuilder extends VectorBuilderBase {
   type T = ZeroCopyUTF8String
 
@@ -382,10 +389,7 @@ class UTF8VectorBuilder extends VectorBuilderBase {
                       samplingRate: Double = 0.3): ByteBuffer =
     DictUTF8Vector.shouldMakeDict(strings, spaceThreshold, samplingRate, numBytes).map { dictInfo =>
       if (numNAs == 0 && dictInfo.codeMap.size == 1) {
-        val (b, o, n) = ConstVector.make(length, strings.head.length) { case (base, off) =>
-          strings.head.copyTo(base, off)
-        }
-        new UTF8ConstVector(b, o, n).toFiloBuffer
+        (new UTF8ConstAppendingVect(strings.head, length)).optimize().toFiloBuffer
       } else { DictUTF8Vector.makeBuffer(dictInfo) }
     }.getOrElse {
       val fixedMaxSize = 1 + (maxStrLen + 1) * strings.length

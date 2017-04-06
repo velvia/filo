@@ -175,10 +175,7 @@ object IntBinaryVector {
 
     if (vector.noNAs) {
       if (min == max) {
-        val (b, o, n) = ConstVector.make(vector.length, 4) { case (base, off) =>
-          UnsafeUtils.setInt(base, off, vector(0))
-        }
-        new IntConstVector(b, o, n)
+        (new IntConstAppendingVect(vector(0), vector.length)).optimize()
       // No NAs?  Use just the PrimitiveAppendableVector
       } else if (nbits == vector.nbits) { vector.dataVect }
       else {
@@ -296,6 +293,13 @@ BitmapMaskAppendableVector[Int](base, offset + 4L, maxElements) with MaskedIntAp
 class IntConstVector(base: Any, offset: Long, numBytes: Int) extends
 ConstVector[Int](base, offset, numBytes) {
   def apply(i: Int): Int = UnsafeUtils.getInt(base, dataOffset)
+}
+
+class IntConstAppendingVect(value: Int, initLen: Int = 0) extends
+ConstAppendingVector(value, 4, initLen) {
+  def fillBytes(base: Any, offset: Long): Unit = UnsafeUtils.setInt(base, offset, value)
+  override def finishCompaction(newBase: Any, newOff: Long): BinaryVector[Int] =
+    new IntConstVector(newBase, newOff, numBytes)
 }
 
 class IntVectorBuilder(inner: BinaryAppendableVector[Int]) extends BinaryVectorBuilder[Int](inner) {

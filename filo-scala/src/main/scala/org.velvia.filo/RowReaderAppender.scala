@@ -1,5 +1,7 @@
 package org.velvia.filo
 
+import vectors.ConstAppendingVector
+
 /**
  * A trait for making RowReader appends to BinaryAppendableVector efficient and unboxed.  Type specific
  * code for adding to specific types of vectors are in each type specific implementation.  This avoids
@@ -35,4 +37,12 @@ class LongReaderAppender(val appender: BinaryAppendableVector[Long], val col: In
 
 class DoubleReaderAppender(val appender: BinaryAppendableVector[Double], val col: Int) extends RowReaderAppender {
   final def appendData(row: RowReader): Unit = appender.addData(row.getDouble(col))
+}
+
+/**
+ * An appender that creates correctly-sized ConstVectors for static partition columns, and skips
+ * reading from the RowReaader for efficiency
+ */
+final case class ConstAppender[A](appender: ConstAppendingVector[A], col: Int) extends RowReaderAppender {
+  final def appendData(row: RowReader): Unit = appender.addNA()
 }

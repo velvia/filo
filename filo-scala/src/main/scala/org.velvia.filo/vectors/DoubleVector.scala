@@ -60,10 +60,7 @@ object DoubleVector {
     val intWrapper = new IntDoubleWrapper(vector)
 
     if (intWrapper.binConstVector) {
-      val (b, o, n) = ConstVector.make(vector.length, 8) { case (base, off) =>
-        UnsafeUtils.setDouble(base, off, vector(0))
-      }
-      new DoubleConstVector(b, o, n)
+      (new DoubleConstAppendingVect(vector(0), vector.length)).optimize()
     // Check if all integrals. use the wrapper to avoid an extra pass
     } else if (intWrapper.allIntegrals) {
       // After optimize, you are supposed to just call toFiloBuffer, so this is fine
@@ -198,6 +195,13 @@ class DoubleConstVector(base: Any, offset: Long, numBytes: Int) extends
 ConstVector[Double](base, offset, numBytes) {
   private final val const = UnsafeUtils.getDouble(base, dataOffset)
   final def apply(i: Int): Double = const
+}
+
+class DoubleConstAppendingVect(value: Double, initLen: Int = 0) extends
+ConstAppendingVector(value, 8, initLen) {
+  def fillBytes(base: Any, offset: Long): Unit = UnsafeUtils.setDouble(base, offset, value)
+  override def finishCompaction(newBase: Any, newOff: Long): BinaryVector[Double] =
+    new DoubleConstVector(newBase, newOff, numBytes)
 }
 
 /**
