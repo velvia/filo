@@ -117,6 +117,7 @@ BinaryVector[ZeroCopyUTF8String] {
   import UTF8Vector._
   val vectMajorType = WireFormat.VECTORTYPE_BINSIMPLE
   val vectSubType = WireFormat.SUBTYPE_UTF8
+  val maybeNAs = true
 
   override def length: Int = UnsafeUtils.getInt(base, offset)
 
@@ -276,6 +277,7 @@ abstract class FixedMaxUTF8Vector(val base: Any, val offset: Long) extends Binar
 
   val vectMajorType = WireFormat.VECTORTYPE_BINSIMPLE
   val vectSubType = WireFormat.SUBTYPE_FIXEDMAXUTF8
+  val maybeNAs = true
 
   override def length: Int = (numBytes - 1) / bytesPerItem
   private final val itemsOffset = offset + 1

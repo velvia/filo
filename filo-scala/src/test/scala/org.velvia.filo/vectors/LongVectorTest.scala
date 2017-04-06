@@ -87,6 +87,7 @@ class LongVectorTest extends FunSpec with Matchers {
       val buffer = cb.optimize().toFiloBuffer
       val readVect = FiloVector[Long](buffer)
       readVect shouldBe a[MaskedLongBinaryVector]
+      readVect.asInstanceOf[BinaryVector[Long]].maybeNAs should equal (true)
       readVect.toSeq should equal (Seq(101, 102, maxPlus(104)))
     }
 
@@ -97,6 +98,7 @@ class LongVectorTest extends FunSpec with Matchers {
       orig.map(_.toLong).foreach(builder.addData)
       val optimized = builder.optimize()
       optimized.length should equal (5)
+      optimized.maybeNAs should equal (false)
       optimized.toSeq should equal (orig)
       optimized.numBytes should equal (4 + 3)   // nbits=4, so only 3 extra bytes
     }
@@ -110,6 +112,7 @@ class LongVectorTest extends FunSpec with Matchers {
       val readVect = FiloVector[Long](buf)
       readVect shouldBe a [DeltaDeltaVector]
       readVect.toSeq should equal (orig)
+      readVect.asInstanceOf[BinaryVector[Long]].maybeNAs should equal (false)
       // The # of bytes below is MUCH less than the original 51 * 8 + 4
       readVect.asInstanceOf[BinaryVector[Long]].numBytes should equal (12 + 4 + 51/4 + 1)
     }
@@ -121,6 +124,7 @@ class LongVectorTest extends FunSpec with Matchers {
       val buf = builder.optimize().toFiloBuffer
       val readVect = FiloVector[Long](buf)
       readVect shouldBe a[LongConstVector]
+      readVect.asInstanceOf[BinaryVector[Long]].maybeNAs should equal (false)
       readVect.toSeq should equal (Seq(longVal, longVal, longVal, longVal, longVal))
     }
 

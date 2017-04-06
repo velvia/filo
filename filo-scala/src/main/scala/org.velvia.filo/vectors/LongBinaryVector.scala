@@ -213,4 +213,5 @@ class LongIntWrapper(inner: BinaryVector[Int]) extends PrimitiveVector[Long] {
   final def apply(i: Int): Long = inner(i).toLong
   final def isAvailable(i: Int): Boolean = inner.isAvailable(i)
   override final def length: Int = inner.length
+  override val maybeNAs = inner.maybeNAs
 }

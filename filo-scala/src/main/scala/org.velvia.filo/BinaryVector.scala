@@ -17,6 +17,13 @@ trait BinaryVector[@specialized(Int, Long, Double, Boolean) A] extends FiloVecto
   def vectSubType: Int
 
   /**
+   * Should return false if this vector definitely has no NAs, and true if it might have some or is
+   * designed to support NAs.
+   * Returning false allows optimizations for aggregations.
+   */
+  def maybeNAs: Boolean
+
+  /**
    * Produce a FiloVector ByteBuffer with the four-byte header.  The resulting buffer can be used for I/O
    * and fed to FiloVector.apply() to be parsed back.  For most BinaryVectors returned by optimize() and
    * freeze(), a copy is not necessary so this is usually a very inexpensive operation.
@@ -46,6 +53,7 @@ trait BinaryVector[@specialized(Int, Long, Double, Boolean) A] extends FiloVecto
 trait PrimitiveVector[@specialized(Int, Long, Double, Boolean) A] extends BinaryVector[A] {
   val vectMajorType = WireFormat.VECTORTYPE_BINSIMPLE
   val vectSubType = WireFormat.SUBTYPE_PRIMITIVE_NOMASK
+  val maybeNAs = false
 }
 
 object BinaryVector {
@@ -70,6 +78,7 @@ object BinaryVector {
 trait BitmapMaskVector[A] extends BinaryVector[A] {
   def base: Any
   def bitmapOffset: Long   // NOTE: should be offset + n
+  val maybeNAs = true
 
   final def isAvailable(index: Int): Boolean = {
     // NOTE: length of bitMask may be less than (length / 64) longwords.
@@ -254,6 +263,7 @@ trait AppendableVectorWrapper[A, I] extends BinaryAppendableVector[A] {
   final def offset: Long = inner.offset
   final override def length: Int = inner.length
 
+  final def maybeNAs: Boolean = inner.maybeNAs
   final def maxBytes: Int = inner.maxBytes
   def isAllNA: Boolean = inner.isAllNA
   def noNAs: Boolean = inner.noNAs
@@ -327,6 +337,7 @@ extends BinaryAppendableVector[A] {
 
   final def isAllNA: Boolean = (length == 0)
   final def noNAs: Boolean = (length > 0)
+  val maybeNAs = false
 
   def reset(): Unit = {
     writeOffset = offset + 4

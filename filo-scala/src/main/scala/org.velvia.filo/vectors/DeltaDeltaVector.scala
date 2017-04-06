@@ -81,6 +81,7 @@ object DeltaDeltaVector {
 final case class DeltaDeltaVector(base: Any, offset: Long, numBytes: Int) extends BinaryVector[Long] {
   val vectMajorType = WireFormat.VECTORTYPE_DELTA2
   val vectSubType = WireFormat.SUBTYPE_INT_NOMASK
+  val maybeNAs = false
   private final val initValue = UnsafeUtils.getLong(base, offset)
   private final val slope     = UnsafeUtils.getInt(base, offset + 8)
   private final val inner     = IntBinaryVector(base, offset + 12, numBytes - 12)
@@ -103,6 +104,7 @@ class DeltaDeltaAppendingVector(val base: Any,
                                 signed: Boolean) extends BinaryAppendableVector[Long] {
   val isAllNA = false
   val noNAs = true
+  val maybeNAs = false
   val vectMajorType = WireFormat.VECTORTYPE_DELTA2
   val vectSubType = WireFormat.SUBTYPE_INT_NOMASK
 

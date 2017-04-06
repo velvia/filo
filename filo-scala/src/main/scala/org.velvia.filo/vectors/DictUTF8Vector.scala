@@ -121,6 +121,7 @@ object DictUTF8Vector {
 class DictUTF8Vector(val base: Any, val offset: Long, val numBytes: Int) extends BinaryVector[UTF8Str] {
   val vectMajorType = WireFormat.VECTORTYPE_BINDICT
   val vectSubType = WireFormat.SUBTYPE_UTF8
+  val maybeNAs = true
   private val dictSubtype = UnsafeUtils.getInt(base, offset)
   private val codeVectOffset = UnsafeUtils.getInt(base, offset + 4)
 
