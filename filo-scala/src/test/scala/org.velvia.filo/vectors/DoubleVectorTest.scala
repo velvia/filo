@@ -93,7 +93,10 @@ class DoubleVectorTest extends FunSpec with Matchers {
       val optimized = builder.optimize()
       optimized.length should equal (5)
       optimized.toSeq should equal (0 to 4)
+      optimized(0) should equal (0.0)
       optimized.numBytes should equal (4 + 3)   // nbits=4, so only 3 extra bytes
+      val readVect = FiloVector[Double](optimized.toFiloBuffer)
+      readVect.toSeq should equal (0 to 4)
     }
 
     it("should be able to optimize constant ints to an IntConstVector") {

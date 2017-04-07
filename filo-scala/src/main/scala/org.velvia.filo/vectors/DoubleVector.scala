@@ -63,8 +63,7 @@ object DoubleVector {
       (new DoubleConstAppendingVect(vector(0), vector.length)).optimize()
     // Check if all integrals. use the wrapper to avoid an extra pass
     } else if (intWrapper.allIntegrals) {
-      // After optimize, you are supposed to just call toFiloBuffer, so this is fine
-      IntBinaryVector.optimize(intWrapper).asInstanceOf[BinaryVector[Double]]
+      new DoubleIntWrapper(IntBinaryVector.optimize(intWrapper))
     } else if (vector.noNAs) {
       vector.subVect.freeze()
     } else {
@@ -211,6 +210,7 @@ class DoubleIntWrapper(inner: BinaryVector[Int]) extends PrimitiveVector[Double]
   val base = inner.base
   val offset = inner.offset
   val numBytes = inner.numBytes
+  override val vectSubType = inner.vectSubType
 
   final def apply(i: Int): Double = inner(i).toDouble
   final def isAvailable(i: Int): Boolean = inner.isAvailable(i)

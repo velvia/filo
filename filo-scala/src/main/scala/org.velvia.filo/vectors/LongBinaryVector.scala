@@ -73,8 +73,7 @@ object LongBinaryVector {
   private def optimize2(intWrapper: IntLongWrapper, vector: MaskedLongAppendingVector): BinaryVector[Long] = {
     // Check if all integrals. use the wrapper to avoid an extra pass
     if (intWrapper.fitInInt) {
-      // After optimize, you are supposed to just call toFiloBuffer, so this is fine
-      IntBinaryVector.optimize(intWrapper).asInstanceOf[BinaryVector[Long]]
+      new LongIntWrapper(IntBinaryVector.optimize(intWrapper))
     } else if (vector.noNAs) {
       vector.subVect.freeze()
     } else {
@@ -209,6 +208,7 @@ class LongIntWrapper(inner: BinaryVector[Int]) extends PrimitiveVector[Long] {
   val base = inner.base
   val offset = inner.offset
   val numBytes = inner.numBytes
+  override val vectSubType = inner.vectSubType
 
   final def apply(i: Int): Long = inner(i).toLong
   final def isAvailable(i: Int): Boolean = inner.isAvailable(i)

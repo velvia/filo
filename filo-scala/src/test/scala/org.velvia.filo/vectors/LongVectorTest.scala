@@ -94,13 +94,16 @@ class LongVectorTest extends FunSpec with Matchers {
     it("should be able to optimize longs with fewer nbits to IntBinaryVector") {
       val builder = LongBinaryVector.appendingVector(100)
       // Be sure to make this not an increasing sequence so it doesn't get delta-delta encoded
-      val orig = Seq(0, 2, 1, 4, 3)
-      orig.map(_.toLong).foreach(builder.addData)
+      val orig = Seq(0, 2, 1, 4, 3).map(_.toLong)
+      orig.foreach(builder.addData)
       val optimized = builder.optimize()
       optimized.length should equal (5)
       optimized.maybeNAs should equal (false)
+      optimized(0) should equal (0L)
       optimized.toSeq should equal (orig)
       optimized.numBytes should equal (4 + 3)   // nbits=4, so only 3 extra bytes
+      val readVect = FiloVector[Double](optimized.toFiloBuffer)
+      readVect.toSeq should equal (orig)
     }
 
     it("should automatically use Delta-Delta encoding for increasing numbers") {
