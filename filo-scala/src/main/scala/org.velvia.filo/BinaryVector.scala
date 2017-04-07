@@ -204,8 +204,12 @@ trait BinaryAppendableVector[@specialized(Int, Long, Double, Boolean) A] extends
   }
 
   def freeze(newBaseOffset: Option[(Any, Long)]): BinaryVector[A] =
-    if (newBaseOffset.isEmpty && numBytes == frozenSize) { this.asInstanceOf[BinaryVector[A]] }
-    else {
+    if (newBaseOffset.isEmpty && numBytes == frozenSize) {
+      // It is better to return a simple read-only BinaryVector, for two reasons:
+      // 1) It cannot be cast into an AppendingVector and made mutable
+      // 2) It is probably higher performance for reads
+      finishCompaction(base, offset)
+    } else {
       val (newBase, newOffset) = newBaseOffset.getOrElse((base, offset))
       if (newBaseOffset.nonEmpty) copyTo(newBase, newOffset, n = primaryBytes)
       if (numBytes > primaryMaxBytes) {
