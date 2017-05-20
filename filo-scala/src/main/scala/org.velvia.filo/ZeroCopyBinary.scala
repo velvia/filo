@@ -184,6 +184,8 @@ case class UTF8Wrapper(var utf8: ZeroCopyUTF8String) extends java.io.Externaliza
 
   override def hashCode: Int = utf8.hashCode
 
+  override def toString: String = utf8.toString
+
   def writeExternal(out: java.io.ObjectOutput): Unit = {
     out.writeInt(utf8.length)
     out.write(utf8.bytes)
