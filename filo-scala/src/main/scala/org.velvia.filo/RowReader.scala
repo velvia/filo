@@ -219,6 +219,15 @@ object RowReader {
       new FiloConstVector(getField(reader, columnNo), length)
   }
 
+  // A generic FieldExtractor for objects
+  case class ObjectFieldExtractor[T: ClassTag](default: T) extends TypedFieldExtractor[T] {
+    final def getField(reader: RowReader, columnNo: Int): T = reader.as[T](columnNo)
+    final override def getFieldOrDefault(reader: RowReader, columnNo: Int): T =
+      if (reader.notNull(columnNo)) getField(reader, columnNo) else default
+    final def compare(reader: RowReader, other: RowReader, columnNo: Int): Int =
+      if (getFieldOrDefault(reader, columnNo) == getFieldOrDefault(other, columnNo)) 0 else 1
+  }
+
   class WrappedExtractor[@specialized T, F: TypedFieldExtractor](func: F => T)
     extends TypedFieldExtractor[T] {
     val orig = implicitly[TypedFieldExtractor[F]]
