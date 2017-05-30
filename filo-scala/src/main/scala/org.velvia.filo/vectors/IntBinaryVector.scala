@@ -2,7 +2,6 @@ package org.velvia.filo.vectors
 
 import java.nio.ByteBuffer
 import org.velvia.filo._
-import scala.language.postfixOps
 import scalaxy.loops._
 
 object IntBinaryVector {

@@ -4,6 +4,7 @@ import java.nio.ByteBuffer
 import java.sql.Timestamp
 import org.joda.time.DateTime
 import scala.reflect.ClassTag
+import scalaxy.loops._
 
 /**
  * A generic trait for reading typed values out of a row of data.
@@ -36,6 +37,35 @@ trait RowReader {
    * implementation serves as a fast way to read from objects.
    */
   def as[T: ClassTag](columnNo: Int): T = getAny(columnNo).asInstanceOf[T]
+}
+
+import RowReader._
+
+// A RowReader that knows how to hashcode and compare its individual elements.  Extractors must
+// correspond to the schema.   This could allow partition keys to be wrapped directly around raw ingest
+// elements without converting to BinaryRecord first
+trait SchemaRowReader extends RowReader {
+  def extractors: Array[TypedFieldExtractor[_]]
+
+  // NOTE: This is an EXTREMELY HOT code path, needs to be super optimized.  No standard Scala collection
+  // or slow functional code here.
+  override def hashCode: Int = {
+    var hash = 0
+    for { i <- 0 until extractors.size optimized } {
+      hash ^= extractors(i).getField(this, i).hashCode
+    }
+    hash
+  }
+
+  override def equals(other: Any): Boolean = other match {
+    case reader: RowReader =>
+      for { i <- 0 until extractors.size optimized } {
+        if (extractors(i).compare(this, reader, i) != 0) return false
+      }
+      true
+    case other: Any =>
+      false
+  }
 }
 
 /**
@@ -113,15 +143,18 @@ case class ArrayStringRowReader(strings: Array[String]) extends RowReader {
  * @param columnRoutes an array of original column numbers for the column in question.  For example:
  *                     Array(0, 2, 5) means an getInt(1) would map to a getInt(2) for the original RowReader
  */
-case class RoutingRowReader(origReader: RowReader, columnRoutes: Array[Int]) extends RowReader {
-  def notNull(columnNo: Int): Boolean    = origReader.notNull(columnRoutes(columnNo))
-  def getBoolean(columnNo: Int): Boolean = origReader.getBoolean(columnRoutes(columnNo))
-  def getInt(columnNo: Int): Int         = origReader.getInt(columnRoutes(columnNo))
-  def getLong(columnNo: Int): Long       = origReader.getLong(columnRoutes(columnNo))
-  def getDouble(columnNo: Int): Double   = origReader.getDouble(columnRoutes(columnNo))
-  def getFloat(columnNo: Int): Float     = origReader.getFloat(columnRoutes(columnNo))
-  def getString(columnNo: Int): String   = origReader.getString(columnRoutes(columnNo))
-  def getAny(columnNo: Int): Any         = origReader.getAny(columnRoutes(columnNo))
+trait RoutingReader extends RowReader {
+  def origReader: RowReader
+  def columnRoutes: Array[Int]
+
+  final def notNull(columnNo: Int): Boolean    = origReader.notNull(columnRoutes(columnNo))
+  final def getBoolean(columnNo: Int): Boolean = origReader.getBoolean(columnRoutes(columnNo))
+  final def getInt(columnNo: Int): Int         = origReader.getInt(columnRoutes(columnNo))
+  final def getLong(columnNo: Int): Long       = origReader.getLong(columnRoutes(columnNo))
+  final def getDouble(columnNo: Int): Double   = origReader.getDouble(columnRoutes(columnNo))
+  final def getFloat(columnNo: Int): Float     = origReader.getFloat(columnRoutes(columnNo))
+  final def getString(columnNo: Int): String   = origReader.getString(columnRoutes(columnNo))
+  final def getAny(columnNo: Int): Any         = origReader.getAny(columnRoutes(columnNo))
 
   override def equals(other: Any): Boolean = other match {
     case RoutingRowReader(orig, _) => orig.equals(origReader)
@@ -129,6 +162,14 @@ case class RoutingRowReader(origReader: RowReader, columnRoutes: Array[Int]) ext
     case other: Any                => false
   }
 }
+
+case class RoutingRowReader(origReader: RowReader, columnRoutes: Array[Int]) extends RoutingReader
+
+// A RoutingRowReader which is also a SchemaRowReader
+case class SchemaRoutingRowReader(origReader: RowReader,
+                                  columnRoutes: Array[Int],
+                                  extractors: Array[TypedFieldExtractor[_]])
+extends RoutingReader with SchemaRowReader
 
 case class SingleValueRowReader(value: Any) extends RowReader {
   def notNull(columnNo: Int): Boolean = Option(value).isDefined
@@ -152,6 +193,18 @@ case class SeqRowReader(sequence: Seq[Any]) extends RowReader {
   def getAny(columnNo: Int): Any = sequence(columnNo)
 }
 
+case class SchemaSeqRowReader(sequence: Seq[Any],
+                              extractors: Array[TypedFieldExtractor[_]]) extends SchemaRowReader {
+  def notNull(columnNo: Int): Boolean = true
+  def getBoolean(columnNo: Int): Boolean = sequence(columnNo).asInstanceOf[Boolean]
+  def getInt(columnNo: Int): Int = sequence(columnNo).asInstanceOf[Int]
+  def getLong(columnNo: Int): Long = sequence(columnNo).asInstanceOf[Long]
+  def getDouble(columnNo: Int): Double = sequence(columnNo).asInstanceOf[Double]
+  def getFloat(columnNo: Int): Float = sequence(columnNo).asInstanceOf[Float]
+  def getString(columnNo: Int): String = sequence(columnNo).asInstanceOf[String]
+  def getAny(columnNo: Int): Any = sequence(columnNo)
+}
+
 object RowReader {
   import DefaultValues._
 
@@ -160,6 +213,10 @@ object RowReader {
     def getField(reader: RowReader, columnNo: Int): F
     def getFieldOrDefault(reader: RowReader, columnNo: Int): F = getField(reader, columnNo)
     def compare(reader: RowReader, other: RowReader, columnNo: Int): Int
+
+    // Creates a FiloConstVector of the right type from the RowReader directly
+    final def constVector(reader: RowReader, columnNo: Int, length: Int): FiloConstVector[F] =
+      new FiloConstVector(getField(reader, columnNo), length)
   }
 
   class WrappedExtractor[@specialized T, F: TypedFieldExtractor](func: F => T)

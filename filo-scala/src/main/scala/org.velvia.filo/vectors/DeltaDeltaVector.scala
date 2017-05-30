@@ -1,7 +1,6 @@
 package org.velvia.filo.vectors
 
 import java.nio.ByteBuffer
-import scala.language.postfixOps
 import scala.util.Try
 import scalaxy.loops._
 

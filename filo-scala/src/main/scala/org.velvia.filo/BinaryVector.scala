@@ -1,7 +1,6 @@
 package org.velvia.filo
 
 import java.nio.ByteBuffer
-import scala.language.postfixOps
 import scalaxy.loops._
 
 import RowReader._

@@ -3,7 +3,6 @@ package org.velvia.filo.vectors
 import java.nio.ByteBuffer
 import org.velvia.filo._
 import scala.collection.mutable.ArrayBuffer
-import scala.language.postfixOps
 import scalaxy.loops._
 
 /**

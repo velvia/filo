@@ -1,7 +1,6 @@
 package org.velvia.filo
 
 import net.jpountz.xxhash.XXHashFactory
-import scala.language.postfixOps
 import scalaxy.loops._
 
 /**

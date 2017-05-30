@@ -3,7 +3,6 @@ package org.velvia.filo.vectors
 import java.nio.ByteBuffer
 import java.util.HashMap
 import org.velvia.filo._
-import scala.language.postfixOps
 import scalaxy.loops._
 
 import org.velvia.filo.{ZeroCopyUTF8String => UTF8Str}

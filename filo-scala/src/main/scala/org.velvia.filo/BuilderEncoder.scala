@@ -3,7 +3,6 @@ package org.velvia.filo
 import java.nio.ByteBuffer
 import java.sql.Timestamp
 import org.joda.time.DateTime
-import scala.language.postfixOps
 import scala.reflect.ClassTag
 import scalaxy.loops._
 
