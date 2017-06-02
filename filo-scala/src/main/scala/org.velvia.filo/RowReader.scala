@@ -71,7 +71,7 @@ trait SchemaRowReader extends RowReader {
 /**
  * An example of a RowReader that can read from Scala tuples containing Option[_]
  */
-case class TupleRowReader(tuple: Product) extends RowReader {
+final case class TupleRowReader(tuple: Product) extends RowReader {
   def notNull(columnNo: Int): Boolean =
     tuple.productElement(columnNo).asInstanceOf[Option[Any]].nonEmpty
 
@@ -113,7 +113,7 @@ case class TupleRowReader(tuple: Product) extends RowReader {
 /**
  * A RowReader for working with OpenCSV or anything else that emits string[]
  */
-case class ArrayStringRowReader(strings: Array[String]) extends RowReader {
+final case class ArrayStringRowReader(strings: Array[String]) extends RowReader {
   //scalastyle:off
   def notNull(columnNo: Int): Boolean = strings(columnNo) != null && strings(columnNo) != ""
   //scalastyle:on
@@ -163,15 +163,15 @@ trait RoutingReader extends RowReader {
   }
 }
 
-case class RoutingRowReader(origReader: RowReader, columnRoutes: Array[Int]) extends RoutingReader
+final case class RoutingRowReader(origReader: RowReader, columnRoutes: Array[Int]) extends RoutingReader
 
 // A RoutingRowReader which is also a SchemaRowReader
-case class SchemaRoutingRowReader(origReader: RowReader,
-                                  columnRoutes: Array[Int],
-                                  extractors: Array[TypedFieldExtractor[_]])
+final case class SchemaRoutingRowReader(origReader: RowReader,
+                                        columnRoutes: Array[Int],
+                                        extractors: Array[TypedFieldExtractor[_]])
 extends RoutingReader with SchemaRowReader
 
-case class SingleValueRowReader(value: Any) extends RowReader {
+final case class SingleValueRowReader(value: Any) extends RowReader {
   def notNull(columnNo: Int): Boolean = Option(value).isDefined
   def getBoolean(columnNo: Int): Boolean = value.asInstanceOf[Boolean]
   def getInt(columnNo: Int): Int = value.asInstanceOf[Int]
@@ -182,7 +182,7 @@ case class SingleValueRowReader(value: Any) extends RowReader {
   def getAny(columnNo: Int): Any = value
 }
 
-case class SeqRowReader(sequence: Seq[Any]) extends RowReader {
+final case class SeqRowReader(sequence: Seq[Any]) extends RowReader {
   def notNull(columnNo: Int): Boolean = true
   def getBoolean(columnNo: Int): Boolean = sequence(columnNo).asInstanceOf[Boolean]
   def getInt(columnNo: Int): Int = sequence(columnNo).asInstanceOf[Int]
@@ -193,8 +193,8 @@ case class SeqRowReader(sequence: Seq[Any]) extends RowReader {
   def getAny(columnNo: Int): Any = sequence(columnNo)
 }
 
-case class SchemaSeqRowReader(sequence: Seq[Any],
-                              extractors: Array[TypedFieldExtractor[_]]) extends SchemaRowReader {
+final case class SchemaSeqRowReader(sequence: Seq[Any],
+                                    extractors: Array[TypedFieldExtractor[_]]) extends SchemaRowReader {
   def notNull(columnNo: Int): Boolean = true
   def getBoolean(columnNo: Int): Boolean = sequence(columnNo).asInstanceOf[Boolean]
   def getInt(columnNo: Int): Int = sequence(columnNo).asInstanceOf[Int]
