@@ -113,6 +113,8 @@ extends PrimitiveAppendableVector[Long](base, offset, maxBytes, 64, true) {
     new LongBinaryVector(newBase, newOff, numBytes)
 }
 
+import BuilderEncoder._
+
 class MaskedLongAppendingVector(base: Any,
                                 val offset: Long,
                                 val maxBytes: Int,
@@ -137,7 +139,7 @@ BitmapMaskAppendableVector[Long](base, offset + 4L, maxElements) {
     (min, max)
   }
 
-  override def optimize(): BinaryVector[Long] = LongBinaryVector.optimize(this)
+  override def optimize(hint: EncodingHint = AutoDetect): BinaryVector[Long] = LongBinaryVector.optimize(this)
 
   override def newInstance(growFactor: Int = 2): BinaryAppendableVector[Long] = {
     val (newbase, newoff, nBytes) = BinaryVector.allocWithMagicHeader(maxBytes * growFactor)

@@ -244,6 +244,8 @@ trait MaskedIntAppending extends BinaryAppendableVector[Int] {
   def getVect: BinaryVector[Int] = freeze()
 }
 
+import BuilderEncoder._
+
 class MaskedIntAppendingVector(base: Any,
                                val offset: Long,
                                val maxBytes: Int,
@@ -274,7 +276,8 @@ BitmapMaskAppendableVector[Int](base, offset + 4L, maxElements) with MaskedIntAp
     (min, max)
   }
 
-  override def optimize(): BinaryVector[Int] = IntBinaryVector.optimize(this)
+  override def optimize(hint: EncodingHint = AutoDetect): BinaryVector[Int] =
+    IntBinaryVector.optimize(this)
 
   override def newInstance(growFactor: Int = 2): BinaryAppendableVector[Int] = {
     val (newbase, newoff, nBytes) = BinaryVector.allocWithMagicHeader(maxBytes * growFactor)
@@ -301,10 +304,4 @@ ConstAppendingVector(value, 4, initLen) {
     new IntConstVector(newBase, newOff, numBytes)
 }
 
-class IntVectorBuilder(inner: BinaryAppendableVector[Int]) extends BinaryVectorBuilder[Int](inner) {
-  def toFiloBuffer(hint: BuilderEncoder.EncodingHint): ByteBuffer = inner match {
-    case GrowableVector(inner: MaskedIntAppendingVector) => IntBinaryVector.optimize(inner).toFiloBuffer
-    case v: MaskedIntAppendingVector =>  IntBinaryVector.optimize(v).toFiloBuffer
-    case v: BinaryAppendableVector[Int] => v.toFiloBuffer
-  }
-}
+class IntVectorBuilder(inner: BinaryAppendableVector[Int]) extends BinaryVectorBuilder[Int](inner)

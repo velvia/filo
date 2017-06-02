@@ -34,6 +34,8 @@ BinaryVector[A] with ConstVectorType {
   val maybeNAs = false
 }
 
+import BuilderEncoder._
+
 /**
  * An AppendingVector-API compatible class for situations (such as fixed partition keys) where you know
  * the values will be constant and just need an Appender.  All this class really does is count up however
@@ -63,7 +65,7 @@ extends BinaryAppendableVector[A] with ConstVectorType {
   val maybeNAs = false
   override def frozenSize: Int = 4 + neededBytes
   final def reset(): Unit = { len = 0 }
-  override def optimize(): BinaryVector[A] = {
+  override def optimize(hint: EncodingHint = AutoDetect): BinaryVector[A] = {
     val (b, o, l) = ConstVector.make(len, neededBytes)(fillBytes)
     finishCompaction(b, o)
   }

@@ -93,6 +93,8 @@ final case class DeltaDeltaVector(base: Any, offset: Long, numBytes: Int) extend
 final case class DeltaTooLarge(value: Long, expected: Long) extends
   IllegalArgumentException(s"Delta too large for value $value")
 
+import BuilderEncoder._
+
 // TODO: validate args, esp base offset etc, somehow.  Need to think about this for the many diff classes.
 class DeltaDeltaAppendingVector(val base: Any,
                                 val offset: Long,
@@ -151,7 +153,7 @@ class DeltaDeltaAppendingVector(val base: Any,
   def finishCompaction(newBase: Any, newOff: Long): BinaryVector[Long] =
     DeltaDeltaVector(newBase, newOff, numBytes)
 
-  override def optimize(): BinaryVector[Long] = {
+  override def optimize(hint: EncodingHint = AutoDetect): BinaryVector[Long] = {
     // Just optimize nbits.
     val (newNbits, newSigned) = IntBinaryVector.minMaxToNbitsSigned(innerMin, innerMax)
     if (newNbits < nbits) {

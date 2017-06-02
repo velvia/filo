@@ -91,6 +91,7 @@ object BuilderEncoder {
   case object SimpleEncoding extends EncodingHint
   case object DictionaryEncoding extends EncodingHint
   case object DiffEncoding extends EncodingHint
+  final case class AutoDictString(spaceThreshold: Double = 0.6, samplingRate: Double = 0.3) extends EncodingHint
 
   type EncodingPF = PartialFunction[(VectorBuilderBase, EncodingHint), ByteBuffer]
 

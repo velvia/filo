@@ -124,14 +124,15 @@ object VectorBuilder {
   val defaultBuilderMap = Map[Class[_], () => VectorBuilderBase](
     Classes.Boolean      -> (() => new BoolVectorBuilder),
     Classes.Int          ->
-      (() => new vectors.IntVectorBuilder(vectors.IntBinaryVector.appendingVector(2500))),
+      (() => new vectors.IntVectorBuilder(vectors.IntBinaryVector.appendingVector(2000))),
     Classes.Long         -> (() => new LongVectorBuilder),
     Classes.Double       -> (() => new DoubleVectorBuilder),
     Classes.Float        -> (() => new FloatVectorBuilder),
     Classes.String       -> (() => new StringVectorBuilder),
     Classes.DateTime     -> (() => new DateTimeVectorBuilder),
     Classes.SqlTimestamp -> (() => new SqlTimestampVectorBuilder),
-    Classes.UTF8         -> (() => new vectors.UTF8VectorBuilder)
+    Classes.UTF8         ->
+      (() => new vectors.UTF8VectorBuilder(vectors.UTF8Vector.appendingVector(1000)))
   )
 
   import BuilderEncoder._
