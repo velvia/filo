@@ -1,7 +1,6 @@
 package org.velvia.filo.vectors
 
 import java.nio.ByteBuffer
-import scala.language.postfixOps
 import scalaxy.loops._
 
 import org.velvia.filo._
@@ -104,6 +103,8 @@ extends PrimitiveAppendableVector[Double](base, offset, maxBytes, 64, true) {
     new DoubleBinaryVector(newBase, newOff, numBytes)
 }
 
+import BuilderEncoder._
+
 class MaskedDoubleAppendingVector(base: Any,
                                   val offset: Long,
                                   val maxBytes: Int,
@@ -128,7 +129,7 @@ BitmapMaskAppendableVector[Double](base, offset + 4L, maxElements) {
     (min, max)
   }
 
-  override def optimize(): BinaryVector[Double] = DoubleVector.optimize(this)
+  override def optimize(hint: EncodingHint = AutoDetect): BinaryVector[Double] = DoubleVector.optimize(this)
 
   override def newInstance(growFactor: Int = 2): BinaryAppendableVector[Double] = {
     val (newbase, newoff, nBytes) = BinaryVector.allocWithMagicHeader(maxBytes * growFactor)

@@ -3,7 +3,6 @@ package org.velvia.filo
 import java.nio.ByteBuffer
 import java.sql.Timestamp
 import org.joda.time.DateTime
-import scala.language.postfixOps
 import scala.reflect.ClassTag
 import scalaxy.loops._
 
@@ -92,6 +91,7 @@ object BuilderEncoder {
   case object SimpleEncoding extends EncodingHint
   case object DictionaryEncoding extends EncodingHint
   case object DiffEncoding extends EncodingHint
+  final case class AutoDictString(spaceThreshold: Double = 0.6, samplingRate: Double = 0.3) extends EncodingHint
 
   type EncodingPF = PartialFunction[(VectorBuilderBase, EncodingHint), ByteBuffer]
 

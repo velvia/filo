@@ -1,6 +1,5 @@
 package org.velvia.filo.codecs
 
-import scala.language.postfixOps
 import scalaxy.loops._
 
 import org.velvia.filo._

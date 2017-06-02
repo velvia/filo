@@ -3,7 +3,6 @@ package org.velvia.filo.vectors
 import java.nio.ByteBuffer
 import java.util.HashMap
 import org.velvia.filo._
-import scala.language.postfixOps
 import scalaxy.loops._
 
 import org.velvia.filo.{ZeroCopyUTF8String => UTF8Str}
@@ -20,7 +19,7 @@ object DictUTF8Vector {
    * This approach might not work for source vectors that are very biased but the sampling rate is
    * adjustable.
    *
-   * @param sourceBlobs the source Seq of UTF8 strings.  It is highly recommended this be an ArrayBuffer.
+   * @param sourceVector the source UTF8 vector.  Recommended this be a UTF8PtrAppendable.
    * @param spaceThreshold a number between 0.0 and 1.0, the fraction of the original
    *                       space below which the DictUTF8Vector should be sized to be
    *                       worth doing dictionary encoding for. Make this >1.0 if you want to force it
@@ -29,22 +28,23 @@ object DictUTF8Vector {
    * @param maxDictSize the max number of bytes that the dictionary coukd grow to
    * @return Option[DictUTF8Info] contains info for building the dictionary if it is worth it
    */
-  def shouldMakeDict(sourceBlobs: Seq[UTF8Str],
+  def shouldMakeDict(sourceVector: BinaryAppendableVector[UTF8Str],
                      spaceThreshold: Double = 0.6,
                      samplingRate: Double = 0.3,
                      maxDictSize: Int = 10000): Option[DictUTF8Info] = {
-    val codeMap = new HashMap[UTF8Str, Int](sourceBlobs.length, 0.5F)
-    val sampleSize = (sourceBlobs.length * samplingRate).toInt
+    val sourceLen = sourceVector.length
+    val codeMap = new HashMap[UTF8Str, Int](sourceLen, 0.5F)
+    val sampleSize = (sourceLen * samplingRate).toInt
     // The max size for the dict we will tolerate given the sample size and orig vector size
     // Above this, cardinality is not likely to be low enough for dict encoding
     val dictThreshold = (sampleSize * spaceThreshold).toInt
-    val dictVect = UTF8Vector.appendingVector(sourceBlobs.length + 1, maxDictSize)
-    val codeVect = IntBinaryVector.appendingVectorNoNA(sourceBlobs.length)
+    val dictVect = UTF8Vector.flexibleAppending(sourceLen + 1, maxDictSize)
+    val codeVect = IntBinaryVector.appendingVectorNoNA(sourceLen)
     dictVect.addNA()   // first code point 0 == NA
 
-    for { i <- 0 until sourceBlobs.length optimized } {
-      val item = sourceBlobs(i)
-      if (!ZeroCopyUTF8String.isNA(item)) {
+    for { i <- 0 until sourceLen optimized } {
+      val item = sourceVector(i)
+      if (item != null) {
         val newCode = codeMap.size + 1
         val orig = codeMap.putIfAbsent(item, newCode)  // Just one hashcode/compare
         if (orig == 0) {
@@ -63,9 +63,9 @@ object DictUTF8Vector {
   }
 
   /**
-   * Creates the dictionary-encoding vector as a final ByteBuffer from intermediate data.
+   * Creates the dictionary-encoding frozen vector from intermediate data.
    */
-  def makeBuffer(info: DictUTF8Info): ByteBuffer = {
+  def makeVector(info: DictUTF8Info): DictUTF8Vector = {
     // Estimate and allocate enough space for the UTF8Vector
     val (nbits, signed) = IntBinaryVector.minMaxToNbitsSigned(0, info.codeMap.size)
     val codeVectSize = IntBinaryVector.noNAsize(info.codes.length, nbits)
@@ -88,13 +88,7 @@ object DictUTF8Vector {
     UnsafeUtils.setInt(base, off,     WireFormat.SUBTYPE_UTF8)
     UnsafeUtils.setInt(base, off + 4, 8 + dictVectSize)
 
-    // Write the Filo 4-byte header and return ByteBuffer
-    val headerInt = WireFormat(WireFormat.VECTORTYPE_BINDICT, WireFormat.SUBTYPE_UTF8)
-    UnsafeUtils.setInt(base, off - 4, headerInt)
-    val bb = ByteBuffer.wrap(base.asInstanceOf[Array[Byte]])
-    bb.limit(bytesRequired + 4)
-    bb.order(java.nio.ByteOrder.LITTLE_ENDIAN)
-    bb
+    new DictUTF8Vector(base, off, bytesRequired)
   }
 
   /**

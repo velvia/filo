@@ -4,7 +4,6 @@ import java.nio.{ByteBuffer, ByteOrder}
 import java.sql.Timestamp
 import org.joda.time.DateTime
 import scala.collection.Traversable
-import scala.language.postfixOps
 import scalaxy.loops._
 
 import org.velvia.filo.codecs.EmptyFiloVector
@@ -152,6 +151,15 @@ trait FiloVector[@specialized(Int, Double, Long, Float, Boolean) A] {
   def get(index: Int): Option[A] =
     if (index >= 0 && index < length && isAvailable(index)) { Some(apply(index)) }
     else                                                    { None }
+}
+
+/**
+ * A FiloVector containing a constant value.  Not for serializing, just for in memory querying.
+ */
+class FiloConstVector[@specialized(Int, Double, Long, Float, Boolean) A](value: A, val length: Int)
+extends FiloVector[A] {
+  def isAvailable(index: Int): Boolean = true
+  def apply(index: Int): A = value
 }
 
 trait NaMaskReader {

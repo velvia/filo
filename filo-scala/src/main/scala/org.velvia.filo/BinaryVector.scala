@@ -1,10 +1,10 @@
 package org.velvia.filo
 
 import java.nio.ByteBuffer
-import scala.language.postfixOps
 import scalaxy.loops._
 
 import RowReader._
+import BuilderEncoder._
 
 /**
  * This is really the same as FiloVector, but supports off-heap easier.
@@ -232,7 +232,7 @@ trait BinaryAppendableVector[@specialized(Int, Long, Double, Boolean) A] extends
    * This always produces a new, frozen copy and takes more CPU than freeze() but can result in dramatically
    * smaller vectors using advanced techniques such as delta-delta or dictionary encoding.
    */
-  def optimize(): BinaryVector[A] = freeze()
+  def optimize(hint: EncodingHint = AutoDetect): BinaryVector[A] = freeze()
 
   /**
    * Clears the elements so one can start over.
@@ -279,7 +279,8 @@ trait AppendableVectorWrapper[A, I] extends BinaryAppendableVector[A] {
     inner.finishCompaction(newBase, newOff).asInstanceOf[BinaryVector[A]]
   override def frozenSize: Int = inner.frozenSize
   final def reset(): Unit = inner.reset()
-  override def optimize(): BinaryVector[A] = inner.optimize().asInstanceOf[BinaryVector[A]]
+  override def optimize(hint: EncodingHint = AutoDetect): BinaryVector[A] =
+    inner.optimize(hint).asInstanceOf[BinaryVector[A]]
 }
 
 /**
@@ -295,6 +296,11 @@ abstract class BinaryVectorBuilder[@specialized(Int, Long, Double, Boolean) A: T
   final def isAllNA: Boolean = inner.isAllNA
   final def length: Int = inner.length
   final def reset(): Unit = inner.reset()
+
+  def toFiloBuffer(hint: BuilderEncoder.EncodingHint): ByteBuffer = inner match {
+    case GrowableVector(inside: BinaryAppendableVector[A]) => inside.optimize(hint).toFiloBuffer
+    case v: BinaryAppendableVector[A] =>   v.optimize(hint).toFiloBuffer
+  }
 
   val extractor: TypedFieldExtractor[A] = implicitly[TypedFieldExtractor[A]]
 }
