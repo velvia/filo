@@ -133,6 +133,15 @@ class IntBinaryVectorTest extends FunSpec with Matchers {
       builder.noNAs should be (true)
     }
 
+    it("should be able to grow vector even if adding all NAs") {
+      val numInts = 1000
+      val builder = IntBinaryVector.appendingVector(numInts / 2)
+      (0 until numInts).foreach(i => builder.addNA)
+      builder.length should equal (numInts)
+      builder.isAllNA should be (true)
+      builder.noNAs should be (false)
+    }
+
     it("should be able to return minMax accurately with NAs") {
       val cb = IntBinaryVector.appendingVector(5)
       cb.addNA

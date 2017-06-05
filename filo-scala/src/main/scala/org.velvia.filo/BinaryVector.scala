@@ -253,13 +253,26 @@ extends AppendableVectorWrapper[A, A] {
         inner.addData(value)
     }
   }
+
+  override def addNA(): Unit = {
+    try {
+      inner.addNA()
+    } catch {
+      case e: VectorTooSmall =>
+        val newInst = inner.newInstance()
+        newInst.addVector(inner)
+        inner = newInst
+        inner.addNA()
+    }
+  }
+
   def apply(index: Int): A = inner(index)
 }
 
 trait AppendableVectorWrapper[A, I] extends BinaryAppendableVector[A] {
   def inner: BinaryAppendableVector[I]
 
-  final def addNA(): Unit = inner.addNA()
+  def addNA(): Unit = inner.addNA()
 
   final def isAvailable(index: Int): Boolean = inner.isAvailable(index)
   final def base: Any = inner.base
