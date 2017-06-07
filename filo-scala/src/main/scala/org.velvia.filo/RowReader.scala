@@ -135,6 +135,8 @@ final case class ArrayStringRowReader(strings: Array[String]) extends RowReader 
       case Classes.SqlTimestamp => new Timestamp(DateTime.parse(strings(columnNo)).getMillis)
     }).asInstanceOf[T]
   }
+
+  override def toString: String = s"ArrayStringRR(${strings.mkString(", ")})"
 }
 
 /**
@@ -169,7 +171,9 @@ final case class RoutingRowReader(origReader: RowReader, columnRoutes: Array[Int
 final case class SchemaRoutingRowReader(origReader: RowReader,
                                         columnRoutes: Array[Int],
                                         extractors: Array[TypedFieldExtractor[_]])
-extends RoutingReader with SchemaRowReader
+extends RoutingReader with SchemaRowReader {
+  override def toString: String = s"SchemaRoutingRR($origReader, ${columnRoutes.toList})"
+}
 
 final case class SingleValueRowReader(value: Any) extends RowReader {
   def notNull(columnNo: Int): Boolean = Option(value).isDefined

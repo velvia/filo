@@ -39,6 +39,11 @@ class DoubleReaderAppender(val appender: BinaryAppendableVector[Double], val col
   final def appendData(row: RowReader): Unit = appender.addData(row.getDouble(col))
 }
 
+class StringReaderAppender(val appender: BinaryAppendableVector[ZeroCopyUTF8String], val col: Int)
+extends RowReaderAppender {
+  final def appendData(row: RowReader): Unit = appender.addData(row.filoUTF8String(col))
+}
+
 /**
  * An appender that creates correctly-sized ConstVectors for static partition columns, and skips
  * reading from the RowReaader for efficiency
