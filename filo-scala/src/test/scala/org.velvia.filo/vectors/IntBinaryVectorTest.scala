@@ -129,6 +129,17 @@ class IntBinaryVectorTest extends FunSpec with Matchers {
       val builder = IntBinaryVector.appendingVector(numInts / 2)
       (0 until numInts).foreach(builder.addData)
       builder.length should equal (numInts)
+      builder.isOffheap shouldEqual false
+      builder.isAllNA should be (false)
+      builder.noNAs should be (true)
+    }
+
+    it("should be able to append lots of ints off-heap and grow vector") {
+      val numInts = 1000
+      val builder = IntBinaryVector.appendingVector(numInts / 2, offheap=true)
+      (0 until numInts).foreach(builder.addData)
+      builder.length should equal (numInts)
+      builder.isOffheap shouldEqual true
       builder.isAllNA should be (false)
       builder.noNAs should be (true)
     }
@@ -162,12 +173,24 @@ class IntBinaryVectorTest extends FunSpec with Matchers {
       val frozen = builder.freeze()
       frozen.numBytes should equal (4 + 8 + 4 + 20)  // bitmask truncated
 
-      frozen.length should equal (5)
+      frozen.length shouldEqual 5
       frozen.toSeq should equal (0 to 4)
     }
 
     it("should toFiloBuffer and read back using FiloVector.apply") {
       val cb = IntBinaryVector.appendingVector(5)
+      cb.addNA
+      cb.addData(101)
+      cb.addData(102)
+      cb.addData(103)
+      cb.addNA
+      val buffer = cb.optimize().toFiloBuffer
+      val readVect = FiloVector[Int](buffer)
+      readVect.toSeq should equal (Seq(101, 102, 103))
+    }
+
+    it("should toFiloBuffer from offheap and read back using FiloVector.apply") {
+      val cb = IntBinaryVector.appendingVector(5, offheap=true)
       cb.addNA
       cb.addData(101)
       cb.addData(102)
@@ -204,7 +227,17 @@ class IntBinaryVectorTest extends FunSpec with Matchers {
       val builder = IntBinaryVector.appendingVector(100)
       (0 to 4).foreach(builder.addData)
       val optimized = builder.optimize()
-      optimized.length should equal (5)
+      optimized.length shouldEqual 5
+      optimized.toSeq should equal (0 to 4)
+      optimized.numBytes should equal (4 + 3)   // nbits=4, so only 3 extra bytes
+    }
+
+    it("should be able to optimize a 32-bit offheap vector to smaller size") {
+      val builder = IntBinaryVector.appendingVector(100, offheap=true)
+      (0 to 4).foreach(builder.addData)
+      val optimized = builder.optimize()
+      optimized.length shouldEqual 5
+      optimized.isOffheap shouldEqual true
       optimized.toSeq should equal (0 to 4)
       optimized.numBytes should equal (4 + 3)   // nbits=4, so only 3 extra bytes
     }

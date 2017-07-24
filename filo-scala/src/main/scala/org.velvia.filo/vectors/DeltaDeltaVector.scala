@@ -31,9 +31,10 @@ object DeltaDeltaVector {
                       initValue: Long,
                       slope: Int,
                       nbits: Short,
-                      signed: Boolean): DeltaDeltaAppendingVector = {
+                      signed: Boolean,
+                      offheap: Boolean = false): DeltaDeltaAppendingVector = {
     val bytesRequired = 12 + IntBinaryVector.noNAsize(maxElements, nbits)
-    val (base, off, nBytes) = BinaryVector.allocWithMagicHeader(bytesRequired)
+    val (base, off, nBytes) = BinaryVector.allocWithMagicHeader(bytesRequired, offheap)
     new DeltaDeltaAppendingVector(base, off, nBytes, initValue, slope, nbits, signed)
   }
 
@@ -54,7 +55,8 @@ object DeltaDeltaVector {
       // Good: all diffs positive, min=first elem, max=last elem
       if (min == inputVect(0) && max == inputVect(inputVect.length - 1) && diffs.forall(_ > 0)) {
         for { slope <- getSlope(min, max, inputVect.length)
-              deltaVect = appendingVector(inputVect.length, min, slope, 32, true)
+              deltaVect = appendingVector(inputVect.length, min, slope, 32, true,
+                                          inputVect.isOffheap)
               appended <- Try(deltaVect.addVector(inputVect)).toOption
         } yield { deltaVect }
       // TODO(velvia): Maybe add less stringent case of slope fitting, flat or negative slope good too.
@@ -157,7 +159,8 @@ class DeltaDeltaAppendingVector(val base: Any,
     // Just optimize nbits.
     val (newNbits, newSigned) = IntBinaryVector.minMaxToNbitsSigned(innerMin, innerMax)
     if (newNbits < nbits) {
-      val newVect = DeltaDeltaVector.appendingVector(deltas.length, initValue, slope, newNbits, newSigned)
+      val newVect = DeltaDeltaVector.appendingVector(deltas.length, initValue, slope, newNbits, newSigned,
+                                                     offheap=this.isOffheap)
       newVect.addInnerVectors(deltas)
       newVect.freeze(copy = false)    // already writing new vector
     } else {

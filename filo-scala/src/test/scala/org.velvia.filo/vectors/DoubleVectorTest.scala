@@ -18,7 +18,7 @@ class DoubleVectorTest extends FunSpec with Matchers {
       sc.optionIterator.toSeq should equal (Seq(None))
     }
 
-    it("should encode a mix of NAs and Ints and decode iterate and skip NAs") {
+    it("should encode a mix of NAs and Doubles and decode iterate and skip NAs") {
       val cb = DoubleVector.appendingVector(5)
       cb.addNA
       cb.addData(101)
@@ -42,11 +42,21 @@ class DoubleVectorTest extends FunSpec with Matchers {
       sc.toList should equal (List(101, 102.5, 103))
     }
 
-    it("should be able to append lots of ints and grow vector") {
-      val numInts = 1000
-      val builder = DoubleVector.appendingVector(numInts / 2)
-      (0 until numInts).map(_.toDouble).foreach(builder.addData)
-      builder.length should equal (numInts)
+    it("should be able to append lots of Doubles and grow vector") {
+      val numDoubles = 1000
+      val builder = DoubleVector.appendingVector(numDoubles / 2)
+      (0 until numDoubles).map(_.toDouble).foreach(builder.addData)
+      builder.length should equal (numDoubles)
+      builder.isAllNA should be (false)
+      builder.noNAs should be (true)
+    }
+
+    it("should be able to append lots of Doubles off-heap and grow vector") {
+      val numDoubles = 1000
+      val builder = DoubleVector.appendingVector(numDoubles / 2, offheap=true)
+      (0 until numDoubles).map(_.toDouble).foreach(builder.addData)
+      builder.length should equal (numDoubles)
+      builder.isOffheap shouldEqual true
       builder.isAllNA should be (false)
       builder.noNAs should be (true)
     }
@@ -99,7 +109,20 @@ class DoubleVectorTest extends FunSpec with Matchers {
       readVect.toSeq should equal (0 to 4)
     }
 
-    it("should be able to optimize constant ints to an IntConstVector") {
+    it("should be able to optimize off-heap all integral vector to IntBinaryVector") {
+      val builder = DoubleVector.appendingVector(100, offheap=true)
+      (0 to 4).map(_.toDouble).foreach(builder.addData)
+      val optimized = builder.optimize()
+      optimized.length shouldEqual 5
+      optimized.isOffheap shouldEqual true
+      optimized.toSeq should equal (0 to 4)
+      optimized(0) should equal (0.0)
+      optimized.numBytes should equal (4 + 3)   // nbits=4, so only 3 extra bytes
+      val readVect = FiloVector[Double](optimized.toFiloBuffer)
+      readVect.toSeq should equal (0 to 4)
+    }
+
+    it("should be able to optimize constant Doubles to an IntConstVector") {
       val builder = DoubleVector.appendingVector(100)
       (0 to 4).foreach(n => builder.addData(99.9))
       val buf = builder.optimize().toFiloBuffer
@@ -110,7 +133,7 @@ class DoubleVectorTest extends FunSpec with Matchers {
 
     it("should support resetting and optimizing AppendableVector multiple times") {
       val cb = DoubleVector.appendingVector(5)
-      // Use large numbers on purpose so cannot optimize to ints or const
+      // Use large numbers on purpose so cannot optimize to Doubles or const
       val orig = Seq(11.11E101, -2.2E-176, 1.77E88)
       cb.addNA()
       orig.foreach(cb.addData)

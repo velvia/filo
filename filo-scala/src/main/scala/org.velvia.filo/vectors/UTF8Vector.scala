@@ -49,7 +49,8 @@ object UTF8Vector {
    */
   def appendingVector(maxElements: Int): BinaryAppendableVector[ZeroCopyUTF8String] = {
     val maxBytes = maxElements * ObjectVector.objectRefSize
-    val (base, off, nBytes) = BinaryVector.allocWithMagicHeader(maxBytes)
+    // Be sure to store this on the heap.  Object refs and offheap don't mix
+    val (base, off, nBytes) = BinaryVector.allocWithMagicHeader(maxBytes, offheap=false)
     new GrowableVector(new UTF8PtrAppendable(base, off, maxBytes))
   }
 
@@ -59,9 +60,12 @@ object UTF8Vector {
    * Be conservative.  The amount of space needed is at least 4 + 4 * #strings + the space needed
    * for the strings themselves; add another 4 bytes per string when more than 32KB is needed.
    * @param maxBytes the initial max # of bytes allowed.  Will grow as needed.
+   * @param offheap if true, allocate the space for the vector off heap.  User will have to dispose.
    */
-  def flexibleAppending(maxElements: Int, maxBytes: Int): BinaryAppendableVector[ZeroCopyUTF8String] = {
-    val (base, off, nBytes) = BinaryVector.allocWithMagicHeader(maxBytes)
+  def flexibleAppending(maxElements: Int,
+                        maxBytes: Int,
+                        offheap: Boolean = false): BinaryAppendableVector[ZeroCopyUTF8String] = {
+    val (base, off, nBytes) = BinaryVector.allocWithMagicHeader(maxBytes, offheap)
     new GrowableVector(new UTF8AppendableVector(base, off, nBytes, maxElements))
   }
 
@@ -69,9 +73,13 @@ object UTF8Vector {
    * Creates an appendable FixedMaxUTF8Vector given the max capacity and max bytes per item.
    * @param maxElements the initial max # of elements to add.  Can grow as needed.
    * @param maxBytesPerItem the max bytes for any one item
+   * @param offheap if true, allocate the space for the vector off heap.  User will have to dispose.
    */
-  def fixedMaxAppending(maxElements: Int, maxBytesPerItem: Int): BinaryAppendableVector[ZeroCopyUTF8String] = {
-    val (base, off, nBytes) = BinaryVector.allocWithMagicHeader(1 + maxElements * (maxBytesPerItem + 1))
+  def fixedMaxAppending(maxElements: Int,
+                        maxBytesPerItem: Int,
+                        offheap: Boolean = false): BinaryAppendableVector[ZeroCopyUTF8String] = {
+    val (base, off, nBytes) = BinaryVector.allocWithMagicHeader(1 + maxElements * (maxBytesPerItem + 1),
+                                                                offheap)
     new GrowableVector(new FixedMaxUTF8AppendableVector(base, off, nBytes, maxBytesPerItem + 1))
   }
 
@@ -187,7 +195,7 @@ UTF8Vector(base, offset) with BinaryAppendableVector[ZeroCopyUTF8String] {
   }
 
   override def newInstance(growFactor: Int = 2): UTF8AppendableVector = {
-    val (newbase, newoff, nBytes) = BinaryVector.allocWithMagicHeader(maxBytes * growFactor)
+    val (newbase, newoff, nBytes) = BinaryVector.reAlloc(base, maxBytes * growFactor)
     new UTF8AppendableVector(newbase, newoff, maxBytes * growFactor, maxElements * growFactor)
   }
 
@@ -295,7 +303,7 @@ ObjectVector[ZeroCopyUTF8String](base, offset, maxBytes) {
   }
 
   override def newInstance(growFactor: Int = 2): ObjectVector[ZeroCopyUTF8String] = {
-    val (newbase, newoff, nBytes) = BinaryVector.allocWithMagicHeader(maxBytes * growFactor)
+    val (newbase, newoff, nBytes) = BinaryVector.reAlloc(base, maxBytes * growFactor)
     new UTF8PtrAppendable(newbase, newoff, nBytes)
   }
 
@@ -304,13 +312,13 @@ ObjectVector[ZeroCopyUTF8String](base, offset, maxBytes) {
     DictUTF8Vector.shouldMakeDict(this, spaceThreshold, samplingRate, flexBytes + 512).map { dictInfo =>
       if (noNAs && dictInfo.codeMap.size == 1) {
         (new UTF8ConstAppendingVect(apply(0), length)).optimize()
-      } else { DictUTF8Vector.makeVector(dictInfo) }
+      } else { DictUTF8Vector.makeVector(dictInfo, isOffheap) }
     }.getOrElse {
       val fixedMaxSize = 1 + (maxStrLen + 1) * length
       val vect = if (fixedMaxSize < flexBytes && maxStrLen < 255) {
-        UTF8Vector.fixedMaxAppending(length, Math.max(maxStrLen, 1))
+        UTF8Vector.fixedMaxAppending(length, Math.max(maxStrLen, 1), isOffheap)
       } else {
-        UTF8Vector.flexibleAppending(length, flexBytes)
+        UTF8Vector.flexibleAppending(length, flexBytes, isOffheap)
       }
       vect.addVector(this)
       vect.optimize()

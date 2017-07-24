@@ -105,6 +105,18 @@ class EncodingPropertiesTest extends FunSpec with Matchers with PropertyChecks {
     }
   }
 
+  it("should match elements and length for offheap BinaryIntVectors with missing/NA elements") {
+    import vectors.IntBinaryVector
+    forAll(boundedIntList) { s =>
+      val intVect = IntBinaryVector.appendingVector(1000, offheap=true)
+      s.foreach(intVect.add)
+      val binarySeq = FiloVector[Int](intVect.optimize().toFiloBuffer)
+      binarySeq.length should equal (s.length)
+      val elements = binarySeq.optionIterator.toSeq
+      elements should equal (s)
+    }
+  }
+
   it("should match elements and length for simple string vectors with missing/NA elements") {
     forAll(optionList[String]) { s =>
       val buf = VectorBuilder.fromOptions(s).toFiloBuffer(SimpleEncoding)

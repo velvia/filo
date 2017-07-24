@@ -10,20 +10,22 @@ object DoubleVector {
    * Creates a new MaskedDoubleAppendingVector, allocating a byte array of the right size for the max #
    * of elements plus a bit mask.
    * @param maxElements initial maximum number of elements this vector will hold. Will automatically grow.
+   * @param offheap if true, allocate the space for the vector off heap.  User will have to dispose.
    */
-  def appendingVector(maxElements: Int): BinaryAppendableVector[Double] = {
+  def appendingVector(maxElements: Int, offheap: Boolean = false): BinaryAppendableVector[Double] = {
     val bytesRequired = 8 + BitmapMask.numBytesRequired(maxElements) + 8 * maxElements
-    val (base, off, nBytes) = BinaryVector.allocWithMagicHeader(bytesRequired)
+    val (base, off, nBytes) = BinaryVector.allocWithMagicHeader(bytesRequired, offheap)
     GrowableVector(new MaskedDoubleAppendingVector(base, off, nBytes, maxElements))
   }
 
   /**
    * Creates a DoubleAppendingVector - does not grow and does not have bit mask. All values are marked
    * as available.
+   * @param offheap if true, allocate the space for the vector off heap.  User will have to dispose.
    */
-  def appendingVectorNoNA(maxElements: Int): BinaryAppendableVector[Double] = {
+  def appendingVectorNoNA(maxElements: Int, offheap: Boolean = false): BinaryAppendableVector[Double] = {
     val bytesRequired = 4 + 8 * maxElements
-    val (base, off, nBytes) = BinaryVector.allocWithMagicHeader(bytesRequired)
+    val (base, off, nBytes) = BinaryVector.allocWithMagicHeader(bytesRequired, offheap)
     new DoubleAppendingVector(base, off, nBytes)
   }
 
@@ -132,7 +134,7 @@ BitmapMaskAppendableVector[Double](base, offset + 4L, maxElements) {
   override def optimize(hint: EncodingHint = AutoDetect): BinaryVector[Double] = DoubleVector.optimize(this)
 
   override def newInstance(growFactor: Int = 2): BinaryAppendableVector[Double] = {
-    val (newbase, newoff, nBytes) = BinaryVector.allocWithMagicHeader(maxBytes * growFactor)
+    val (newbase, newoff, nBytes) = BinaryVector.reAlloc(base, maxBytes * growFactor)
     new MaskedDoubleAppendingVector(newbase, newoff, maxBytes * growFactor, maxElements * growFactor)
   }
 
@@ -175,7 +177,7 @@ with AppendableVectorWrapper[Int, Double] {
   final def apply(index: Int): Int = inner(index).toInt
 
   def dataVect: BinaryVector[Int] = {
-    val vect = IntBinaryVector.appendingVectorNoNA(inner.length)
+    val vect = IntBinaryVector.appendingVectorNoNA(inner.length, offheap=inner.isOffheap)
     for { index <- 0 until length optimized } {
       vect.addData(inner(index).toInt)
     }
@@ -183,7 +185,7 @@ with AppendableVectorWrapper[Int, Double] {
   }
 
   override def getVect: BinaryVector[Int] = {
-    val vect = IntBinaryVector.appendingVector(inner.length)
+    val vect = IntBinaryVector.appendingVector(inner.length, offheap=inner.isOffheap)
     for { index <- 0 until length optimized } {
       if (inner.isAvailable(index)) vect.addData(inner(index).toInt) else vect.addNA()
     }

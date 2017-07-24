@@ -23,12 +23,27 @@ trait BinaryVector[@specialized(Int, Long, Double, Boolean) A] extends FiloVecto
    */
   def maybeNAs: Boolean
 
+  def isOffheap: Boolean = base == UnsafeUtils.ZeroPointer
+
+  /**
+   * Frees up memory used by this BinaryVector if it was offheap memory.  Otherwise do nothing
+   */
+  def dispose(): Unit = {
+    if (base == UnsafeUtils.ZeroPointer) UnsafeUtils.freeOffheap(offset)
+  }
+
   /**
    * Produce a FiloVector ByteBuffer with the four-byte header.  The resulting buffer can be used for I/O
    * and fed to FiloVector.apply() to be parsed back.  For most BinaryVectors returned by optimize() and
    * freeze(), a copy is not necessary so this is usually a very inexpensive operation.
    */
   def toFiloBuffer: ByteBuffer = {
+    def copyIt(): Array[Byte] = {
+      val bytes = new Array[Byte](numBytes + 4)
+      copyTo(bytes, UnsafeUtils.arayOffset + 4)
+      UnsafeUtils.setInt(bytes, UnsafeUtils.arayOffset, WireFormat(vectMajorType, vectSubType))
+      bytes
+    }
     // Check if magic word written to header location.  Then write header, and wrap all the bytes
     // in a ByteBuffer and return that.  Assumes byte array properly allocated beforehand.
     // If that doesn't work, copy bytes to new array first then write header.
@@ -37,11 +52,8 @@ trait BinaryVector[@specialized(Int, Long, Double, Boolean) A] extends FiloVecto
                              UnsafeUtils.getInt(base, offset - 4) == BinaryVector.HeaderMagic =>
         UnsafeUtils.setInt(base, offset - 4, WireFormat(vectMajorType, vectSubType))
         a
-      case x: Any =>
-        val bytes = new Array[Byte](numBytes + 4)
-        copyTo(bytes, UnsafeUtils.arayOffset + 4)
-        UnsafeUtils.setInt(bytes, UnsafeUtils.arayOffset, WireFormat(vectMajorType, vectSubType))
-        bytes
+      case x: Any => copyIt()
+      case UnsafeUtils.ZeroPointer => copyIt()
     }
     val bb = ByteBuffer.wrap(byteArray)
     bb.limit(numBytes + 4)
@@ -63,13 +75,27 @@ object BinaryVector {
   /**
    * Allocate a byte array with nBytes usable bytes, prepended with a 4-byte HeaderMagic
    * to reserve space for writing the FiloVector header.
+   * @param offheap if true, allocate offheap storage, which means vector must be freed.
+   * @param initialize if true, zero out memory before allocation.  Only meaningful when offheap=true
    * @return (base, offset, numBytes) tuple for the appendingvector
    */
-  def allocWithMagicHeader(nBytes: Int): (Any, Long, Int) = {
-    val newBytes = new Array[Byte](nBytes + 4)
-    UnsafeUtils.setInt(newBytes, UnsafeUtils.arayOffset, HeaderMagic)
-    (newBytes, UnsafeUtils.arayOffset + 4, nBytes)
+  def allocWithMagicHeader(nBytes: Int,
+                           offheap: Boolean = false,
+                           initialize: Boolean = true): (Any, Long, Int) = {
+    if (offheap) {
+      (UnsafeUtils.ZeroPointer, UnsafeUtils.allocOffheap(nBytes, initialize), nBytes)
+      // TODO: modify toFiloBuffer to work with offheap?  But cannot have ByteBuffer that refers to
+      // truly offheap memory.
+    } else {
+      val newBytes = new Array[Byte](nBytes + 4)
+      UnsafeUtils.setInt(newBytes, UnsafeUtils.arayOffset, HeaderMagic)
+      (newBytes, UnsafeUtils.arayOffset + 4, nBytes)
+    }
   }
+
+  def reAlloc(base: Any, nBytes: Int): (Any, Long, Int) =
+    if (base == UnsafeUtils.ZeroPointer) { allocWithMagicHeader(nBytes, offheap=true) }
+    else                                 { allocWithMagicHeader(nBytes, offheap=false) }
 }
 
 /**
@@ -249,6 +275,7 @@ extends AppendableVectorWrapper[A, A] {
       case e: VectorTooSmall =>
         val newInst = inner.newInstance()
         newInst.addVector(inner)
+        inner.dispose()   // free memory in case it's off-heap .. just before reference is lost
         inner = newInst
         inner.addData(value)
     }

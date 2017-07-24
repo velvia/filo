@@ -1,7 +1,8 @@
 package org.velvia.filo
 
-import sun.misc.Unsafe
+import com.kenai.jffi.MemoryIO
 import java.nio.ByteBuffer
+import sun.misc.Unsafe
 
 /**
  * TODO: use something like Agrona so the classes below will work with non-array-based ByteBuffers
@@ -29,6 +30,11 @@ object FastBufferReader {
 
 object UnsafeUtils {
   val unsafe = scala.concurrent.util.Unsafe.instance
+  val memoryIO = MemoryIO.getInstance
+
+  // scalastyle:off
+  val ZeroPointer: Any = null
+  // scalastyle:on
 
   val arayOffset = unsafe.arrayBaseOffset(classOf[Array[Byte]])
 
@@ -40,6 +46,18 @@ object UnsafeUtils {
       throw new RuntimeException("Cannot support this ByteBuffer!")
     }
   }
+
+  /**
+   * Allocates off-heap (OS / malloc) memory.  This is not direct memory, this is really off-heap.
+   * The memory needs to be manually tracked and freed using freeOffheap.
+   * @param numBytes the number of bytes to allocate
+   * @param initialize if true, zero out the memory first
+   * @return a Long (64-bit) address or raw pointer to the memory.
+   */
+  def allocOffheap(numBytes: Int, initialize: Boolean = false): Long =
+    memoryIO.allocateMemory(numBytes, initialize)
+
+  def freeOffheap(addr: Long): Unit = memoryIO.freeMemory(addr)
 
   /**
    * Generic methods to read and write data to any offset from a base object location.  Be careful, this
