@@ -88,6 +88,7 @@ BuilderEncoder[A] with MinMaxEncoder[A] {
 object BuilderEncoder {
   sealed trait EncodingHint
   case object AutoDetect extends EncodingHint
+  case object AutoDetectDispose extends EncodingHint  // Dispose of old/existing vector
   case object SimpleEncoding extends EncodingHint
   case object DictionaryEncoding extends EncodingHint
   case object DiffEncoding extends EncodingHint

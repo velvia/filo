@@ -66,7 +66,7 @@ object LongBinaryVector {
     } else {
       // Try delta-delta encoding
       DeltaDeltaVector.fromLongVector(vector, intWrapper.min, intWrapper.max)
-                      .map(_.optimize())
+                      .map(_.optimize(BuilderEncoder.AutoDetectDispose))
                       .getOrElse(optimize2(intWrapper, vector))
     }
   }

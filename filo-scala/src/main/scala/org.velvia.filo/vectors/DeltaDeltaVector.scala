@@ -128,7 +128,10 @@ class DeltaDeltaAppendingVector(val base: Any,
   final def addData(data: Long): Unit = {
     val innerValue = data - expected
     if (innerValue <= Int.MaxValue && innerValue >= Int.MinValue) { deltas.addData(innerValue.toInt) }
-    else { throw DeltaTooLarge(data, expected) }
+    else {
+      dispose()
+      throw DeltaTooLarge(data, expected)
+    }
     innerMin = Math.min(innerMin, innerValue.toInt)
     innerMax = Math.max(innerMax, innerValue.toInt)
     expected += slope
@@ -162,6 +165,7 @@ class DeltaDeltaAppendingVector(val base: Any,
       val newVect = DeltaDeltaVector.appendingVector(deltas.length, initValue, slope, newNbits, newSigned,
                                                      offheap=this.isOffheap)
       newVect.addInnerVectors(deltas)
+      if (hint == AutoDetectDispose) dispose()
       newVect.freeze(copy = false)    // already writing new vector
     } else {
       freeze()

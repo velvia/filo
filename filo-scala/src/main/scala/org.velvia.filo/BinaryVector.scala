@@ -222,7 +222,7 @@ trait BinaryAppendableVector[@specialized(Int, Long, Double, Boolean) A] extends
    */
   def freeze(copy: Boolean = true): BinaryVector[A] = {
     if (copy) {
-      val (base, off, _) = BinaryVector.allocWithMagicHeader(frozenSize)
+      val (base, off, _) = BinaryVector.allocWithMagicHeader(frozenSize, isOffheap)
       freeze(Some((base, off)))
     } else {
       freeze(None)
