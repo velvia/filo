@@ -53,6 +53,16 @@ class LongVectorTest extends FunSpec with Matchers {
       builder.noNAs should be (true)
     }
 
+    it("should be able to append lots of longs off-heap and grow vector") {
+      val numInts = 1000
+      val builder = LongBinaryVector.appendingVector(numInts / 2, offheap=true)
+      (0 until numInts).map(_.toLong).foreach(builder.addData)
+      builder.length should equal (numInts)
+      builder.isOffheap shouldEqual true
+      builder.isAllNA should be (false)
+      builder.noNAs should be (true)
+    }
+
     it("should be able to return minMax accurately with NAs") {
       val cb = LongBinaryVector.appendingVector(5)
       cb.addNA
@@ -106,12 +116,46 @@ class LongVectorTest extends FunSpec with Matchers {
       readVect.toSeq should equal (orig)
     }
 
+    it("should be able to optimize longs with fewer nbits off-heap to IntBinaryVector") {
+      val builder = LongBinaryVector.appendingVector(100, offheap=true)
+      // Be sure to make this not an increasing sequence so it doesn't get delta-delta encoded
+      val orig = Seq(0, 2, 1, 4, 3).map(_.toLong)
+      orig.foreach(builder.addData)
+      val optimized = builder.optimize()
+      optimized.length shouldEqual 5
+      optimized.isOffheap shouldEqual true
+      optimized.maybeNAs shouldEqual false
+      optimized(0) shouldEqual 0L
+      optimized.toSeq should equal (orig)
+      optimized.numBytes should equal (4 + 3)   // nbits=4, so only 3 extra bytes
+      val readVect = FiloVector[Double](optimized.toFiloBuffer)
+      readVect.toSeq should equal (orig)
+    }
+
     it("should automatically use Delta-Delta encoding for increasing numbers") {
       val start = System.currentTimeMillis
       val orig = (0 to 50).map(_ * 100 + start)
       val builder = LongBinaryVector.appendingVector(100)
       orig.foreach(builder.addData)
       val buf = builder.optimize().toFiloBuffer
+      val readVect = FiloVector[Long](buf)
+      readVect shouldBe a [DeltaDeltaVector]
+      readVect.toSeq should equal (orig)
+      readVect.asInstanceOf[BinaryVector[Long]].maybeNAs should equal (false)
+      // The # of bytes below is MUCH less than the original 51 * 8 + 4
+      readVect.asInstanceOf[BinaryVector[Long]].numBytes should equal (12 + 4 + 51/4 + 1)
+    }
+
+    it("should automatically use Delta-Delta encoding off-heap for increasing numbers") {
+      val start = System.currentTimeMillis
+      val orig = (0 to 50).map(_ * 100 + start)
+      val builder = LongBinaryVector.appendingVector(100, offheap=true)
+      orig.foreach(builder.addData)
+      builder.frozenSize shouldEqual 424
+      val optimized = builder.optimize()
+      optimized.isOffheap shouldEqual true
+      optimized.numBytes shouldEqual 29    // notice how much smaller the delta-delta vector is? :)
+      val buf = optimized.toFiloBuffer
       val readVect = FiloVector[Long](buf)
       readVect shouldBe a [DeltaDeltaVector]
       readVect.toSeq should equal (orig)

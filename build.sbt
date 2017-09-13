@@ -40,6 +40,7 @@ val jodaConvert = "org.joda"                % "joda-convert"  % "1.2"
 
 lazy val deps = Seq(
   "net.jpountz.lz4"         % "lz4"           % "1.3.0",
+  "com.github.jnr"          % "jnr-ffi"       % "2.1.6",
   "com.nativelibs4java"    %% "scalaxy-loops" % "0.3.3" % "provided",
   jodaTime % "provided",
   jodaConvert % "provided",

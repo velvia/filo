@@ -65,13 +65,13 @@ object DictUTF8Vector {
   /**
    * Creates the dictionary-encoding frozen vector from intermediate data.
    */
-  def makeVector(info: DictUTF8Info): DictUTF8Vector = {
+  def makeVector(info: DictUTF8Info, offheap: Boolean = false): DictUTF8Vector = {
     // Estimate and allocate enough space for the UTF8Vector
     val (nbits, signed) = IntBinaryVector.minMaxToNbitsSigned(0, info.codeMap.size)
     val codeVectSize = IntBinaryVector.noNAsize(info.codes.length, nbits)
     val dictVectSize = info.dictStrings.frozenSize
     val bytesRequired = 8 + dictVectSize + codeVectSize
-    val (base, off, nBytes) = BinaryVector.allocWithMagicHeader(bytesRequired)
+    val (base, off, nBytes) = BinaryVector.allocWithMagicHeader(bytesRequired, offheap)
 
     // Copy over the dictionary strings
     // TODO: optimize in future to FIXED UTF8 vector?

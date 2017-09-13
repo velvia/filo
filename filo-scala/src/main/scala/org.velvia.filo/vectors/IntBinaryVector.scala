@@ -9,12 +9,14 @@ object IntBinaryVector {
    * Creates a new MaskedIntAppendingVector, allocating a byte array of the right size for the max #
    * of elements.
    * @param maxElements initial maximum number of elements this vector will hold. Will automatically grow.
+   * @param offheap if true, allocate the space for the vector off heap.  User will have to dispose.
    */
   def appendingVector(maxElements: Int,
                       nbits: Short = 32,
-                      signed: Boolean = true): BinaryAppendableVector[Int] = {
+                      signed: Boolean = true,
+                      offheap: Boolean = false): BinaryAppendableVector[Int] = {
     val bytesRequired = 4 + BitmapMask.numBytesRequired(maxElements) + noNAsize(maxElements, nbits)
-    val (base, off, nBytes) = BinaryVector.allocWithMagicHeader(bytesRequired)
+    val (base, off, nBytes) = BinaryVector.allocWithMagicHeader(bytesRequired, offheap)
     GrowableVector(new MaskedIntAppendingVector(base, off, nBytes, maxElements, nbits, signed))
   }
 
@@ -30,9 +32,10 @@ object IntBinaryVector {
    */
   def appendingVectorNoNA(maxElements: Int,
                           nbits: Short = 32,
-                          signed: Boolean = true): IntAppendingVector = {
+                          signed: Boolean = true,
+                          offheap: Boolean = false): IntAppendingVector = {
     val bytesRequired = noNAsize(maxElements, nbits)
-    val (base, off, nBytes) = BinaryVector.allocWithMagicHeader(bytesRequired)
+    val (base, off, nBytes) = BinaryVector.allocWithMagicHeader(bytesRequired, offheap)
     appendingVectorNoNA(base, off, nBytes, nbits, signed)
   }
 
@@ -178,7 +181,7 @@ object IntBinaryVector {
       // No NAs?  Use just the PrimitiveAppendableVector
       } else if (nbits == vector.nbits) { vector.dataVect }
       else {
-        val newVect = IntBinaryVector.appendingVectorNoNA(vector.length, nbits, signed)
+        val newVect = IntBinaryVector.appendingVectorNoNA(vector.length, nbits, signed, vector.isOffheap)
         newVect.addVector(vector)
         newVect.freeze(copy = false)  // we're already creating a new copy
       }
@@ -187,7 +190,7 @@ object IntBinaryVector {
       if (nbits == vector.nbits) { vector.getVect }
       // Some NAs and different number of bits?  Create new vector and copy data over
       else {
-        val newVect = IntBinaryVector.appendingVector(vector.length, nbits, signed)
+        val newVect = IntBinaryVector.appendingVector(vector.length, nbits, signed, vector.isOffheap)
         newVect.addVector(vector)
         newVect.freeze(copy = false)
       }
@@ -280,7 +283,7 @@ BitmapMaskAppendableVector[Int](base, offset + 4L, maxElements) with MaskedIntAp
     IntBinaryVector.optimize(this)
 
   override def newInstance(growFactor: Int = 2): BinaryAppendableVector[Int] = {
-    val (newbase, newoff, nBytes) = BinaryVector.allocWithMagicHeader(maxBytes * growFactor)
+    val (newbase, newoff, nBytes) = BinaryVector.reAlloc(base, maxBytes * growFactor)
     new MaskedIntAppendingVector(newbase, newoff, maxBytes * growFactor, maxElements * growFactor,
                                  nbits, signed)
   }
