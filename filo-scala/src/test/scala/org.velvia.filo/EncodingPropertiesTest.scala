@@ -128,7 +128,7 @@ class EncodingPropertiesTest extends FunSpec with Matchers with PropertyChecks {
     }
   }
 
-  it("should match elements and length for UTF8Vectors with missing/NA elements") {
+  ignore("should match elements and length for UTF8Vectors with missing/NA elements") {
     forAll(optionList[ZeroCopyUTF8String]) { s =>
       val utf8vect = vectors.UTF8Vector.appendingVector(500)
       s.foreach(utf8vect.add)
