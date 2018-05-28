@@ -173,6 +173,22 @@ class UTF8VectorTest extends FunSpec with Matchers {
       reader shouldBe a [UTF8Vector]
       reader.toSeq should equal (strs)
     }
+
+    it("should handle adding a NULL using addData()") {
+      val appender = UTF8Vector.appendingVector(5)
+      val rawData = Seq("apple", "zoe", "jacksonhole", "wyoming").map(_.utf8) :+ null
+      rawData.foreach(appender.addData)
+      appender.length shouldEqual rawData.length
+
+      // Now, add one more which will cause vector to grow
+      appender.addData("beelzeebub".utf8)
+
+      val buffer = appender.optimize().toFiloBuffer
+      val reader = FiloVector[ZeroCopyUTF8String](buffer)
+      reader shouldBe a [UTF8Vector]
+      reader.length shouldEqual 6
+      reader.isAvailable(4) shouldEqual false
+    }
   }
 
   describe("DictUTF8Vector") {

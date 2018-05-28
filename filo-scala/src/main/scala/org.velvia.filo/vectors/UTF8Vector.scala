@@ -280,11 +280,13 @@ ObjectVector[ZeroCopyUTF8String](base, offset, maxBytes) {
   private var maxStrLen = 0
   var flexBytes = 0
 
-  override def addData(data: ZeroCopyUTF8String): Unit = {
+  override def addData(data: ZeroCopyUTF8String): Unit = if (data != UnsafeUtils.ZeroPointer) {
     super.addData(data)
     flexBytes += 4 + data.length +
                  (if (numBytes > 0xffff || data.length > 2047) 4 else 0)
     maxStrLen = Math.max(maxStrLen, data.length)
+  } else {
+    addNA()
   }
 
   override def addNA(): Unit = {

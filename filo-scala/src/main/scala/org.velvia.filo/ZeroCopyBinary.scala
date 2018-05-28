@@ -145,6 +145,7 @@ extends ZeroCopyBinary {
   override def equals(other: Any): Boolean = other match {
     case u: UTF8Wrapper => super.equals(u.utf8)
     case o: Any         => super.equals(o)
+    case UnsafeUtils.ZeroPointer => false
   }
 
   private def matchAt(s: ZeroCopyUTF8String, pos: Int): Boolean =
