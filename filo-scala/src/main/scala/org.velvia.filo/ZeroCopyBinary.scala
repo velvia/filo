@@ -208,7 +208,7 @@ object ZeroCopyUTF8String {
   val empty = ZeroCopyUTF8String("")
 
   // The official ZeroCopyUTF8String instance designated to equal NA / not available
-  val NA = new ZeroCopyUTF8String(null.asInstanceOf[Any], 0, 0)
+  val NA = empty
 
   final def isNA(utf8: ZeroCopyUTF8String): Boolean = utf8.base == NA.base
 

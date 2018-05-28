@@ -209,7 +209,9 @@ class UTF8VectorTest extends FunSpec with Matchers {
     it("should optimize UTF8Vector to DictVector with NAs and read it back") {
       val strs = ZeroCopyUTF8String.NA +:
                  Seq("apple", "zoe", "grape").permutations.flatten.toList.map(ZeroCopyUTF8String.apply)
-      val buffer = UTF8Vector(strs).optimize(AutoDictString(samplingRate=0.5)).toFiloBuffer
+      val appender = UTF8Vector.appendingVector(strs.length)
+      strs.foreach(s => appender.addData(s))
+      val buffer = appender.optimize(AutoDictString(samplingRate=0.5)).toFiloBuffer
       val reader = FiloVector[ZeroCopyUTF8String](buffer)
       reader shouldBe a [DictUTF8Vector]
       reader.length should equal (strs.length)
